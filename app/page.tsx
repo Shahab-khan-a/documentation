@@ -6,26 +6,26 @@ import React, { useState, useEffect, useCallback } from "react";
 // CUSTOMIZE YOUR DATA AND BRAND HERE
 // =========================================================
 const CONFIG = {
-  portalTitle: "Chamber Services Portal",
-  pageTitle: "Document Verification",
+  portalTitle: "بوابة خدمات الغرف",
+  pageTitle: "التحقق من الوثائق",
   backUrl: "#",
   verifyAgainUrl: "#",
   downloadUrl: "#",
-  chamberName: "Yanbu",
-  facilityName: "Al-Anoud Salman Shu'an Establishment",
-  facilitySubName: "Al-Qahtani General Contracting",
+  chamberName: "ينبع",
+  facilityName: "مؤسسة العنود سلمان شوعان",
+  facilitySubName: "القحطاني للمقاولات العامة",
   unifiedNumber: "7032840279",
   requestNumber: "13255887",
-  requestType: "File Opening Request",
-  applicantName: "Al-Anoud Salman Shu'an",
+  requestType: "طلب فتح ملف",
+  applicantName: "العنود سلمان شوعان",
   creationDate: "06/09/2026",
-  creationTime: "6:12 PM",
-  amount: "35 SAR",
+  creationTime: "6:12 م",
+  amount: "35 ريال",
   expiryDate: "06/09/2027",
-  expiryTime: "6:00 PM",
+  expiryTime: "6:00 م",
   commercialRegNo: "7032840279",
-  requestStatus: "Approved & Active",
-  devLabel: "Development & Operations",
+  requestStatus: "معتمد وفعال",
+  devLabel: "تطوير وتشغيل",
   companyNameAr: "عالم النظم و البرامج",
   companyNameEn: "World of Systems & Software",
   supportPhone: "00966112641362",
@@ -96,6 +96,7 @@ function LoaderScreen({
 
   return (
     <div
+      dir="rtl"
       style={{
         position: "fixed",
         inset: 0,
@@ -117,7 +118,7 @@ function LoaderScreen({
       <img
         key={gifSrc}
         src={gifSrc}
-        alt="chamber file"
+        alt="بوابة خدمات الغرف"
         loading="eager"
         decoding="sync"
         onError={(e) => {
@@ -146,7 +147,7 @@ function ResultsPage({
 
   return (
     <div
-      dir="ltr"
+      dir="rtl"
       className="min-h-screen bg-white text-[#212529]"
       style={{
         fontFamily: "'Cairo','Segoe UI',Arial,sans-serif",
@@ -171,7 +172,7 @@ function ResultsPage({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/chamber-logo.png"
-              alt="Chamber Services Portal Logo"
+              alt="شعار بوابة خدمات الغرف"
               width={52}
               height={52}
               className="w-full h-full object-contain select-none"
@@ -192,7 +193,7 @@ function ResultsPage({
             <h1 className="font-bold m-0" style={{ color: "#1c2833", fontSize: "20px" }}>{d.pageTitle}</h1>
           </div>
           <a href={d.backUrl} className="inline-block text-white font-bold text-[14px] rounded px-6 py-[5px] no-underline hover:brightness-110 active:scale-95 transition-all" style={{ backgroundColor: "rgb(110,168,254)", border: "3px solid rgb(110,168,254)" }}>
-            Back
+            رجوع
           </a>
         </div>
 
@@ -200,31 +201,31 @@ function ResultsPage({
 
         {/* Intro text */}
         <div className="text-center py-5" style={{ color: "#3c4a55", fontSize: "14px", lineHeight: 1.9 }}>
-          <p className="m-0">A service that allows verification of documents that have been authenticated</p>
-          <p className="m-0">electronically through the Chamber&apos;s e-services portal. To verify</p>
-          <p className="m-0">a membership certificate, please enter the reference number</p>
-          <p className="m-0">associated with the document.</p>
+          <p className="m-0">خدمة تتيح التحقق من الوثائق التي تم تصديقها</p>
+          <p className="m-0">إلكترونياً من خلال بوابة الخدمات الإلكترونية للغرفة وللتحقق</p>
+          <p className="m-0">من شهادة الإشتراك يرجى إدخال الرقم المرجعي</p>
+          <p className="m-0">الخاص بالوثيقة</p>
         </div>
 
         <hr style={{ borderColor: "#d5d5d5", borderTopWidth: "1px", margin: 0 }} />
 
         {/* Data fields */}
         <div className="text-center py-6 mx-auto" style={{ maxWidth: "600px", color: "#212529", lineHeight: 2.0 }}>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Chamber Name: </strong><span>{d.chamberName}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Facility Name: </strong><span>{d.facilityName}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>اسم الغرفة : </strong><span>{d.chamberName}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>اسم المنشأة : </strong><span>{d.facilityName}</span></p>
           {d.facilitySubName && <p className="m-0" style={{ fontSize: "14.5px" }}><span>{d.facilitySubName}</span></p>}
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Unified Number (700): </strong><span style={{ fontFamily: "monospace" }}>{d.unifiedNumber}</span></p>
-          <p className="m-0" style={{ fontSize: "16px" }}><strong>Request Number: </strong><span style={{ fontFamily: "monospace" }}>{d.requestNumber}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Request Type: </strong><span>{d.requestType}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Applicant Name: </strong><span>{d.applicantName}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Creation Date &amp; Time: </strong><span style={{ fontFamily: "monospace" }}>{d.creationDate}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>الرقم الموحد (700) : </strong><span style={{ fontFamily: "monospace" }}>{d.unifiedNumber}</span></p>
+          <p className="m-0" style={{ fontSize: "16px" }}><strong>رقم الطلب : </strong><span style={{ fontFamily: "monospace" }}>{d.requestNumber}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>نوع الطلب : </strong><span>{d.requestType}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>اسم مقدم الطلب : </strong><span>{d.applicantName}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>تاريخ ووقت الإنشاء : </strong><span style={{ fontFamily: "monospace" }}>{d.creationDate}</span></p>
           <p className="m-0" style={{ fontSize: "13.5px", color: "#4b5563" }}>{d.creationTime}</p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Request Amount: </strong><span>{d.amount}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Validity Date: </strong><span style={{ fontFamily: "monospace" }}>{d.expiryDate}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>مبلغ الطلب : </strong><span>{d.amount}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>تاريخ الصلاحية : </strong><span style={{ fontFamily: "monospace" }}>{d.expiryDate}</span></p>
           <p className="m-0" style={{ fontSize: "13.5px", color: "#4b5563" }}>{d.expiryTime}</p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>Commercial Reg. No.: </strong><span style={{ fontFamily: "monospace" }}>{d.commercialRegNo}</span></p>
+          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>رقم السجل التجاري : </strong><span style={{ fontFamily: "monospace" }}>{d.commercialRegNo}</span></p>
           <p className="m-0 pt-2" style={{ fontSize: "15px" }}>
-            <strong>Request Status: </strong>
+            <strong>حالة الطلب : </strong>
             <strong style={{ color: "rgb(85,219,221)" }}>{d.requestStatus}</strong>
           </p>
         </div>
@@ -237,7 +238,7 @@ function ResultsPage({
             className="inline-block text-white font-bold text-[14px] rounded px-6 py-[5px] cursor-pointer hover:brightness-110 active:scale-95 transition-all"
             style={{ backgroundColor: "rgb(110,168,254)", border: "3px solid rgb(110,168,254)" }}
           >
-            Verify Again
+            إعادة التحقق
           </button>
           <button
             type="button"
@@ -245,7 +246,7 @@ function ResultsPage({
             className="inline-block text-white font-bold text-[14px] rounded px-8 py-[5px] cursor-pointer hover:brightness-110 active:scale-95 transition-all"
             style={{ backgroundColor: "rgb(110,168,254)", border: "3px solid rgb(110,168,254)" }}
           >
-            Download
+            تحميل
           </button>
         </div>
 
@@ -272,15 +273,15 @@ function ResultsPage({
 
           <div className="relative z-10 px-7 pt-6 pb-5">
             {/* Row 1: dev label */}
-            <div className="flex justify-end mb-1">
+            <div className="flex justify-start mb-1">
               <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.85)", fontWeight: 400 }}>{d.devLabel}</span>
             </div>
 
             {/* Row 2: Company + hatched logo */}
-            <div className="flex items-center justify-end gap-3 mb-5">
+            <div className="flex items-center justify-start gap-3 mb-5">
               <div className="text-right leading-snug">
-                <div style={{ fontSize: "19px", fontWeight: 700, color: "white" }}>{d.companyNameEn}</div>
-                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", fontWeight: 400 }}>{d.companyNameAr}</div>
+                <div style={{ fontSize: "19px", fontWeight: 700, color: "white" }}>{d.companyNameAr}</div>
+                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", fontWeight: 400 }}>{d.companyNameEn}</div>
               </div>
               <div style={{ width: "56px", height: "56px", border: "2.5px solid rgba(255,255,255,0.7)", borderRadius: "4px", overflow: "hidden", flexShrink: 0, background: "rgba(255,255,255,0.05)" }}>
                 <svg viewBox="0 0 56 56" className="w-full h-full">
@@ -292,10 +293,10 @@ function ResultsPage({
             </div>
 
             {/* Row 3: Support + phone + white oval */}
-            <div className="flex justify-end mb-5">
-              <div className="flex flex-col items-end gap-1">
-                <span style={{ fontSize: "15px", fontWeight: 500, color: "white" }}>For Inquiries &amp; Technical Support</span>
-                <a href={`tel:${d.supportPhone}`} className="no-underline hover:underline" style={{ fontSize: "24px", fontWeight: 700, color: "white", fontFamily: "monospace", letterSpacing: "0.5px" }}>{d.supportPhone}</a>
+            <div className="flex justify-start mb-5">
+              <div className="flex flex-col items-start gap-1">
+                <span style={{ fontSize: "15px", fontWeight: 500, color: "white" }}>للاستفسارات والدعم الفني</span>
+                <a href={`tel:${d.supportPhone}`} dir="ltr" className="no-underline hover:underline" style={{ fontSize: "24px", fontWeight: 700, color: "white", fontFamily: "monospace", letterSpacing: "0.5px" }}>{d.supportPhone}</a>
                 <div style={{ width: "64px", height: "22px", background: "rgba(255,255,255,0.92)", borderRadius: "30px", marginTop: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.18)" }} />
               </div>
             </div>
@@ -324,7 +325,7 @@ function ResultsPage({
             </div>
 
             <div className="text-center mt-4" style={{ fontSize: "13px", color: "rgba(255,255,255,0.75)" }}>
-              Please use Google Chrome browser
+              يرجى استخدام متصفح جوجل كروم
             </div>
           </div>
         </div>
