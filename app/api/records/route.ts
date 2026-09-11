@@ -80,7 +80,7 @@ function saveLocalRecords(records: PortalRecord[]) {
  */
 export async function GET() {
   try {
-    // 1. Try fetching from Firebase Firestore
+    // 1. Fetch from Firebase Firestore
     let fbRecords: PortalRecord[] = [];
     try {
       fbRecords = await getAllPortalRecordsFromFirebase();
@@ -93,26 +93,38 @@ export async function GET() {
     // Merge Firestore and local records (avoid duplicates by ID)
     const map = new Map<string, PortalRecord>();
     for (const r of localRecords) {
-      if (r && r.id) map.set(r.id, r);
+      if (r && (r.id || r.serialNumber)) {
+        const id = r.id || `${r.serialNumber}_${r.unifiedNumber}`;
+        map.set(id, { ...r, id });
+      }
     }
     for (const r of fbRecords) {
-      if (r && r.id) map.set(r.id, r);
+      if (r && (r.id || r.serialNumber)) {
+        const id = r.id || `${r.serialNumber}_${r.unifiedNumber}`;
+        map.set(id, { ...r, id });
+      }
     }
 
     const merged = Array.from(map.values()).sort((a, b) =>
-      (b.createdAt || "").localeCompare(a.createdAt || "")
+      (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")
     );
 
     // Save synced merged list locally
     saveLocalRecords(merged);
 
-    return NextResponse.json({
-      success: true,
-      records: merged,
-      count: merged.length,
-    }, {
-      headers: { "Cache-Control": "no-store, max-age=0" },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        records: merged,
+        count: merged.length,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+          "Pragma": "no-cache",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET /api/records error:", error);
     const local = readLocalRecords();
@@ -138,45 +150,6 @@ export async function POST(req: Request) {
 
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
-
-    // Strict validation: Unified Number must be unique across Firebase & local records
-    if (cleanUnified) {
-      const localRecords = readLocalRecords();
-      const duplicateLocal = localRecords.find(
-        (r) =>
-          (r.unifiedNumber || "").trim() === cleanUnified &&
-          r.id !== recordId &&
-          (!currentRecordId || r.id !== currentRecordId)
-      );
-
-      let duplicateFb: PortalRecord | undefined;
-      try {
-        const fbRecords = await getAllPortalRecordsFromFirebase();
-        duplicateFb = fbRecords.find(
-          (r) =>
-            (r.unifiedNumber || "").trim() === cleanUnified &&
-            r.id !== recordId &&
-            (!currentRecordId || r.id !== currentRecordId)
-        );
-      } catch {
-        // ignore
-      }
-
-      const dup = duplicateFb || duplicateLocal;
-      if (dup) {
-        return NextResponse.json(
-          {
-            success: false,
-            code: "DUPLICATE_UNIFIED_NUMBER",
-            error: `الرقم الموحد (${cleanUnified}) مسجل مسبقاً في Firebase تحت السجل #${dup.serialNumber}! لا يمكن تكرار الرقم الموحد.`,
-            existingSerial: dup.serialNumber,
-            duplicateUnified: cleanUnified,
-          },
-          { status: 409 }
-        );
-      }
-    }
-
     const now = new Date().toISOString();
 
     const recordData: PortalRecord = {
@@ -184,7 +157,7 @@ export async function POST(req: Request) {
       id: recordId,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
-      createdAt: now,
+      createdAt: (body as any).createdAt || now,
       updatedAt: now,
     };
 
@@ -192,16 +165,6 @@ export async function POST(req: Request) {
     try {
       await savePortalRecordToFirebase(recordData, currentRecordId || recordId);
     } catch (fbErr: any) {
-      if (fbErr?.message?.includes("DUPLICATE_UNIFIED_NUMBER")) {
-        return NextResponse.json(
-          {
-            success: false,
-            code: "DUPLICATE_UNIFIED_NUMBER",
-            error: fbErr.message,
-          },
-          { status: 409 }
-        );
-      }
       console.warn("Could not save portal record to Firebase:", fbErr);
     }
 
@@ -220,7 +183,14 @@ export async function POST(req: Request) {
     }
     saveLocalRecords(updatedList);
 
-    return NextResponse.json({ success: true, data: recordData, record: recordData });
+    return NextResponse.json(
+      { success: true, data: recordData, record: recordData },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("POST /api/records error:", error);
     return NextResponse.json(

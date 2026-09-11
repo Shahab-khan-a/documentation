@@ -9,6 +9,7 @@ import {
   saveConfigToFirebase,
   savePortalRecordToFirebase,
   deletePortalRecordFromFirebase,
+  getAllPortalRecordsFromFirebase,
 } from "@/lib/firebase";
 import { FirebaseRecordsModal } from "@/components/FirebaseRecordsModal";
 
@@ -237,6 +238,17 @@ export default function AdminDashboard() {
   const fetchSavedRecords = useCallback(async () => {
     setLoadingRecords(true);
     try {
+      // 1. Fetch direct from Firestore on client
+      try {
+        const fbRecs = await getAllPortalRecordsFromFirebase();
+        if (fbRecs && fbRecs.length > 0) {
+          setSavedRecords(fbRecs);
+        }
+      } catch (fbErr) {
+        console.warn("Direct Firestore fetch records notice:", fbErr);
+      }
+
+      // 2. Fetch from API endpoint
       const res = await fetch(`/api/records?_t=${Date.now()}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.records)) {
@@ -580,45 +592,14 @@ export default function AdminDashboard() {
       return;
     }
 
-    // ─── STRICT VALIDATION: UNIFIED NUMBER DUPLICATION IN FIREBASE ───
-    // Re-using serial numbers is 100% fine.
-    // Re-using an existing unified number that is already in Firebase is strictly forbidden!
-    const existingDup = savedRecords.find(
-      (r) =>
-        (r.unifiedNumber || "").trim() === cleanUnified &&
-        r.id !== editingRecordId &&
-        r.id !== `${cleanSerial}_${cleanUnified}`
-    );
-
-    if (existingDup) {
-      const errMsg =
-        lang === "en"
-          ? `This Unified Number (${cleanUnified}) already exists in Firebase (under serial #${existingDup.serialNumber})! Please use a different unified number.`
-          : lang === "ur"
-          ? `یہ یونیفائیڈ نمبر (${cleanUnified}) پہلے سے Firebase میں محفوظ ہے (سیریل نمبر #${existingDup.serialNumber} کے تحت)! ایک ہی یونیفائیڈ نمبر دوبارہ استعمال نہیں کیا جا سکتا۔`
-          : `الرقم الموحد (${cleanUnified}) مسجل مسبقاً في Firebase (تحت السجل #${existingDup.serialNumber})! يرجى إدخال رقم موحد آخر.`;
-
-      setUnifiedError(errMsg);
-      setActiveTab("document");
-      showToast(errMsg, "error");
-      setTimeout(() => {
-        const el = document.getElementById("unified-number-input");
-        if (el) {
-          el.focus();
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 100);
-      return;
-    }
     setUnifiedError(null);
-
     setSaving(true);
     try {
       const payload: PortalConfig & { currentRecordId?: string } = {
         ...config,
         serialNumber: cleanSerial,
         unifiedNumber: cleanUnified,
-        currentRecordId: editingRecordId || undefined,
+        currentRecordId: editingRecordId || `${cleanSerial}_${cleanUnified}`,
       };
 
       // 1. Direct Firebase Cloud Firestore save from client
@@ -626,14 +607,6 @@ export default function AdminDashboard() {
         await saveConfigToFirebase(payload);
         await savePortalRecordToFirebase(payload, editingRecordId || `${cleanSerial}_${cleanUnified}`);
       } catch (fbErr: any) {
-        if (fbErr?.message?.includes("DUPLICATE_UNIFIED_NUMBER")) {
-          const errMsg = t.unified_number_duplicate_error;
-          setUnifiedError(errMsg);
-          setActiveTab("document");
-          showToast(errMsg, "error");
-          setSaving(false);
-          return;
-        }
         console.warn("Direct Firebase client save notice:", fbErr);
       }
 
@@ -656,23 +629,18 @@ export default function AdminDashboard() {
         showToast(t.saved_success, "success");
         // Refresh saved records list
         fetchSavedRecords();
+
+        // Direct navigation to the public link where the document is shown
+        const targetPath = cleanUnified
+          ? `/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
+          : `/${encodeURIComponent(cleanSerial)}`;
+
+        setTimeout(() => {
+          window.location.href = targetPath;
+        }, 500);
       } else {
         const errJson = await res.json().catch(() => ({}));
-        if (errJson.code === "DUPLICATE_UNIFIED_NUMBER") {
-          const errMsg = errJson.error || t.unified_number_duplicate_error;
-          setUnifiedError(errMsg);
-          setActiveTab("document");
-          showToast(errMsg, "error");
-          setTimeout(() => {
-            const el = document.getElementById("unified-number-input");
-            if (el) {
-              el.focus();
-              el.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-          }, 100);
-        } else {
-          showToast(errJson.error || t.save_error, "error");
-        }
+        showToast(errJson.error || t.save_error, "error");
       }
     } catch (err) {
       console.error(err);
@@ -680,7 +648,7 @@ export default function AdminDashboard() {
     } finally {
       setSaving(false);
     }
-  }, [config, initialConfig, t, showToast, fetchSavedRecords, savedRecords, editingRecordId, lang]);
+  }, [config, initialConfig, t, showToast, fetchSavedRecords, editingRecordId]);
 
   const handleDiscardChanges = () => {
     setConfig(initialConfig);
@@ -3475,8 +3443,8 @@ export default function AdminDashboard() {
                     <label className="block text-xs font-bold text-slate-700">
                       {t.unified_number}
                     </label>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-700 border border-rose-200">
-                      {lang === "en" ? "Change required to save" : lang === "ur" ? "سیو کیلئے تبدیل کرنا لازمی" : "يلزم تغييره لحفظ التعديلات"}
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+                      {lang === "en" ? "700 Number" : lang === "ur" ? "700 نمبر" : "الرقم الموحد (700)"}
                     </span>
                   </div>
                   <input

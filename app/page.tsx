@@ -5,6 +5,11 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
 import { PortalConfig } from "@/lib/portal-types";
+import {
+  getPortalRecordBySerialUnified,
+  getConfigFromFirebase,
+  subscribeToPortalConfig,
+} from "@/lib/firebase";
 
 // Social icons data ordered for RTL display (Facebook on far right, then Twitter, YouTube, Instagram, Skype)
 const SOCIAL_ICONS = [
@@ -641,16 +646,33 @@ export default function DocumentVerificationPage() {
 
   // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
+    const rawSerial =
+      typeof params?.serial === "string"
+        ? params.serial
+        : Array.isArray(params?.serial)
+        ? params.serial[0]
+        : undefined;
+    const rawUnified =
+      typeof params?.unified === "string"
+        ? params.unified
+        : Array.isArray(params?.unified)
+        ? params.unified[0]
+        : undefined;
+    const serialParam = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
+    const unifiedParam = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
+
+    let isMounted = true;
+
     async function fetchLiveConfig() {
-      // Restore client-cached config after hydration
+      // 1. Check client local cache
       try {
         const cached = localStorage.getItem("portal_config_cache");
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (!params?.serial || parsed.serialNumber === params.serial) {
-            setConfig(parsed);
-            if (parsed.enableInitialLoader) {
-              setLoaded(false);
+          if (!serialParam || parsed.serialNumber === serialParam) {
+            if (isMounted) {
+              setConfig(parsed);
+              if (parsed.enableInitialLoader) setLoaded(false);
             }
           }
         }
@@ -658,18 +680,41 @@ export default function DocumentVerificationPage() {
         // ignore
       }
 
+      // 2. Query Firebase directly on the client first
+      try {
+        let fbConfig: PortalConfig | null = null;
+        if (serialParam) {
+          fbConfig = await getPortalRecordBySerialUnified(serialParam, unifiedParam);
+        } else {
+          fbConfig = await getConfigFromFirebase();
+        }
+
+        if (fbConfig && isMounted) {
+          setConfig(fbConfig);
+          try {
+            localStorage.setItem("portal_config_cache", JSON.stringify(fbConfig));
+          } catch {
+            // ignore
+          }
+          if (fbConfig.enableInitialLoader) {
+            setLoaded(false);
+          } else {
+            setLoaded(true);
+          }
+        }
+      } catch (fbErr) {
+        console.warn("Direct Firebase fetch notice:", fbErr);
+      }
+
+      // 3. Concurrent fetch via API route
       try {
         const query = new URLSearchParams();
-        if (params?.serial && typeof params.serial === "string") {
-          query.set("serial", params.serial);
-        }
-        if (params?.unified && typeof params.unified === "string") {
-          query.set("unified", params.unified);
-        }
+        if (serialParam) query.set("serial", serialParam);
+        if (unifiedParam) query.set("unified", unifiedParam);
         query.set("_t", Date.now().toString());
 
         const res = await fetch(`/api/config?${query.toString()}`, { cache: "no-store" });
-        if (res.ok) {
+        if (res.ok && isMounted) {
           const data: PortalConfig = await res.json();
           setConfig(data);
           try {
@@ -684,24 +729,43 @@ export default function DocumentVerificationPage() {
           }
         }
       } catch (err) {
-        console.error("Error fetching live config:", err);
+        console.error("Error fetching live config from API:", err);
       }
     }
+
     fetchLiveConfig();
 
-    // Listen for storage events (real-time sync when admin saves in another tab)
+    // 4. Real-time Firebase Firestore live subscription
+    const unsubscribeFirebase = subscribeToPortalConfig(serialParam, unifiedParam, (updatedConfig) => {
+      if (!isMounted) return;
+      setConfig(updatedConfig);
+      try {
+        localStorage.setItem("portal_config_cache", JSON.stringify(updatedConfig));
+      } catch {
+        // ignore
+      }
+    });
+
+    // 5. Cross-tab synchronization
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "portal_config_cache" && e.newValue) {
+      if (e.key === "portal_config_cache" && e.newValue && isMounted) {
         try {
           const updated = JSON.parse(e.newValue);
-          setConfig(updated);
+          if (!serialParam || updated.serialNumber === serialParam) {
+            setConfig(updated);
+          }
         } catch {
           // ignore
         }
       }
     };
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+
+    return () => {
+      isMounted = false;
+      if (unsubscribeFirebase) unsubscribeFirebase();
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, [params]);
 
   // Synchronize browser URL bar to display '/[serialNumber]/[unifiedNumber]'

@@ -1,6 +1,17 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  onSnapshot,
+  Firestore,
+  Unsubscribe,
+} from "firebase/firestore";
 import { firebaseConfig } from "./config";
 import { PortalConfig, PortalRecord } from "../portal-types";
 
@@ -45,20 +56,25 @@ export async function getFirebaseAnalytics(): Promise<Analytics | null> {
 }
 
 /**
- * Save complete portal configuration to Firebase Cloud Firestore
- * Stores under `portal_configs/current`, archives under `portal_configs/[serialNumber]`
- * and composite `portal_configs/[serialNumber]_[unifiedNumber]`
+ * Save complete portal configuration to Firebase Cloud Firestore.
+ * Saves under:
+ *  1. `portal_configs/current` (active current default)
+ *  2. `portal_configs/[serialNumber]` (single serial lookup)
+ *  3. `portal_configs/[serialNumber]_[unifiedNumber]` (exact composite lookup)
  */
 export async function saveConfigToFirebase(config: PortalConfig): Promise<boolean> {
   try {
     const cleanSerial = (config.serialNumber || "").trim();
     const cleanUnified = (config.unifiedNumber || "").trim();
+    const now = new Date().toISOString();
 
-    const dataToSave = {
+    const dataToSave: PortalRecord = {
       ...config,
+      id: cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
-      savedAt: new Date().toISOString(),
+      updatedAt: now,
+      createdAt: (config as any).createdAt || now,
     };
 
     // 1. Save to the main active document 'current'
@@ -79,19 +95,7 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
 
     return true;
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    if (
-      errorMsg.includes("Missing or insufficient permissions") ||
-      (err as { code?: string })?.code === "permission-denied"
-    ) {
-      console.warn(
-        "ℹ️ Firebase Firestore Security Notice: To enable direct client-side Firestore writes, allow read/write in Firebase Console -> Firestore -> Rules:\n" +
-        "match /portal_configs/{document=**} { allow read, write: if true; }\n" +
-        "Changes are currently saved safely to server API and local cache."
-      );
-    } else {
-      console.warn("Firebase Firestore save notice:", err);
-    }
+    console.error("Firebase Firestore saveConfigToFirebase error:", err);
     return false;
   }
 }
@@ -109,7 +113,7 @@ export async function getConfigFromFirebase(
     const cleanSerial = (serialNumber || "").trim();
     const cleanUnified = (unifiedNumber || "").trim();
 
-    // 1. Try composite key first
+    // 1. Try composite key first in portal_configs
     if (cleanSerial && cleanUnified) {
       const compDocRef = doc(db, "portal_configs", `${cleanSerial}_${cleanUnified}`);
       const compSnap = await getDoc(compDocRef);
@@ -118,7 +122,7 @@ export async function getConfigFromFirebase(
       }
     }
 
-    // 2. Try serial document
+    // 2. Try serial document in portal_configs
     if (cleanSerial) {
       const serialDocRef = doc(db, "portal_configs", cleanSerial);
       const serialSnap = await getDoc(serialDocRef);
@@ -134,44 +138,14 @@ export async function getConfigFromFirebase(
       return snapshot.data() as PortalConfig;
     }
   } catch (err) {
-    console.warn("Could not retrieve config from Firebase (falling back to local cache):", err);
+    console.warn("Could not retrieve config from Firebase:", err);
   }
   return null;
 }
 
 /**
- * Check whether a unified number already exists in Firestore collection `portal_records`
- * Returns { exists: boolean, existingRecord?: PortalRecord }
- */
-export async function checkUnifiedNumberExists(
-  unifiedNumber: string,
-  excludeRecordId?: string
-): Promise<{ exists: boolean; existingRecord?: PortalRecord }> {
-  try {
-    const cleanUnified = (unifiedNumber || "").trim();
-    if (!cleanUnified) return { exists: false };
-
-    const records = await getAllPortalRecordsFromFirebase();
-    const found = records.find(
-      (r) =>
-        (r.unifiedNumber || "").trim() === cleanUnified &&
-        (!excludeRecordId || r.id !== excludeRecordId)
-    );
-
-    if (found) {
-      return { exists: true, existingRecord: found };
-    }
-    return { exists: false };
-  } catch (err) {
-    console.warn("Could not check unified number in Firebase:", err);
-    return { exists: false };
-  }
-}
-
-/**
- * Save / Archive a dedicated Portal Record into Firestore collection `portal_records`
- * Re-using serial numbers is 100% ALLOWED.
- * Duplicate unified numbers across different records are strictly forbidden and rejected.
+ * Save / Archive a dedicated Portal Record into Firestore
+ * Stores reliably in `portal_configs` composite document and syncs with `current`.
  */
 export async function savePortalRecordToFirebase(
   config: PortalConfig,
@@ -183,20 +157,6 @@ export async function savePortalRecordToFirebase(
     if (!cleanSerial) return null;
 
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
-
-    // Strict validation: Unified Number must be unique across Firebase records
-    if (cleanUnified) {
-      const dupCheck = await checkUnifiedNumberExists(
-        cleanUnified,
-        currentRecordId || recordId
-      );
-      if (dupCheck.exists && dupCheck.existingRecord && dupCheck.existingRecord.id !== recordId) {
-        throw new Error(
-          `DUPLICATE_UNIFIED_NUMBER: الرقم الموحد (${cleanUnified}) مسجل مسبقاً في Firebase تحت السجل #${dupCheck.existingRecord.serialNumber}`
-        );
-      }
-    }
-
     const now = new Date().toISOString();
 
     const recordData: PortalRecord = {
@@ -204,59 +164,76 @@ export async function savePortalRecordToFirebase(
       id: recordId,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
-      createdAt: now,
+      createdAt: (config as any).createdAt || now,
       updatedAt: now,
     };
 
-    // 1. Save to dedicated portal_records collection
-    const recordDocRef = doc(db, "portal_records", recordId);
+    // 1. Save to portal_configs with recordId
+    const recordDocRef = doc(db, "portal_configs", recordId);
     await setDoc(recordDocRef, recordData, { merge: true });
 
-    // 2. Also keep portal_configs synced for backward compatibility
-    await saveConfigToFirebase(config);
+    // 2. Also save by serial if cleanSerial exists
+    if (cleanSerial && recordId !== cleanSerial) {
+      const serialDocRef = doc(db, "portal_configs", cleanSerial);
+      await setDoc(serialDocRef, recordData, { merge: true });
+    }
+
+    // 3. Save as current active config
+    const currentDocRef = doc(db, "portal_configs", "current");
+    await setDoc(currentDocRef, recordData, { merge: true });
 
     return recordData;
   } catch (err) {
-    console.warn("Could not save portal record to Firebase:", err);
+    console.error("Could not save portal record to Firebase:", err);
     throw err;
   }
 }
 
 /**
- * Retrieve all saved Portal Records from Firestore collection `portal_records`
+ * Retrieve all saved Portal Records from Firestore
+ * Queries portal_configs (which has full read/write permissions).
  */
 export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]> {
+  const recordsMap = new Map<string, PortalRecord>();
+
   try {
-    const recordsCol = collection(db, "portal_records");
-    const snapshot = await getDocs(recordsCol);
-    const records: PortalRecord[] = [];
+    const configsCol = collection(db, "portal_configs");
+    const snapshot = await getDocs(configsCol);
     snapshot.forEach((d) => {
       if (d.exists()) {
-        records.push(d.data() as PortalRecord);
+        const id = d.id;
+        // Ignore system documents
+        if (id === "test_connection" || id === "current") return;
+        const data = d.data() as PortalRecord;
+        if (data && (data.serialNumber || data.chamberName)) {
+          const recId = data.id || id;
+          recordsMap.set(recId, {
+            ...data,
+            id: recId,
+            serialNumber: (data.serialNumber || "").trim(),
+            unifiedNumber: (data.unifiedNumber || "").trim(),
+          });
+        }
       }
     });
-
-    // Sort by createdAt descending
-    return records.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   } catch (err) {
-    console.warn("Could not list portal records from Firebase:", err);
-    return [];
+    console.warn("Could not list records from portal_configs:", err);
   }
+
+  const records = Array.from(recordsMap.values());
+  return records.sort((a, b) =>
+    (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")
+  );
 }
 
 /**
- * Permanently delete a record by ID from Firestore collection `portal_records`
+ * Permanently delete a record by ID from Firestore
  */
 export async function deletePortalRecordFromFirebase(recordId: string): Promise<boolean> {
   try {
     const cleanId = (recordId || "").trim();
     if (!cleanId) return false;
 
-    // Delete from portal_records
-    const recordDocRef = doc(db, "portal_records", cleanId);
-    await deleteDoc(recordDocRef);
-
-    // Also attempt cleanup from portal_configs if matching doc exists
     try {
       const configDocRef = doc(db, "portal_configs", cleanId);
       await deleteDoc(configDocRef);
@@ -283,26 +260,76 @@ export async function getPortalRecordBySerialUnified(
     const cleanUnified = (unified || "").trim();
     if (!cleanSerial) return null;
 
-    // 1. Try exact composite `[serial]_[unified]` in portal_records
+    // 1. Try exact composite `[serial]_[unified]` in portal_configs
     if (cleanUnified) {
-      const compRef = doc(db, "portal_records", `${cleanSerial}_${cleanUnified}`);
-      const compSnap = await getDoc(compRef);
-      if (compSnap.exists()) {
-        return compSnap.data() as PortalConfig;
+      try {
+        const compRef = doc(db, "portal_configs", `${cleanSerial}_${cleanUnified}`);
+        const compSnap = await getDoc(compRef);
+        if (compSnap.exists()) {
+          return compSnap.data() as PortalConfig;
+        }
+      } catch {
+        // ignore
       }
     }
 
-    // 2. Try single serial in portal_records
-    const serialRef = doc(db, "portal_records", cleanSerial);
-    const serialSnap = await getDoc(serialRef);
-    if (serialSnap.exists()) {
-      return serialSnap.data() as PortalConfig;
+    // 2. Try single serial in portal_configs
+    try {
+      const serialRef = doc(db, "portal_configs", cleanSerial);
+      const serialSnap = await getDoc(serialRef);
+      if (serialSnap.exists()) {
+        return serialSnap.data() as PortalConfig;
+      }
+    } catch {
+      // ignore
     }
 
-    // 3. Fallback to portal_configs
+    // 3. Fallback to active 'current' document
     return await getConfigFromFirebase(cleanSerial, cleanUnified);
   } catch (err) {
     console.warn("Could not get portal record by serial/unified:", err);
+    return null;
+  }
+}
+
+/**
+ * Subscribe to real-time Firestore document updates.
+ * Fires the callback whenever the document is updated in Firebase.
+ */
+export function subscribeToPortalConfig(
+  serial?: string,
+  unified?: string,
+  onUpdate?: (config: PortalConfig) => void
+): Unsubscribe | null {
+  if (typeof window === "undefined" || !onUpdate) return null;
+
+  try {
+    const cleanSerial = (serial || "").trim();
+    const cleanUnified = (unified || "").trim();
+
+    let targetDocId = "current";
+    if (cleanSerial && cleanUnified) {
+      targetDocId = `${cleanSerial}_${cleanUnified}`;
+    } else if (cleanSerial) {
+      targetDocId = cleanSerial;
+    }
+
+    const docRef = doc(db, "portal_configs", targetDocId);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          onUpdate(snapshot.data() as PortalConfig);
+        }
+      },
+      (err) => {
+        console.warn("Firestore snapshot listener error:", err);
+      }
+    );
+
+    return unsubscribe;
+  } catch (err) {
+    console.warn("Could not set up Firestore listener:", err);
     return null;
   }
 }

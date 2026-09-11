@@ -8,7 +8,6 @@ import {
   saveConfigToFirebase,
   getConfigFromFirebase,
   savePortalRecordToFirebase,
-  getAllPortalRecordsFromFirebase,
   getPortalRecordBySerialUnified,
 } from "@/lib/firebase";
 
@@ -62,7 +61,7 @@ function ensureConfigFile(): PortalConfig {
     // Ignore
   }
 
-  // 3. Try to persist default config to data/ or /tmp
+  // 3. Persist default config
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -72,7 +71,7 @@ function ensureConfigFile(): PortalConfig {
     try {
       fs.writeFileSync(TMP_CONFIG_FILE, JSON.stringify(DEFAULT_PORTAL_CONFIG, null, 2), "utf-8");
     } catch {
-      // Both disk writes failed (read-only environment), in-memory cache will be used
+      // ignore
     }
   }
 
@@ -83,42 +82,43 @@ function ensureConfigFile(): PortalConfig {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const serial = searchParams.get("serial") || undefined;
-    const unified = searchParams.get("unified") || undefined;
+    const rawSerial = searchParams.get("serial") || undefined;
+    const rawUnified = searchParams.get("unified") || undefined;
 
-    // 1. If serial is requested, search for specific saved record first
+    const serial = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
+    const unified = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
+
+    const responseHeaders = {
+      "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
+    };
+
+    // 1. If serial is requested, search for specific saved record in Firebase first
     if (serial) {
       try {
         const specific = await getPortalRecordBySerialUnified(serial, unified);
         if (specific) {
-          return NextResponse.json(specific, {
-            headers: {
-              "Cache-Control": "no-store, max-age=0",
-            },
-          });
+          return NextResponse.json(specific, { headers: responseHeaders });
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn("Could not retrieve specific record from Firebase:", err);
       }
 
-      // Check local saved-records.json for matching serial & unified
+      // Check local saved-records.json as secondary fallback
       try {
         const recordsFile = path.join(DATA_DIR, "saved-records.json");
         if (fs.existsSync(recordsFile)) {
           const list = JSON.parse(fs.readFileSync(recordsFile, "utf-8"));
           if (Array.isArray(list)) {
-            const cleanSerial = serial.trim();
-            const cleanUnified = unified ? unified.trim() : "";
-            const targetId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
+            const targetId = unified ? `${serial}_${unified}` : serial;
             const found = list.find(
-              (r) => r.id === targetId || (r.serialNumber === cleanSerial && (!cleanUnified || r.unifiedNumber === cleanUnified))
+              (r) =>
+                r.id === targetId ||
+                (r.serialNumber === serial && (!unified || r.unifiedNumber === unified))
             );
             if (found) {
-              return NextResponse.json(found, {
-                headers: {
-                  "Cache-Control": "no-store, max-age=0",
-                },
-              });
+              return NextResponse.json(found, { headers: responseHeaders });
             }
           }
         }
@@ -127,28 +127,20 @@ export async function GET(req: Request) {
       }
     }
 
-    // 2. Try to fetch active 'current' config from Firebase Firestore
+    // 2. Fetch active 'current' config from Firebase Firestore
     try {
       const fbConfig = await getConfigFromFirebase(serial, unified);
       if (fbConfig) {
         globalThis.__portal_config_memory__ = fbConfig;
-        return NextResponse.json(fbConfig, {
-          headers: {
-            "Cache-Control": "no-store, max-age=0",
-          },
-        });
+        return NextResponse.json(fbConfig, { headers: responseHeaders });
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn("Could not retrieve current config from Firebase:", err);
     }
 
     // 3. Fall back to local disk / memory cache
     const config = ensureConfigFile();
-    return NextResponse.json(config, {
-      headers: {
-        "Cache-Control": "no-store, max-age=0",
-      },
-    });
+    return NextResponse.json(config, { headers: responseHeaders });
   } catch (error) {
     console.error("GET /api/config error:", error);
     return NextResponse.json(DEFAULT_PORTAL_CONFIG, { status: 500 });
@@ -174,81 +166,20 @@ export async function POST(req: Request) {
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
 
-    // Strict validation: Unified Number must be unique across Firebase & local records
-    if (cleanUnified) {
-      let duplicateLocal: PortalRecord | undefined;
-      try {
-        const rf = path.join(DATA_DIR, "saved-records.json");
-        if (fs.existsSync(rf)) {
-          const list: PortalRecord[] = JSON.parse(fs.readFileSync(rf, "utf-8"));
-          if (Array.isArray(list)) {
-            duplicateLocal = list.find(
-              (r) =>
-                (r.unifiedNumber || "").trim() === cleanUnified &&
-                r.id !== recordId &&
-                (!currentRecordId || r.id !== currentRecordId)
-            );
-          }
-        }
-      } catch {
-        // ignore
-      }
-
-      let duplicateFb: PortalRecord | undefined;
-      try {
-        const fbRecords = await getAllPortalRecordsFromFirebase();
-        duplicateFb = fbRecords.find(
-          (r: PortalRecord) =>
-            (r.unifiedNumber || "").trim() === cleanUnified &&
-            r.id !== recordId &&
-            (!currentRecordId || r.id !== currentRecordId)
-        );
-      } catch {
-        // ignore
-      }
-
-      const dup = duplicateFb || duplicateLocal;
-      if (dup) {
-        return NextResponse.json(
-          {
-            success: false,
-            code: "DUPLICATE_UNIFIED_NUMBER",
-            error: `الرقم الموحد (${cleanUnified}) مسجل مسبقاً في Firebase تحت السجل #${dup.serialNumber}! لا يمكن تكرار الرقم الموحد.`,
-            existingSerial: dup.serialNumber,
-            duplicateUnified: cleanUnified,
-          },
-          { status: 409 }
-        );
-      }
-    }
-
-    // Update memory cache first
+    // Update memory cache
     globalThis.__portal_config_memory__ = updated;
 
-    // 1. Persist to Firebase Cloud Firestore (current & portal_records)
+    // 1. Persist to Firebase Cloud Firestore
     try {
       await saveConfigToFirebase(updated);
       await savePortalRecordToFirebase(updated, currentRecordId || recordId);
     } catch (fbErr: any) {
-      if (fbErr?.message?.includes("DUPLICATE_UNIFIED_NUMBER")) {
-        return NextResponse.json(
-          {
-            success: false,
-            code: "DUPLICATE_UNIFIED_NUMBER",
-            error: fbErr.message,
-          },
-          { status: 409 }
-        );
-      }
-      console.warn("Could not save to Firebase Firestore in API route:", fbErr);
+      console.warn("Notice while saving to Firebase Firestore in API route:", fbErr);
     }
 
-    // 1b. Archive into saved-records.json
+    // 2. Archive into local saved-records.json
     try {
-      const cleanSerial = (updated.serialNumber || "").trim();
-      const cleanUnified = (updated.unifiedNumber || "").trim();
       if (cleanSerial) {
-        const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
         const now = new Date().toISOString();
         const rec: PortalRecord = {
           ...updated,
@@ -282,7 +213,7 @@ export async function POST(req: Request) {
       // ignore
     }
 
-    // 2. Try saving to project data/ directory
+    // 3. Save to project data/ directory
     let saved = false;
     try {
       if (!fs.existsSync(DATA_DIR)) {
@@ -294,7 +225,7 @@ export async function POST(req: Request) {
       // Project root is read-only (e.g. Vercel)
     }
 
-    // 3. If project root was read-only, save to writable /tmp
+    // 4. If project root was read-only, save to writable /tmp
     if (!saved) {
       try {
         fs.writeFileSync(TMP_CONFIG_FILE, JSON.stringify(updated, null, 2), "utf-8");
@@ -303,7 +234,14 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({
+      success: true,
+      data: updated,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+      },
+    });
   } catch (error) {
     console.error("POST /api/config error:", error);
     return NextResponse.json(
