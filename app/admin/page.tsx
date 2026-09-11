@@ -119,38 +119,7 @@ function IconDrive({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function IconDashboard({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-  );
-}
 
-function IconRefresh({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-  );
-}
-
-function IconCopy({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-    </svg>
-  );
-}
-
-function IconEye({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-  );
-}
 
 type DriveItem = {
   id: string;
@@ -218,7 +187,19 @@ export default function AdminDashboard() {
   } | null>(null);
 
   // Language for admin panel (persisted in localStorage)
-  const [lang, setLang] = useState<AdminLanguage>("ar");
+  const [lang, setLang] = useState<AdminLanguage>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const savedLang = localStorage.getItem("admin_portal_lang") as AdminLanguage | null;
+        if (savedLang && (savedLang === "ar" || savedLang === "en" || savedLang === "ur")) {
+          return savedLang;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return "ar";
+  });
   const [activeTab, setActiveTab] = useState<"buttons" | "document" | "preview" | "footer" | "settings">("buttons");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [isDragOverBtn, setIsDragOverBtn] = useState<string | null>(null);
@@ -321,34 +302,40 @@ export default function AdminDashboard() {
     return JSON.stringify(config) !== JSON.stringify(initialConfig);
   }, [config, initialConfig]);
 
-  // Load stored language preference & config on mount
+  // Load stored config & drive files on mount
   useEffect(() => {
-    try {
-      const savedLang = localStorage.getItem("admin_portal_lang") as AdminLanguage | null;
-      if (savedLang && (savedLang === "ar" || savedLang === "en" || savedLang === "ur")) {
-        setLang(savedLang);
-      }
-    } catch {
-      // ignore
-    }
-
-    async function loadConfig() {
+    let active = true;
+    async function init() {
       try {
-        const res = await fetch("/api/config", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          setConfig(data);
-          setInitialConfig(data);
+        const [configRes, driveRes] = await Promise.all([
+          fetch("/api/config", { cache: "no-store" }),
+          fetch("/api/drive"),
+        ]);
+        if (active && configRes.ok) {
+          const cfg = await configRes.json();
+          setConfig(cfg);
+          setInitialConfig(cfg);
+        }
+        if (active && driveRes.ok) {
+          const driveData = await driveRes.json();
+          if (driveData.success && Array.isArray(driveData.files)) {
+            setDriveFiles(driveData.files);
+          }
         }
       } catch (err) {
-        console.error("Failed to load config:", err);
+        console.error("Initialization error:", err);
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+          setLoadingDriveFiles(false);
+        }
       }
     }
-    loadConfig();
-    fetchDriveFiles();
-  }, [fetchDriveFiles]);
+    init();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Language switch handler
   const handleLanguageChange = (newLang: AdminLanguage) => {
@@ -439,9 +426,11 @@ export default function AdminDashboard() {
   };
 
   // Dynamic custom document fields handlers
+  const fieldCounterRef = useRef(1);
   const handleAddCustomField = () => {
+    fieldCounterRef.current += 1;
     const newField = {
-      id: `field_${Date.now()}`,
+      id: `field_${fieldCounterRef.current}`,
       label: "",
       value: "",
     };
@@ -452,8 +441,9 @@ export default function AdminDashboard() {
   };
 
   const handleAddPresetField = (presetLabel: string) => {
+    fieldCounterRef.current += 1;
     const newField = {
-      id: `field_${Date.now()}`,
+      id: `field_${fieldCounterRef.current}`,
       label: presetLabel,
       value: "",
     };

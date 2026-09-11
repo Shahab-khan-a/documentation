@@ -62,7 +62,12 @@ export async function POST(req: Request) {
         });
 
         const gasText = await gasRes.text();
-        let gasData: any = null;
+        let gasData: {
+          success?: boolean;
+          fileId?: string;
+          webViewLink?: string;
+          error?: string;
+        } | null = null;
         try {
           gasData = JSON.parse(gasText);
         } catch {

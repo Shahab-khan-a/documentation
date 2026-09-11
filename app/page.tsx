@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
 import { PortalConfig } from "@/lib/portal-types";
 
@@ -129,12 +130,14 @@ function QuickEditModal({
   onClose: () => void;
   onSave: (newConfig: PortalConfig) => Promise<void>;
 }) {
+  const [prevConfig, setPrevConfig] = useState(config);
   const [formData, setFormData] = useState<PortalConfig>(config);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  if (config !== prevConfig) {
+    setPrevConfig(config);
     setFormData(config);
-  }, [config]);
+  }
 
   if (!isOpen) return null;
 
@@ -800,7 +803,20 @@ function ResultsPage({
 //  MAIN ROOT COMPONENT
 // ─────────────────────────────────────────────────────────
 export default function DocumentVerificationPage() {
-  const [config, setConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
+  const router = useRouter();
+  const [config, setConfig] = useState<PortalConfig>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("portal_config_cache");
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return DEFAULT_PORTAL_CONFIG;
+  });
   const [loaded, setLoaded] = useState(true);
   const [buttonLoaderKey, setButtonLoaderKey] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -869,21 +885,8 @@ export default function DocumentVerificationPage() {
     defaultFallback();
   };
 
-  // 1. Fetch live config from server or localStorage cache & listen to Admin updates
+  // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem("portal_config_cache");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        setConfig(parsed);
-        if (parsed.enableInitialLoader) {
-          setLoaded(false);
-        }
-      }
-    } catch {
-      // ignore
-    }
-
     async function fetchLiveConfig() {
       try {
         const res = await fetch(`/api/config?_t=${Date.now()}`, { cache: "no-store" });
@@ -954,7 +957,7 @@ export default function DocumentVerificationPage() {
       if (window.history.length > 1) {
         window.history.back();
       } else {
-        window.location.href = "/";
+        router.push("/");
       }
     });
   };
