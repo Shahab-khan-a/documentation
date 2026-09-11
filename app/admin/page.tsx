@@ -3,9 +3,14 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
-import { PortalConfig } from "@/lib/portal-types";
+import { PortalConfig, PortalRecord } from "@/lib/portal-types";
 import { ADMIN_TRANSLATIONS, AdminLanguage } from "@/lib/admin-translations";
-import { saveConfigToFirebase } from "@/lib/firebase";
+import {
+  saveConfigToFirebase,
+  savePortalRecordToFirebase,
+  deletePortalRecordFromFirebase,
+} from "@/lib/firebase";
+import { FirebaseRecordsModal } from "@/components/FirebaseRecordsModal";
 
 // ─────────────────────────────────────────────────────────
 //  CRISP MODERN SVG ICONS
@@ -196,6 +201,15 @@ export default function AdminDashboard() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState("");
   const [serialError, setSerialError] = useState(false);
+  const [unifiedError, setUnifiedError] = useState<string | null>(null);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+
+  // ─── FIREBASE SAVED RECORDS & LINKS STATE ───
+  const [firebaseModalOpen, setFirebaseModalOpen] = useState(false);
+  const [savedRecords, setSavedRecords] = useState<PortalRecord[]>([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  const [copiedRecordId, setCopiedRecordId] = useState<string | null>(null);
 
   // ─── GOOGLE DRIVE FILE PICKER STATE (FOR BUTTONS) ───
   const [drivePickerTarget, setDrivePickerTarget] = useState<"backButton" | "verifyAgainButton" | "downloadButton" | null>(null);
@@ -218,6 +232,136 @@ export default function AdminDashboard() {
       setLoadingDriveFiles(false);
     }
   }, []);
+
+  // ─── FETCH SAVED RECORDS FROM FIREBASE & SERVER ───
+  const fetchSavedRecords = useCallback(async () => {
+    setLoadingRecords(true);
+    try {
+      const res = await fetch(`/api/records?_t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.records)) {
+        setSavedRecords(data.records);
+      }
+    } catch (err) {
+      console.error("Error loading records:", err);
+    } finally {
+      setLoadingRecords(false);
+    }
+  }, []);
+
+  const handleDeleteRecord = async (record: PortalRecord) => {
+    if (!confirm(t.confirm_delete_record)) return;
+    setDeletingRecordId(record.id);
+    try {
+      // 1. Delete from Firestore directly on client
+      try {
+        await deletePortalRecordFromFirebase(record.id);
+      } catch (fbErr) {
+        console.warn("Client delete warning:", fbErr);
+      }
+
+      // 2. Delete from server API & local disk
+      const res = await fetch(`/api/records?id=${encodeURIComponent(record.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedRecords((prev) => prev.filter((r) => r.id !== record.id));
+        showToast(t.record_deleted_success, "success");
+      } else {
+        showToast(t.save_error, "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(t.save_error, "error");
+    } finally {
+      setDeletingRecordId(null);
+    }
+  };
+
+  const handleCopyRecordLink = (record: PortalRecord) => {
+    if (typeof window === "undefined") return;
+    const s = (record.serialNumber || "").trim();
+    const u = (record.unifiedNumber || "").trim();
+    const path = u ? `/${encodeURIComponent(s)}/${encodeURIComponent(u)}` : `/${encodeURIComponent(s)}`;
+    const fullUrl = `${window.location.origin}${path}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedRecordId(record.id);
+    setTimeout(() => setCopiedRecordId(null), 2500);
+    showToast(t.link_copied, "success", fullUrl, t.open_link_btn);
+  };
+
+  const handleLoadRecordIntoEditor = (record: PortalRecord) => {
+    setConfig(record);
+    setInitialConfig(record);
+    setEditingRecordId(record.id);
+    setUnifiedError(null);
+    setSerialError(false);
+    setFirebaseModalOpen(false);
+    setActiveTab("document");
+    showToast(
+      lang === "en"
+        ? `Loaded record #${record.serialNumber}`
+        : lang === "ur"
+        ? `ریکارڈ #${record.serialNumber} لوڈ ہو گیا`
+        : `تم تحميل بيانات السجل #${record.serialNumber}`,
+      "info"
+    );
+  };
+
+  // Handler to quickly generate an authentic sample certificate to test multiple records
+  const handleCreateSampleRecord = async () => {
+    const sampleChambers = ["الرياض", "جدة", "ينبع", "الشرقية", "مكة المكرمة", "المدينة المنورة"];
+    const randomChamber = sampleChambers[Math.floor(Math.random() * sampleChambers.length)];
+    const randomSerial = String(Math.floor(100000 + Math.random() * 900000));
+    const randomUnified = `70${Math.floor(10000000 + Math.random() * 90000000)}`;
+    const randomReq = String(Math.floor(10000000 + Math.random() * 90000000));
+
+    const newSample: PortalConfig = {
+      ...DEFAULT_PORTAL_CONFIG,
+      chamberName: randomChamber,
+      facilityName: `مؤسسة ${randomChamber} لتقنية المعلومات والحلول الرقمية`,
+      facilitySubName: "فرع الاستشارات وتطوير الأنظمة",
+      serialNumber: randomSerial,
+      unifiedNumber: randomUnified,
+      requestNumber: randomReq,
+      requestType: "تصديق إلكتروني فوري",
+      applicantName: "محمد ناصر القحطاني",
+      creationDate: "15/09/2026-",
+      creationTime: "11:20ص",
+      amount: "100.00 ريال",
+      expiryDate: "15/09/2027-",
+      expiryTime: "11:20ص",
+      commercialRegNo: `1010${randomSerial.slice(0, 4)}`,
+      requestStatus: "تم قبول الطلب وساري",
+      statusColor: "#10b981",
+    };
+
+    try {
+      setLoadingRecords(true);
+      const res = await fetch("/api/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newSample),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(
+          lang === "en"
+            ? `Sample certificate #${randomSerial} added successfully!`
+            : lang === "ur"
+            ? `نمونہ سرٹیفکیٹ #${randomSerial} شامل کر دیا گیا!`
+            : `تم إضافة شهادة تجريبية جديدة #${randomSerial} بنجاح!`,
+          "success"
+        );
+        fetchSavedRecords();
+      }
+    } catch (err) {
+      console.error("Error creating sample record:", err);
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
 
   // ─── PERMANENT DELETE FROM GOOGLE DRIVE (TRIGGERED FROM NOTIFICATION) ───
   const confirmDeleteDriveFile = async (file: DriveItem) => {
@@ -307,9 +451,10 @@ export default function AdminDashboard() {
       }
 
       try {
-        const [configRes, driveRes] = await Promise.all([
+        const [configRes, driveRes, recordsRes] = await Promise.all([
           fetch("/api/config", { cache: "no-store" }),
           fetch("/api/drive"),
+          fetch("/api/records", { cache: "no-store" }),
         ]);
         if (active && configRes.ok) {
           const cfg = await configRes.json();
@@ -320,6 +465,12 @@ export default function AdminDashboard() {
           const driveData = await driveRes.json();
           if (driveData.success && Array.isArray(driveData.files)) {
             setDriveFiles(driveData.files);
+          }
+        }
+        if (active && recordsRes.ok) {
+          const recData = await recordsRes.json();
+          if (recData.success && Array.isArray(recData.records)) {
+            setSavedRecords(recData.records);
           }
         }
       } catch (err) {
@@ -374,6 +525,8 @@ export default function AdminDashboard() {
 
   const handleSave = useCallback(async () => {
     const cleanSerial = (config.serialNumber || "").trim();
+    const cleanUnified = (config.unifiedNumber || "").trim();
+
     if (!cleanSerial) {
       setSerialError(true);
       setActiveTab("document");
@@ -387,19 +540,64 @@ export default function AdminDashboard() {
       }, 100);
       return;
     }
-
     setSerialError(false);
+
+    // ─── STRICT VALIDATION: UNIFIED NUMBER DUPLICATION IN FIREBASE ───
+    // Re-using serial numbers is 100% fine.
+    // Re-using an existing unified number that is already in Firebase is strictly forbidden!
+    if (cleanUnified) {
+      const existingDup = savedRecords.find(
+        (r) =>
+          (r.unifiedNumber || "").trim() === cleanUnified &&
+          r.id !== editingRecordId &&
+          r.id !== `${cleanSerial}_${cleanUnified}`
+      );
+
+      if (existingDup) {
+        const errMsg =
+          lang === "en"
+            ? `This Unified Number (${cleanUnified}) already exists in Firebase (under serial #${existingDup.serialNumber})! Please use a different unified number.`
+            : lang === "ur"
+            ? `یہ یونیفائیڈ نمبر (${cleanUnified}) پہلے سے Firebase میں محفوظ ہے (سیریل نمبر #${existingDup.serialNumber} کے تحت)! ایک ہی یونیفائیڈ نمبر دوبارہ استعمال نہیں کیا جا سکتا۔`
+            : `الرقم الموحد (${cleanUnified}) مسجل مسبقاً في Firebase (تحت السجل #${existingDup.serialNumber})! يرجى إدخال رقم موحد آخر.`;
+
+        setUnifiedError(errMsg);
+        setActiveTab("document");
+        showToast(errMsg, "error");
+        setTimeout(() => {
+          const el = document.getElementById("unified-number-input");
+          if (el) {
+            el.focus();
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 100);
+        return;
+      }
+    }
+    setUnifiedError(null);
+
     setSaving(true);
     try {
-      const payload: PortalConfig = {
+      const payload: PortalConfig & { currentRecordId?: string } = {
         ...config,
         serialNumber: cleanSerial,
+        unifiedNumber: cleanUnified,
+        currentRecordId: editingRecordId || undefined,
       };
 
       // 1. Direct Firebase Cloud Firestore save from client
       try {
         await saveConfigToFirebase(payload);
-      } catch (fbErr) {
+        await savePortalRecordToFirebase(payload, editingRecordId || `${cleanSerial}_${cleanUnified}`);
+      } catch (fbErr: any) {
+        if (fbErr?.message?.includes("DUPLICATE_UNIFIED_NUMBER")) {
+          const errMsg = t.unified_number_duplicate_error;
+          setUnifiedError(errMsg);
+          setActiveTab("document");
+          showToast(errMsg, "error");
+          setSaving(false);
+          return;
+        }
         console.warn("Direct Firebase client save notice:", fbErr);
       }
 
@@ -413,14 +611,32 @@ export default function AdminDashboard() {
         const result = await res.json();
         setConfig(result.data);
         setInitialConfig(result.data);
+        setEditingRecordId(result.data.id || `${cleanSerial}_${cleanUnified}`);
         try {
           localStorage.setItem("portal_config_cache", JSON.stringify(result.data));
         } catch {
           // ignore
         }
         showToast(t.saved_success, "success");
+        // Refresh saved records list
+        fetchSavedRecords();
       } else {
-        showToast(t.save_error, "error");
+        const errJson = await res.json().catch(() => ({}));
+        if (errJson.code === "DUPLICATE_UNIFIED_NUMBER") {
+          const errMsg = errJson.error || t.unified_number_duplicate_error;
+          setUnifiedError(errMsg);
+          setActiveTab("document");
+          showToast(errMsg, "error");
+          setTimeout(() => {
+            const el = document.getElementById("unified-number-input");
+            if (el) {
+              el.focus();
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }, 100);
+        } else {
+          showToast(errJson.error || t.save_error, "error");
+        }
       }
     } catch (err) {
       console.error(err);
@@ -428,7 +644,7 @@ export default function AdminDashboard() {
     } finally {
       setSaving(false);
     }
-  }, [config, t, showToast]);
+  }, [config, t, showToast, fetchSavedRecords, savedRecords, editingRecordId, lang]);
 
   const handleDiscardChanges = () => {
     setConfig(initialConfig);
@@ -1181,6 +1397,23 @@ export default function AdminDashboard() {
 
 
 
+      {/* ═══════════════ FIREBASE RECORDS & GENERATED LINKS MODAL ═══════════════ */}
+      <FirebaseRecordsModal
+        open={firebaseModalOpen}
+        onClose={() => setFirebaseModalOpen(false)}
+        savedRecords={savedRecords}
+        loadingRecords={loadingRecords}
+        onRefresh={fetchSavedRecords}
+        onDeleteRecord={handleDeleteRecord}
+        onCopyRecordLink={handleCopyRecordLink}
+        onLoadRecordIntoEditor={handleLoadRecordIntoEditor}
+        onCreateSampleRecord={handleCreateSampleRecord}
+        deletingRecordId={deletingRecordId}
+        copiedRecordId={copiedRecordId}
+        lang={lang}
+        t={t}
+      />
+
       {/* ═══════════════ SLIDE-OUT NAVIGATION DRAWER (INTERACTIVE & ATTRACTIVE) ═══════════════ */}
       {drawerOpen && (
         <div className="fixed inset-0 z-[99999]">
@@ -1306,6 +1539,46 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="space-y-2">
+
+                  {/* 🔥 FEATURED FIREBASE SERIAL NUMBER SAVED RECORDS BUTTON */}
+                  {(!drawerSearch ||
+                    t.firebase_records_btn.toLowerCase().includes(drawerSearch.toLowerCase()) ||
+                    "firebase records links حفظ سجلات روابط سیرین نمبر".includes(drawerSearch.toLowerCase())) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        fetchSavedRecords();
+                        setFirebaseModalOpen(true);
+                        setDrawerOpen(false);
+                        setDrawerSearch("");
+                      }}
+                      className="w-full text-right p-3.5 rounded-2xl transition-all flex items-center justify-between cursor-pointer border group active:scale-[0.98] bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white shadow-md shadow-orange-500/25 border-orange-400/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 text-xl shadow-inner group-hover:scale-110 transition-transform">
+                          🔥
+                        </div>
+                        <div>
+                          <div className="text-xs font-black flex items-center gap-2">
+                            <span>{t.firebase_records_btn}</span>
+                            <span className="text-[10px] bg-black/30 backdrop-blur-xs text-white px-2 py-0.5 rounded-full font-black border border-white/20">
+                              {savedRecords.length} {lang === "en" ? "links" : lang === "ur" ? "لنکس" : "روابط"}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-white/90 font-medium mt-0.5 line-clamp-1">
+                            {lang === "en"
+                              ? "View, copy shareable links & delete saved records"
+                              : lang === "ur"
+                              ? "محفوظ شدہ لنکس دیکھیں، کاپی کریں اور ڈیلیٹ کریں"
+                              : "عرض ونسخ الروابط العامة وحذف السجلات المحفوظة"}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs text-white/80 font-bold group-hover:translate-x-[-2px] transition-transform">
+                        {isRtl ? "←" : "→"}
+                      </span>
+                    </button>
+                  )}
 
                   {/* Tab 1: Buttons & Files */}
                   {(!drawerSearch ||
@@ -2037,6 +2310,23 @@ export default function AdminDashboard() {
                 </svg>
               </Link>
             </div>
+
+            {/* Firebase Saved Records Header Shortcut Button */}
+            <button
+              type="button"
+              onClick={() => {
+                fetchSavedRecords();
+                setFirebaseModalOpen(true);
+              }}
+              className="h-8 sm:h-9 md:h-10 px-2.5 sm:px-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 hover:text-amber-800 border border-amber-300/80 transition-all flex items-center gap-1.5 cursor-pointer font-bold text-xs shrink-0 active:scale-95 shadow-2xs"
+              title={t.firebase_records_title}
+            >
+              <span className="text-sm">🔥</span>
+              <span className="hidden lg:inline font-black">{t.firebase_records_btn}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs leading-none">
+                {savedRecords.length}
+              </span>
+            </button>
 
             {/* Primary Save Button (100% visible on all viewports, never cut off) */}
             <button
@@ -3001,6 +3291,23 @@ export default function AdminDashboard() {
                     </h3>
                   </div>
                 </div>
+
+                {/* Direct Shortcut to Firebase Saved Records Modal */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetchSavedRecords();
+                    setFirebaseModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                  title={t.firebase_records_title}
+                >
+                  <span>🔥</span>
+                  <span>{t.firebase_records_btn}</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-black/20 text-white">
+                    {savedRecords.length}
+                  </span>
+                </button>
               </div>
 
               <p className="text-xs text-slate-500 mb-4 leading-relaxed">
@@ -3128,16 +3435,35 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    {t.unified_number}
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      {t.unified_number}
+                    </label>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {lang === "en" ? "Unique in Firebase" : lang === "ur" ? "Firebase میں منفرد" : "فريد في Firebase"}
+                    </span>
+                  </div>
                   <input
+                    id="unified-number-input"
                     type="text"
                     dir="ltr"
                     value={config.unifiedNumber}
-                    onChange={(e) => setConfig({ ...config, unifiedNumber: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    onChange={(e) => {
+                      setUnifiedError(null);
+                      setConfig({ ...config, unifiedNumber: e.target.value });
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono focus:outline-none transition-all ${
+                      unifiedError
+                        ? "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-400 focus:ring-rose-500"
+                        : "border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500"
+                    }`}
                   />
+                  {unifiedError && (
+                    <p className="text-xs font-bold text-rose-600 flex items-center gap-1.5 mt-1.5 animate-bounce">
+                      <span>⚠️</span>
+                      <span>{unifiedError}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>

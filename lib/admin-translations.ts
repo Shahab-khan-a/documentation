@@ -123,6 +123,19 @@ export interface TranslationStrings {
   serial_number: string;
   serial_number_hint: string;
   serial_number_required_error: string;
+  unified_number_duplicate_error: string;
+  firebase_records_btn: string;
+  firebase_records_title: string;
+  firebase_records_desc: string;
+  copy_link_btn: string;
+  link_copied: string;
+  open_link_btn: string;
+  edit_in_editor: string;
+  delete_record_btn: string;
+  confirm_delete_record: string;
+  record_deleted_success: string;
+  no_records_found: string;
+  search_records_placeholder: string;
   chamber_name: string;
   facility_name: string;
   facility_sub_name: string;
@@ -292,6 +305,19 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     serial_number: "الرقم التسلسلي (يظهر في رابط الصفحة مع الرقم الموحد)",
     serial_number_hint: "الرقم التسلسلي والرقم الموحد يشكلان معاً رابط الصفحة العلوي (مثال: example.com/12345/7032840279) ويبقى الرقم التسلسلي مخفياً من متن الشهادة. يلزم إدخاله لحفظ أي تعديلات.",
     serial_number_required_error: "يرجى إدخال الرقم التسلسلي في تفاصيل الوثيقة قبل حفظ التعديلات!",
+    firebase_records_btn: "سجلات وروابط Firebase المحفوظة",
+    firebase_records_title: "سجلات وروابط Firebase المباشرة",
+    firebase_records_desc: "جميع السجلات المحفوظة في قاعدة بيانات Firebase مع الروابط المباشرة المولدة للمشاركة",
+    copy_link_btn: "نسخ الرابط",
+    link_copied: "تم نسخ الرابط بنجاح!",
+    open_link_btn: "فتح الرابط",
+    edit_in_editor: "تعديل في لوحة التحكم",
+    delete_record_btn: "حذف من Firebase",
+    confirm_delete_record: "هل أنت متأكد من حذف هذا السجل نهائياً من Firebase؟",
+    record_deleted_success: "تم حذف السجل من Firebase بنجاح!",
+    no_records_found: "لا توجد سجلات محفوظة حالياً في Firebase.",
+    unified_number_duplicate_error: "الرقم الموحد مسجل مسبقاً في Firebase! يرجى استخدام رقم موحد آخر (الرقم التسلسلي يمكن تكراره بحرية).",
+    search_records_placeholder: "ابحث برقم السجل، الرقم الموحد، أو اسم المنشأة...",
     chamber_name: "اسم الغرفة",
     facility_name: "اسم المنشأة الرئيسي",
     facility_sub_name: "الاسم الفرعي للمنشأة",
@@ -456,6 +482,19 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     serial_number: "Serial Number (Appears in URL with Unified Number)",
     serial_number_hint: "The serial number and unified number together form the public page URL (e.g. example.com/12345/7032840279). Serial number remains hidden from the certificate card body. Required to save changes.",
     serial_number_required_error: "Please enter the Serial Number in Document Details before saving changes!",
+    firebase_records_btn: "Firebase Saved Records & Links",
+    firebase_records_title: "Firebase Live Records & Shareable Links",
+    firebase_records_desc: "All saved portal certificates in Firebase Firestore with direct shareable links",
+    copy_link_btn: "Copy Link",
+    link_copied: "Link copied to clipboard!",
+    open_link_btn: "Open Link",
+    edit_in_editor: "Edit in Admin",
+    delete_record_btn: "Delete from Firebase",
+    confirm_delete_record: "Are you sure you want to permanently delete this record from Firebase?",
+    record_deleted_success: "Record deleted from Firebase successfully!",
+    no_records_found: "No saved records found in Firebase yet.",
+    unified_number_duplicate_error: "This Unified Number already exists in Firebase! Please use a different unified number (Serial number can be reused freely).",
+    search_records_placeholder: "Search by serial number, unified number, or facility...",
     chamber_name: "Chamber Name (اسم الغرفة)",
     facility_name: "Facility Main Name (اسم المنشأة)",
     facility_sub_name: "Facility Sub-Name (الاسم الفرعي)",
@@ -620,6 +659,19 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     serial_number: "سیریل نمبر (قومی نمبر کے ساتھ لنک میں شامل ہوگا)",
     serial_number_hint: "سیریل نمبر اور 700 کا قومی نمبر دونوں مل کر مین پیج کا مکمل لنک بناتے ہیں (مثال: example.com/12345/7032840279)۔ سیریل نمبر دستاویز کی تحریر میں نظر نہیں آئے گا۔ تبدیلیاں محفوظ کرنے کیلئے یہ درج کرنا لازمی ہے۔",
     serial_number_required_error: "تبدیلیاں محفوظ کرنے سے پہلے دستاویز کی تفصیلات میں سیریل نمبر درج کریں!",
+    firebase_records_btn: "فائر بیس محفوظ شدہ لنکس اور ریکارڈز",
+    firebase_records_title: "فائر بیس کلاؤڈ ریکارڈز اور شیئر لنکس",
+    firebase_records_desc: "فائر بیس میں محفوظ شدہ تمام دستاویزات اور ان کے مخصوص شیئر لنکس",
+    copy_link_btn: "لنک کاپی کریں",
+    link_copied: "لنک کاپی ہو گیا!",
+    open_link_btn: "صفحہ کھولیں",
+    edit_in_editor: "ایڈمن میں تبدیل کریں",
+    delete_record_btn: "فائر بیس سے ڈیلیٹ کریں",
+    confirm_delete_record: "کیا آپ واقعی یہ ریکارڈ فائر بیس سے ہمیشہ کے لیے ڈیلیٹ کرنا چاہتے ہیں؟",
+    record_deleted_success: "ریکارڈ فائر بیس سے کامیابی سے ڈیلیٹ ہو گیا!",
+    no_records_found: "فائر بیس میں کوئی محفوظ شدہ ریکارڈ موجود نہیں ہے۔",
+    unified_number_duplicate_error: "یہ یونیفائیڈ نمبر پہلے سے Firebase میں محفوظ ہے! براہ کرم دوسرا یونیفائیڈ نمبر درج کریں (سیریل نمبر دوبارہ استعمال کیا جا سکتا ہے)۔",
+    search_records_placeholder: "سیریل نمبر، قومی نمبر یا ادارے کے نام سے تلاش کریں...",
     chamber_name: "چیمبر کا نام (اسم الغرفة)",
     facility_name: "ادارے کا نام (اسم المنشأة)",
     facility_sub_name: "ادارے کا ذیلی نام (الاسم الفرعي)",

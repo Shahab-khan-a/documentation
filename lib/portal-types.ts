@@ -67,3 +67,10 @@ export interface PortalConfig {
   buttonLoaderDurationMs: number;
   enableInitialLoader: boolean;
 }
+
+export interface PortalRecord extends PortalConfig {
+  id: string; // [serialNumber]_[unifiedNumber] or unique ID
+  createdAt: string;
+  updatedAt?: string;
+}
+

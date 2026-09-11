@@ -647,9 +647,11 @@ export default function DocumentVerificationPage() {
         const cached = localStorage.getItem("portal_config_cache");
         if (cached) {
           const parsed = JSON.parse(cached);
-          setConfig(parsed);
-          if (parsed.enableInitialLoader) {
-            setLoaded(false);
+          if (!params?.serial || parsed.serialNumber === params.serial) {
+            setConfig(parsed);
+            if (parsed.enableInitialLoader) {
+              setLoaded(false);
+            }
           }
         }
       } catch {
