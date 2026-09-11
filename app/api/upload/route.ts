@@ -126,7 +126,9 @@ export async function POST(req: Request) {
           source: "google_drive",
           fileUrl: driveDownloadUrl,
           driveFileId: driveRes.data.id,
-          driveViewLink: driveRes.data.webViewLink,
+          driveViewLink:
+            driveRes.data.webViewLink ||
+            `https://drive.google.com/file/d/${driveRes.data.id}/view`,
           fileName: originalName,
           fileSize: file.size,
         });
@@ -140,6 +142,7 @@ export async function POST(req: Request) {
       success: true,
       source: "local",
       fileUrl: localFileUrl,
+      driveViewLink: `https://drive.google.com/drive/folders/${FOLDER_ID}`,
       fileName: originalName,
       fileSize: file.size,
     });

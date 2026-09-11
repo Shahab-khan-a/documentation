@@ -19,7 +19,7 @@
   "customFields": [],
   "backButton": {
     "label": "العودة",
-    "actionType": "link",
+    "actionType": "file",
     "url": "#",
     "openInNewTab": false,
     "showLoader": false
