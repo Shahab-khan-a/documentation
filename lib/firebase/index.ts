@@ -61,18 +61,23 @@ export async function getFirebaseAnalytics(): Promise<Analytics | null> {
  *  1. `portal_configs/current` (active current default)
  *  2. `portal_configs/[serialNumber]` (single serial lookup)
  *  3. `portal_configs/[serialNumber]_[unifiedNumber]` (exact composite lookup)
+ *  4. `portal_configs/[requestNumber]_[serialNumber]_[unifiedNumber]` (DocumentVerify lookup)
  */
 export async function saveConfigToFirebase(config: PortalConfig): Promise<boolean> {
   try {
     const cleanSerial = (config.serialNumber || "").trim();
     const cleanUnified = (config.unifiedNumber || "").trim();
+    const cleanReq = (config.requestNumber || "").trim();
     const now = new Date().toISOString();
+
+    const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
 
     const dataToSave: PortalRecord = {
       ...config,
-      id: cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial,
+      id: recordId,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
+      requestNumber: cleanReq,
       updatedAt: now,
       createdAt: (config as any).createdAt || now,
     };
@@ -86,10 +91,16 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
       const serialDocRef = doc(db, "portal_configs", cleanSerial);
       await setDoc(serialDocRef, dataToSave, { merge: true });
 
-      // 3. Also archive by composite key `[serial]_[unified]` if unified exists
+      // 3. Archive by composite key `[serial]_[unified]`
       if (cleanUnified) {
         const compositeDocRef = doc(db, "portal_configs", `${cleanSerial}_${cleanUnified}`);
         await setDoc(compositeDocRef, dataToSave, { merge: true });
+      }
+
+      // 4. Archive by `[requestNumber]_[serial]_[unified]` for DocumentVerify routes
+      if (cleanReq && cleanUnified) {
+        const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
+        await setDoc(reqDocRef, dataToSave, { merge: true });
       }
     }
 
@@ -102,18 +113,28 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
 
 /**
  * Retrieve portal configuration from Firebase Cloud Firestore
- * Optionally checks for specific composite `[serial]_[unified]` or `[serial]`,
- * falling back to the active `current` document.
+ * Checks composite key, serial, request number, or active 'current' document.
  */
 export async function getConfigFromFirebase(
   serialNumber?: string,
-  unifiedNumber?: string
+  unifiedNumber?: string,
+  requestNumber?: string
 ): Promise<PortalConfig | null> {
   try {
     const cleanSerial = (serialNumber || "").trim();
     const cleanUnified = (unifiedNumber || "").trim();
+    const cleanReq = (requestNumber || "").trim();
 
-    // 1. Try composite key first in portal_configs
+    // 1. Try DocumentVerify full composite key: [req]_[serial]_[unified]
+    if (cleanReq && cleanSerial && cleanUnified) {
+      const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
+      const reqSnap = await getDoc(reqDocRef);
+      if (reqSnap.exists()) {
+        return reqSnap.data() as PortalConfig;
+      }
+    }
+
+    // 2. Try composite key: [serial]_[unified]
     if (cleanSerial && cleanUnified) {
       const compDocRef = doc(db, "portal_configs", `${cleanSerial}_${cleanUnified}`);
       const compSnap = await getDoc(compDocRef);
@@ -122,7 +143,7 @@ export async function getConfigFromFirebase(
       }
     }
 
-    // 2. Try serial document in portal_configs
+    // 3. Try single serial document in portal_configs
     if (cleanSerial) {
       const serialDocRef = doc(db, "portal_configs", cleanSerial);
       const serialSnap = await getDoc(serialDocRef);
@@ -131,7 +152,7 @@ export async function getConfigFromFirebase(
       }
     }
 
-    // 3. Fallback to active 'current' document
+    // 4. Fallback to active 'current' document
     const currentDocRef = doc(db, "portal_configs", "current");
     const snapshot = await getDoc(currentDocRef);
     if (snapshot.exists()) {
@@ -145,7 +166,6 @@ export async function getConfigFromFirebase(
 
 /**
  * Save / Archive a dedicated Portal Record into Firestore
- * Stores reliably in `portal_configs` composite document and syncs with `current`.
  */
 export async function savePortalRecordToFirebase(
   config: PortalConfig,
@@ -154,6 +174,7 @@ export async function savePortalRecordToFirebase(
   try {
     const cleanSerial = (config.serialNumber || "").trim();
     const cleanUnified = (config.unifiedNumber || "").trim();
+    const cleanReq = (config.requestNumber || "").trim();
     if (!cleanSerial) return null;
 
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
@@ -164,6 +185,7 @@ export async function savePortalRecordToFirebase(
       id: recordId,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
+      requestNumber: cleanReq,
       createdAt: (config as any).createdAt || now,
       updatedAt: now,
     };
@@ -178,7 +200,13 @@ export async function savePortalRecordToFirebase(
       await setDoc(serialDocRef, recordData, { merge: true });
     }
 
-    // 3. Save as current active config
+    // 3. Also archive by DocumentVerify composite key if requestNumber exists
+    if (cleanReq && cleanUnified) {
+      const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
+      await setDoc(reqDocRef, recordData, { merge: true });
+    }
+
+    // 4. Save as current active config
     const currentDocRef = doc(db, "portal_configs", "current");
     await setDoc(currentDocRef, recordData, { merge: true });
 
@@ -191,7 +219,6 @@ export async function savePortalRecordToFirebase(
 
 /**
  * Retrieve all saved Portal Records from Firestore
- * Queries portal_configs (which has full read/write permissions).
  */
 export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]> {
   const recordsMap = new Map<string, PortalRecord>();
@@ -212,6 +239,7 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
             id: recId,
             serialNumber: (data.serialNumber || "").trim(),
             unifiedNumber: (data.unifiedNumber || "").trim(),
+            requestNumber: (data.requestNumber || "").trim(),
           });
         }
       }
@@ -249,19 +277,33 @@ export async function deletePortalRecordFromFirebase(recordId: string): Promise<
 }
 
 /**
- * Find specific portal record by serial and optional unified number
+ * Find specific portal record by serial, optional unified number, and optional request number
  */
 export async function getPortalRecordBySerialUnified(
-  serial: string,
-  unified?: string
+  serial?: string,
+  unified?: string,
+  requestNumber?: string
 ): Promise<PortalConfig | null> {
   try {
     const cleanSerial = (serial || "").trim();
     const cleanUnified = (unified || "").trim();
-    if (!cleanSerial) return null;
+    const cleanReq = (requestNumber || "").trim();
 
-    // 1. Try exact composite `[serial]_[unified]` in portal_configs
-    if (cleanUnified) {
+    // 1. Try DocumentVerify key: [req]_[serial]_[unified]
+    if (cleanReq && cleanSerial && cleanUnified) {
+      try {
+        const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
+        const reqSnap = await getDoc(reqRef);
+        if (reqSnap.exists()) {
+          return reqSnap.data() as PortalConfig;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Try exact composite `[serial]_[unified]` in portal_configs
+    if (cleanSerial && cleanUnified) {
       try {
         const compRef = doc(db, "portal_configs", `${cleanSerial}_${cleanUnified}`);
         const compSnap = await getDoc(compRef);
@@ -273,21 +315,23 @@ export async function getPortalRecordBySerialUnified(
       }
     }
 
-    // 2. Try single serial in portal_configs
-    try {
-      const serialRef = doc(db, "portal_configs", cleanSerial);
-      const serialSnap = await getDoc(serialRef);
-      if (serialSnap.exists()) {
-        return serialSnap.data() as PortalConfig;
+    // 3. Try single serial in portal_configs
+    if (cleanSerial) {
+      try {
+        const serialRef = doc(db, "portal_configs", cleanSerial);
+        const serialSnap = await getDoc(serialRef);
+        if (serialSnap.exists()) {
+          return serialSnap.data() as PortalConfig;
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
 
-    // 3. Fallback to active 'current' document
-    return await getConfigFromFirebase(cleanSerial, cleanUnified);
+    // 4. Fallback to active 'current' document
+    return await getConfigFromFirebase(cleanSerial, cleanUnified, cleanReq);
   } catch (err) {
-    console.warn("Could not get portal record by serial/unified:", err);
+    console.warn("Could not get portal record by serial/unified/requestNumber:", err);
     return null;
   }
 }

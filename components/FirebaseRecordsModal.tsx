@@ -456,9 +456,10 @@ export function FirebaseRecordsModal({
               {filteredRecords.map((record) => {
                 const cleanSerial = (record.serialNumber || "").trim();
                 const cleanUnified = (record.unifiedNumber || "").trim();
+                const cleanReq = (record.requestNumber || "").trim() || "13255887";
                 const path = cleanUnified
-                  ? `/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
-                  : `/${encodeURIComponent(cleanSerial)}`;
+                  ? `/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
+                  : `/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}`;
                 const fullUrl =
                   typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
                 const isCopied = copiedRecordId === record.id;

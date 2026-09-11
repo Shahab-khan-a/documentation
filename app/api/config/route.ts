@@ -84,9 +84,11 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const rawSerial = searchParams.get("serial") || undefined;
     const rawUnified = searchParams.get("unified") || undefined;
+    const rawReq = searchParams.get("req") || searchParams.get("requestNumber") || undefined;
 
     const serial = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
     const unified = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
+    const requestNumber = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
 
     const responseHeaders = {
       "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
@@ -94,10 +96,10 @@ export async function GET(req: Request) {
       "Expires": "0",
     };
 
-    // 1. If serial is requested, search for specific saved record in Firebase first
-    if (serial) {
+    // 1. If serial or requestNumber is requested, search for specific saved record in Firebase first
+    if (serial || requestNumber) {
       try {
-        const specific = await getPortalRecordBySerialUnified(serial, unified);
+        const specific = await getPortalRecordBySerialUnified(serial, unified, requestNumber);
         if (specific) {
           return NextResponse.json(specific, { headers: responseHeaders });
         }

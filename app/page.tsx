@@ -658,8 +658,16 @@ export default function DocumentVerificationPage() {
         : Array.isArray(params?.unified)
         ? params.unified[0]
         : undefined;
+    const rawReq =
+      typeof params?.requestNumber === "string"
+        ? params.requestNumber
+        : Array.isArray(params?.requestNumber)
+        ? params.requestNumber[0]
+        : undefined;
+
     const serialParam = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
     const unifiedParam = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
+    const reqParam = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
 
     let isMounted = true;
 
@@ -684,9 +692,9 @@ export default function DocumentVerificationPage() {
       try {
         let fbConfig: PortalConfig | null = null;
         if (serialParam) {
-          fbConfig = await getPortalRecordBySerialUnified(serialParam, unifiedParam);
+          fbConfig = await getPortalRecordBySerialUnified(serialParam, unifiedParam, reqParam);
         } else {
-          fbConfig = await getConfigFromFirebase();
+          fbConfig = await getConfigFromFirebase(serialParam, unifiedParam, reqParam);
         }
 
         if (fbConfig && isMounted) {
@@ -711,6 +719,7 @@ export default function DocumentVerificationPage() {
         const query = new URLSearchParams();
         if (serialParam) query.set("serial", serialParam);
         if (unifiedParam) query.set("unified", unifiedParam);
+        if (reqParam) query.set("req", reqParam);
         query.set("_t", Date.now().toString());
 
         const res = await fetch(`/api/config?${query.toString()}`, { cache: "no-store" });
@@ -768,15 +777,16 @@ export default function DocumentVerificationPage() {
     };
   }, [params]);
 
-  // Synchronize browser URL bar to display '/[serialNumber]/[unifiedNumber]'
+  // Synchronize browser URL bar to display '/DocumentVerify/[requestNumber]/mem/[serialNumber]/[unifiedNumber]'
   useEffect(() => {
     const cleanSerial = config.serialNumber?.trim();
     const cleanUnified = config.unifiedNumber?.trim();
+    const cleanReq = config.requestNumber?.trim();
     if (!cleanSerial) return;
 
-    const targetPath = cleanUnified
-      ? `/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
-      : `/${encodeURIComponent(cleanSerial)}`;
+    let targetPath = cleanUnified
+      ? `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
+      : `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}`;
 
     if (typeof window !== "undefined") {
       const currentPath = window.location.pathname;
@@ -792,7 +802,7 @@ export default function DocumentVerificationPage() {
         window.history.replaceState(null, "", targetPath);
       }
     }
-  }, [config.serialNumber, config.unifiedNumber]);
+  }, [config.serialNumber, config.unifiedNumber, config.requestNumber]);
 
   const handleLoaderDone = useCallback(() => {
     setLoaded(true);

@@ -292,9 +292,12 @@ export default function AdminDashboard() {
 
   const handleCopyRecordLink = (record: PortalRecord) => {
     if (typeof window === "undefined") return;
+    const req = (record.requestNumber || "").trim() || "13255887";
     const s = (record.serialNumber || "").trim();
     const u = (record.unifiedNumber || "").trim();
-    const path = u ? `/${encodeURIComponent(s)}/${encodeURIComponent(u)}` : `/${encodeURIComponent(s)}`;
+    const path = u
+      ? `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}/${encodeURIComponent(u)}`
+      : `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`;
     const fullUrl = `${window.location.origin}${path}`;
     navigator.clipboard.writeText(fullUrl);
     setCopiedRecordId(record.id);
@@ -525,13 +528,18 @@ export default function AdminDashboard() {
     []
   );
 
-  // Helper to compute public URL with dynamic serial and unified numbers
+  // Helper to compute public URL with dynamic requestNumber, serial, and unified numbers
   const getPublicLink = useCallback((conf: PortalConfig) => {
+    const req = conf.requestNumber?.trim() || "13255887";
     const s = conf.serialNumber?.trim();
     const u = conf.unifiedNumber?.trim();
-    if (s && u) return `/${encodeURIComponent(s)}/${encodeURIComponent(u)}`;
-    if (s) return `/${encodeURIComponent(s)}`;
-    return "/";
+    if (s && u) {
+      return `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}/${encodeURIComponent(u)}`;
+    }
+    if (s) {
+      return `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`;
+    }
+    return `/DocumentVerify/${encodeURIComponent(req)}/mem`;
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -631,9 +639,7 @@ export default function AdminDashboard() {
         fetchSavedRecords();
 
         // Direct navigation to the public link where the document is shown
-        const targetPath = cleanUnified
-          ? `/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
-          : `/${encodeURIComponent(cleanSerial)}`;
+        const targetPath = getPublicLink(result.data);
 
         setTimeout(() => {
           window.location.href = targetPath;
@@ -3354,29 +3360,7 @@ export default function AdminDashboard() {
                   </p>
                 )}
 
-                {/* Dynamic Live URL Output Preview: /{serialNumber}/{unifiedNumber} */}
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-blue-50/80 border border-blue-200/90 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-2xs">
-                  <div className="flex items-center gap-2 overflow-hidden min-w-0">
-                    <span className="text-blue-600 font-bold text-sm shrink-0">🔗</span>
-                    <span className="font-bold text-slate-700 shrink-0">
-                      {lang === "en" ? "Public Link:" : lang === "ur" ? "پبلک لنک:" : "رابط البوابة الرئيسي:"}
-                    </span>
-                    <span className="font-mono font-black text-blue-800 truncate" dir="ltr">
-                      /{config.serialNumber?.trim() || (lang === "en" ? "[serial]" : lang === "ur" ? "[سیریل]" : "[الرقم-التسلسلي]")}
-                      /{config.unifiedNumber?.trim() || (lang === "en" ? "[unified]" : lang === "ur" ? "[یونیفائیڈ]" : "[الرقم-الموحد]")}
-                    </span>
-                  </div>
 
-                  {config.serialNumber?.trim() && (
-                    <Link
-                      href={getPublicLink(config)}
-                      target="_blank"
-                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] no-underline shadow-xs transition-all flex items-center gap-1 shrink-0 active:scale-95"
-                    >
-                      <span>{lang === "en" ? "Test Link ↗" : lang === "ur" ? "لنک چیک کریں ↗" : "تجربة الرابط ↗"}</span>
-                    </Link>
-                  )}
-                </div>
               </div>
             </div>
 
