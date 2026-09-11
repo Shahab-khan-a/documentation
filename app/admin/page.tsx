@@ -311,11 +311,21 @@ export default function AdminDashboard() {
   // Upload file handler for any button
   const handleFileUpload = async (
     buttonKey: "backButton" | "verifyAgainButton" | "downloadButton",
-    file: File
+    file?: File | null
   ) => {
+    if (!file) return;
     setUploadingBtn(buttonKey);
     const formData = new FormData();
     formData.append("file", file);
+
+    showToast(
+      lang === "en"
+        ? `Uploading "${file.name}" to Google Drive...`
+        : lang === "ur"
+        ? `فائل "${file.name}" گوگل ڈرائیو پر اپلوڈ ہو رہی ہے...`
+        : `جاري رفع "${file.name}" إلى Google Drive...`,
+      "info"
+    );
 
     try {
       const res = await fetch("/api/upload", {
@@ -616,21 +626,22 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (drivePickerTarget === "backButton") fileInputBackRef.current?.click();
-                        else if (drivePickerTarget === "verifyAgainButton") fileInputVerifyRef.current?.click();
-                        else if (drivePickerTarget === "downloadButton") fileInputDownloadRef.current?.click();
-                        setDrivePickerTarget(null);
-                      }}
-                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
+                    <label
+                      htmlFor={
+                        drivePickerTarget === "backButton"
+                          ? "file-input-back"
+                          : drivePickerTarget === "verifyAgainButton"
+                          ? "file-input-verify"
+                          : "file-input-download"
+                      }
+                      onClick={() => setDrivePickerTarget(null)}
+                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer transition-all inline-flex items-center gap-2 select-none active:scale-95"
                     >
                       <span>⬆️</span>
                       <span>
                         {lang === "en" ? "Upload File Now" : lang === "ur" ? "فائل ابھی اپلوڈ کریں" : "رفع ملف جديد الآن"}
                       </span>
-                    </button>
+                    </label>
                   </div>
                 </div>
               ) : (
@@ -1667,20 +1678,14 @@ export default function AdminDashboard() {
                                 >
                                   📁 من Google Drive
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => fileInputBackRef.current?.click()}
-                                  className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer"
-                                >
-                                  {t.replace_file}
-                                </button>
+                                <label htmlFor="file-input-back" className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer">{t.replace_file}</label>
                               </div>
                             </div>
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <div
-                              onClick={() => fileInputBackRef.current?.click()}
+                            <label
+                              htmlFor="file-input-back"
                               onDragOver={(e) => {
                                 e.preventDefault();
                                 setIsDragOverBtn("back");
@@ -1693,22 +1698,35 @@ export default function AdminDashboard() {
                                   handleFileUpload("backButton", e.dataTransfer.files[0]);
                                 }
                               }}
-                              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all block relative select-none active:scale-[0.99] ${
                                 isDragOverBtn === "back"
                                   ? "border-blue-500 bg-blue-50"
                                   : "border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40"
                               }`}
                             >
+                              <input
+                                id="file-input-back"
+                                ref={fileInputBackRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf"
+                                className="sr-only"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    handleFileUpload("backButton", e.target.files[0]);
+                                  }
+                                  e.target.value = "";
+                                }}
+                              />
                               <IconCloudUpload className="w-8 h-8 mx-auto text-blue-500 mb-1.5" />
                               <span className="text-xs font-bold text-slate-800 block">
                                 {uploadingBtn === "backButton"
-                                  ? "جاري الرفع إلى Google Drive..."
+                                  ? (lang === "en" ? "Uploading to Google Drive..." : lang === "ur" ? "گوگل ڈرائیو پر اپلوڈ ہو رہا ہے..." : "جاري الرفع إلى Google Drive...")
                                   : t.file_upload_title}
                               </span>
                               <span className="text-[11px] text-slate-400 mt-0.5 block">
                                 {t.file_upload_sub}
                               </span>
-                            </div>
+                            </label>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1723,16 +1741,6 @@ export default function AdminDashboard() {
                             </button>
                           </div>
                         )}
-                        <input
-                          ref={fileInputBackRef}
-                          type="file"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              handleFileUpload("backButton", e.target.files[0]);
-                            }
-                          }}
-                        />
                       </div>
                     )}
 
@@ -1949,32 +1957,55 @@ export default function AdminDashboard() {
                                 >
                                   📁 من Google Drive
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => fileInputVerifyRef.current?.click()}
-                                  className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer"
-                                >
-                                  {t.replace_file}
-                                </button>
+                                <label htmlFor="file-input-verify" className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer">{t.replace_file}</label>
                               </div>
                             </div>
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <div
-                              onClick={() => fileInputVerifyRef.current?.click()}
-                              className="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/60 hover:bg-indigo-50/40"
+                            <label
+                              htmlFor="file-input-verify"
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setIsDragOverBtn("verify");
+                              }}
+                              onDragLeave={() => setIsDragOverBtn(null)}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setIsDragOverBtn(null);
+                                if (e.dataTransfer.files?.[0]) {
+                                  handleFileUpload("verifyAgainButton", e.dataTransfer.files[0]);
+                                }
+                              }}
+                              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all block relative select-none active:scale-[0.99] ${
+                                isDragOverBtn === "verify"
+                                  ? "border-indigo-500 bg-indigo-50"
+                                  : "border-slate-300 hover:border-indigo-500 bg-slate-50/60 hover:bg-indigo-50/40"
+                              }`}
                             >
+                              <input
+                                id="file-input-verify"
+                                ref={fileInputVerifyRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf"
+                                className="sr-only"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    handleFileUpload("verifyAgainButton", e.target.files[0]);
+                                  }
+                                  e.target.value = "";
+                                }}
+                              />
                               <IconCloudUpload className="w-8 h-8 mx-auto text-indigo-500 mb-1.5" />
                               <span className="text-xs font-bold text-slate-800 block">
                                 {uploadingBtn === "verifyAgainButton"
-                                  ? "جاري الرفع إلى Google Drive..."
+                                  ? (lang === "en" ? "Uploading to Google Drive..." : lang === "ur" ? "گوگل ڈرائیو پر اپلوڈ ہو رہا ہے..." : "جاري الرفع إلى Google Drive...")
                                   : t.file_upload_title}
                               </span>
                               <span className="text-[11px] text-slate-400 mt-0.5 block">
                                 {t.file_upload_sub}
                               </span>
-                            </div>
+                            </label>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1989,16 +2020,6 @@ export default function AdminDashboard() {
                             </button>
                           </div>
                         )}
-                        <input
-                          ref={fileInputVerifyRef}
-                          type="file"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              handleFileUpload("verifyAgainButton", e.target.files[0]);
-                            }
-                          }}
-                        />
                       </div>
                     )}
 
@@ -2190,20 +2211,14 @@ export default function AdminDashboard() {
                                 >
                                   📁 من Google Drive
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => fileInputDownloadRef.current?.click()}
-                                  className="text-xs text-blue-600 font-bold hover:underline cursor-pointer"
-                                >
-                                  {t.replace_file}
-                                </button>
+                                <label htmlFor="file-input-download" className="text-xs text-blue-600 font-bold hover:underline cursor-pointer">{t.replace_file}</label>
                               </div>
                             </div>
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <div
-                              onClick={() => fileInputDownloadRef.current?.click()}
+                            <label
+                              htmlFor="file-input-download"
                               onDragOver={(e) => {
                                 e.preventDefault();
                                 setIsDragOverBtn("download");
@@ -2216,22 +2231,35 @@ export default function AdminDashboard() {
                                   handleFileUpload("downloadButton", e.dataTransfer.files[0]);
                                 }
                               }}
-                              className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all ${
+                              className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all block relative select-none active:scale-[0.99] ${
                                 isDragOverBtn === "download"
                                   ? "border-emerald-600 bg-emerald-100"
                                   : "border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50"
                               }`}
                             >
+                              <input
+                                id="file-input-download"
+                                ref={fileInputDownloadRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf"
+                                className="sr-only"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    handleFileUpload("downloadButton", e.target.files[0]);
+                                  }
+                                  e.target.value = "";
+                                }}
+                              />
                               <IconCloudUpload className="w-9 h-9 mx-auto text-emerald-600 mb-2" />
                               <span className="text-xs font-black text-emerald-950 block">
                                 {uploadingBtn === "downloadButton"
-                                  ? "جاري الرفع إلى Google Drive..."
+                                  ? (lang === "en" ? "Uploading to Google Drive..." : lang === "ur" ? "گوگل ڈرائیو پر اپلوڈ ہو رہا ہے..." : "جاري الرفع إلى Google Drive...")
                                   : t.file_upload_title}
                               </span>
                               <span className="text-[11px] text-emerald-800 mt-1 block">
                                 {t.file_download_hint}
                               </span>
-                            </div>
+                            </label>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -2246,16 +2274,6 @@ export default function AdminDashboard() {
                             </button>
                           </div>
                         )}
-                        <input
-                          ref={fileInputDownloadRef}
-                          type="file"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              handleFileUpload("downloadButton", e.target.files[0]);
-                            }
-                          }}
-                        />
                       </div>
                     ) : (
                       <div>
