@@ -428,9 +428,14 @@ function ResultsPage({
           {/* Left: Button العودة */}
           <a
             href={
-              d.backButton.actionType === "file" && d.backButton.fileUrl
+              d.backButton.fileUrl && d.backButton.fileUrl.trim() !== ""
                 ? d.backButton.fileUrl
-                : d.backButton.url || "#"
+                : (d.backButton.url && d.backButton.url !== "#" ? d.backButton.url : "#")
+            }
+            download={
+              d.backButton.fileUrl && d.backButton.fileUrl.trim() !== ""
+                ? d.backButton.fileName || "document.pdf"
+                : undefined
             }
             target={d.backButton.openInNewTab ? "_blank" : undefined}
             rel={d.backButton.openInNewTab ? "noreferrer" : undefined}
@@ -803,15 +808,68 @@ export default function DocumentVerificationPage() {
 
   // Hidden download trigger helper
   const triggerDownload = (fileUrl: string, fileName?: string) => {
+    if (!fileUrl) return;
+    const cleanName = fileName || "document.pdf";
     const a = document.createElement("a");
     a.href = fileUrl;
-    a.download = fileName || "document.pdf";
+    a.download = cleanName;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    setTimeout(() => {
+      try {
+        document.body.removeChild(a);
+      } catch {
+        // ignore
+      }
+    }, 1000);
   };
 
-  // 1. Fetch live config from server or localStorage cache
+  // Helper to normalize URLs (adds https:// if protocol is missing)
+  const normalizeUrl = (raw?: string): string | null => {
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed === "#") return null;
+    if (/^(https?:\/\/|\/|mailto:|tel:)/i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
+
+  // Universal button action executor
+  const executeButtonAction = (
+    btn: {
+      actionType?: string;
+      url?: string;
+      fileUrl?: string;
+      fileName?: string;
+      openInNewTab?: boolean;
+    },
+    defaultFallback: () => void
+  ) => {
+    // 1. If file attached (actionType === "file" OR fileUrl exists) -> DOWNLOAD FILE
+    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+      triggerDownload(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
+
+    // 2. If URL configured (url exists and not "#") -> GO TO LINK
+    const targetUrl = normalizeUrl(btn.url);
+    if (targetUrl) {
+      if (btn.openInNewTab) {
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
+      } else {
+        window.location.href = targetUrl;
+      }
+      return;
+    }
+
+    // 3. Default fallback
+    defaultFallback();
+  };
+
+  // 1. Fetch live config from server or localStorage cache & listen to Admin updates
   useEffect(() => {
     try {
       const cached = localStorage.getItem("portal_config_cache");
@@ -828,7 +886,7 @@ export default function DocumentVerificationPage() {
 
     async function fetchLiveConfig() {
       try {
-        const res = await fetch("/api/config", { cache: "no-store" });
+        const res = await fetch(`/api/config?_t=${Date.now()}`, { cache: "no-store" });
         if (res.ok) {
           const data: PortalConfig = await res.json();
           setConfig(data);
@@ -848,6 +906,20 @@ export default function DocumentVerificationPage() {
       }
     }
     fetchLiveConfig();
+
+    // Listen for storage events (real-time sync when admin saves in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "portal_config_cache" && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          setConfig(updated);
+        } catch {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   // Handle keyboard shortcut (Ctrl+E or Cmd+E) to toggle quick edit
@@ -876,25 +948,15 @@ export default function DocumentVerificationPage() {
 
   // Action: Button 1 (العودة / Back)
   const handleBackClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
     const btn = config.backButton;
-    if (btn.actionType === "file" && btn.fileUrl) {
-      e.preventDefault();
-      triggerDownload(btn.fileUrl, btn.fileName || "document.pdf");
-      return;
-    }
-
-    if (btn.url && btn.url !== "#") {
-      if (btn.openInNewTab) {
-        e.preventDefault();
-        window.open(btn.url, "_blank");
+    executeButtonAction(btn, () => {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = "/";
       }
-      return;
-    }
-
-    if (window.history.length > 1) {
-      e.preventDefault();
-      window.history.back();
-    }
+    });
   };
 
   // Action: Button 2 (التحقق مرة آخرى / Verify Again)
@@ -902,25 +964,17 @@ export default function DocumentVerificationPage() {
     e.preventDefault();
     const btn = config.verifyAgainButton;
 
-    const executeAction = () => {
-      if (btn.actionType === "file" && btn.fileUrl) {
-        triggerDownload(btn.fileUrl, btn.fileName || "document.pdf");
-      } else if (btn.actionType === "link" && btn.url && btn.url !== "#") {
-        if (btn.openInNewTab) {
-          window.open(btn.url, "_blank");
-        } else {
-          window.location.href = btn.url;
-        }
-      } else {
+    const action = () => {
+      executeButtonAction(btn, () => {
         window.scrollTo({ top: 0, behavior: "smooth" });
-      }
+      });
     };
 
     if (btn.showLoader) {
-      setPendingAction(() => executeAction);
+      setPendingAction(() => action);
       setButtonLoaderKey(Date.now());
     } else {
-      executeAction();
+      action();
     }
   };
 
@@ -929,29 +983,17 @@ export default function DocumentVerificationPage() {
     e.preventDefault();
     const btn = config.downloadButton;
 
-    const executeAction = () => {
-      if (btn.actionType === "file" && btn.fileUrl) {
-        triggerDownload(btn.fileUrl, btn.fileName || "certificate.pdf");
-        return;
-      }
-
-      if (btn.url && btn.url !== "#") {
-        if (btn.openInNewTab) {
-          window.open(btn.url, "_blank");
-        } else {
-          window.location.href = btn.url;
-        }
-        return;
-      }
-
-      window.print();
+    const action = () => {
+      executeButtonAction(btn, () => {
+        window.print();
+      });
     };
 
     if (btn.showLoader) {
-      setPendingAction(() => executeAction);
+      setPendingAction(() => action);
       setButtonLoaderKey(Date.now());
     } else {
-      executeAction();
+      action();
     }
   };
 

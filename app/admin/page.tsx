@@ -505,16 +505,17 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setConfig((prev) => ({
-          ...prev,
+        const updated: PortalConfig = {
+          ...config,
           [buttonKey]: {
-            ...prev[buttonKey],
+            ...config[buttonKey],
             actionType: "file",
             fileUrl: data.fileUrl,
             fileName: data.fileName,
             fileSize: data.fileSize,
           },
-        }));
+        };
+        await autoSaveConfig(updated);
 
         const targetDriveUrl =
           data.driveViewLink ||
@@ -524,10 +525,10 @@ export default function AdminDashboard() {
 
         showToast(
           lang === "en"
-            ? `File "${data.fileName}" uploaded! Click notification to view in Google Drive.`
+            ? `File "${data.fileName}" uploaded & applied to main page! Click notification to view in Google Drive.`
             : lang === "ur"
-            ? `فائل "${data.fileName}" اپلوڈ ہو گئی۔ گوگل ڈرائیو میں دیکھنے کیلئے یہاں کلک کریں!`
-            : `تم رفع "${data.fileName}" بنجاح! انقر هنا للعرض في Google Drive.`,
+            ? `فائل "${data.fileName}" اپلوڈ ہو گئی اور مین پیج پر لاگو ہو گئی! ڈرائیو کیلئے کلک کریں۔`
+            : `تم رفع "${data.fileName}" وتطبيقه على الصفحة الرئيسية! انقر للعرض في Google Drive.`,
           "success",
           targetDriveUrl,
           lang === "en" ? "Open in Drive ↗" : lang === "ur" ? "گوگل ڈرائیو میں دیکھیں ↗" : "عرض في Drive ↗"
@@ -544,8 +545,39 @@ export default function AdminDashboard() {
     }
   };
 
+  // Helper to persist updated configuration immediately to server & disk
+  const autoSaveConfig = useCallback(async (newConfig: PortalConfig) => {
+    setConfig(newConfig);
+    setInitialConfig(newConfig);
+    try {
+      localStorage.setItem("portal_config_cache", JSON.stringify(newConfig));
+      await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+    } catch (err) {
+      console.error("autoSaveConfig failed:", err);
+    }
+  }, []);
+
+  // Update button action mode (link, file, or animation) and auto-save
+  const updateButtonMode = async (
+    buttonKey: "backButton" | "verifyAgainButton" | "downloadButton",
+    actionType: "link" | "file" | "animation"
+  ) => {
+    const updated: PortalConfig = {
+      ...config,
+      [buttonKey]: {
+        ...config[buttonKey],
+        actionType,
+      },
+    };
+    await autoSaveConfig(updated);
+  };
+
   // Attach / save URL link for any button
-  const handleButtonLinkSave = (
+  const handleButtonLinkSave = async (
     buttonKey: "backButton" | "verifyAgainButton" | "downloadButton"
   ) => {
     const rawUrl = (config[buttonKey]?.url || "").trim();
@@ -561,37 +593,60 @@ export default function AdminDashboard() {
       return;
     }
 
+    // Auto-normalize URL (e.g. google.com -> https://google.com)
+    let formattedUrl = rawUrl;
+    if (
+      !formattedUrl.startsWith("http://") &&
+      !formattedUrl.startsWith("https://") &&
+      !formattedUrl.startsWith("/") &&
+      !formattedUrl.startsWith("mailto:") &&
+      !formattedUrl.startsWith("tel:")
+    ) {
+      formattedUrl = `https://${formattedUrl}`;
+    }
+
+    const updated: PortalConfig = {
+      ...config,
+      [buttonKey]: {
+        ...config[buttonKey],
+        actionType: "link",
+        url: formattedUrl,
+      },
+    };
+    await autoSaveConfig(updated);
+
     const isDriveUrl =
-      rawUrl.includes("drive.google.com") || rawUrl.includes("docs.google.com");
+      formattedUrl.includes("drive.google.com") || formattedUrl.includes("docs.google.com");
     const targetDriveUrl = isDriveUrl
-      ? rawUrl
+      ? formattedUrl
       : "https://drive.google.com/drive/folders/1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl";
 
     showToast(
       lang === "en"
-        ? `Link configured for button! Click notification to view in Google Drive.`
+        ? `Link saved & applied to main page! Click notification to view in Google Drive.`
         : lang === "ur"
-        ? `بٹن کا لنک منسلک ہو گیا! گوگل ڈرائیو میں دیکھنے کیلئے نوٹیفکیشن پر کلک کریں۔`
-        : `تم حفظ الرابط بنجاح! انقر هنا للعرض في Google Drive.`,
+        ? `لنک محفوظ ہو گیا اور مین پیج پر لاگو ہو گیا! گوگل ڈرائیو میں دیکھنے کیلئے کلک کریں۔`
+        : `تم حفظ الرابط وتطبيقه على الصفحة الرئيسية بنجاح! انقر هنا للعرض في Google Drive.`,
       "success",
       targetDriveUrl,
       lang === "en" ? "Open in Drive ↗" : lang === "ur" ? "گوگل ڈرائیو میں دیکھیں ↗" : "عرض في Drive ↗"
     );
   };
 
-  const removeFile = (buttonKey: "backButton" | "verifyAgainButton" | "downloadButton") => {
-    setConfig((prev) => ({
-      ...prev,
+  const removeFile = async (buttonKey: "backButton" | "verifyAgainButton" | "downloadButton") => {
+    const updated: PortalConfig = {
+      ...config,
       [buttonKey]: {
-        ...prev[buttonKey],
+        ...config[buttonKey],
         actionType: "link",
         fileUrl: "",
         fileName: "",
         fileSize: undefined,
       },
-    }));
+    };
+    await autoSaveConfig(updated);
     showToast(
-      lang === "en" ? "File removed" : lang === "ur" ? "فائل ہٹا دی گئی" : "تم حذف الملف",
+      lang === "en" ? "File removed from button" : lang === "ur" ? "فائل بٹن سے ہٹا دی گئی" : "تم حذف الملف من الزر",
       "info"
     );
   };
@@ -942,27 +997,28 @@ export default function AdminDashboard() {
                         )}
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             if (drivePickerTarget) {
-                              setConfig((prev) => ({
-                                ...prev,
+                              const updated: PortalConfig = {
+                                ...config,
                                 [drivePickerTarget]: {
-                                  ...prev[drivePickerTarget],
+                                  ...config[drivePickerTarget],
                                   actionType: "file",
                                   fileUrl: file.downloadUrl,
                                   fileName: file.name,
                                   fileSize: file.size ? parseInt(file.size) : undefined,
                                 },
-                              }));
+                              };
+                              await autoSaveConfig(updated);
                               setDrivePickerTarget(null);
                               const targetDriveUrl =
                                 file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
                               showToast(
                                 lang === "en"
-                                  ? `File "${file.name}" linked! Click notification to view in Google Drive.`
+                                  ? `File "${file.name}" linked & applied to main page! Click notification to view in Google Drive.`
                                   : lang === "ur"
-                                  ? `فائل "${file.name}" منسلک ہو گئی۔ گوگل ڈرائیو پر دیکھنے کیلئے کلک کریں!`
-                                  : `تم ربط "${file.name}" بنجاح! انقر هنا للعرض في Google Drive.`,
+                                  ? `فائل "${file.name}" منسلک ہو کر مین پیج پر لاگو ہو گئی! گوگل ڈرائیو کیلئے کلک کریں۔`
+                                  : `تم ربط "${file.name}" وتطبيقه على الصفحة الرئيسية بنجاح! انقر هنا للعرض في Google Drive.`,
                                 "success",
                                 targetDriveUrl,
                                 lang === "en" ? "Open in Drive ↗" : lang === "ur" ? "گوگل ڈرائیو میں دیکھیں ↗" : "عرض في Drive ↗"
@@ -1776,167 +1832,124 @@ export default function AdminDashboard() {
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 🌟 ULTRA-CLEAN MODERN STICKY HEADER                        */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4">
-          {/* Left: Brand & System Status */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            {/* Main Drawer Toggle Button */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 🌟 ULTRA-PREMIUM, BALANCED, 100% RESPONSIVE STICKY HEADER  */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-200/80 shadow-xs transition-all select-none">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-4 min-w-0">
+          {/* Left: Brand Identity & Drawer Navigation */}
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+            {/* Main Drawer Menu Toggle */}
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-95 ring-2 ring-blue-400/20"
-              title={lang === "en" ? "Open Navigation Drawer" : lang === "ur" ? "مینیو دراز کھولیں" : "فتح القائمة الجانبية (دراز)"}
+              className="h-9 sm:h-10 px-2.5 sm:px-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white flex items-center gap-2 font-black text-xs shadow-sm hover:shadow-md transition-all cursor-pointer shrink-0 active:scale-95 group ring-2 ring-blue-500/20"
+              title={lang === "en" ? "Open Navigation Menu (Escape to close)" : lang === "ur" ? "مینیو دراز کھولیں" : "فتح القائمة"}
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <span className="hidden xs:inline">
-                {lang === "en" ? "Menu (Drawer)" : lang === "ur" ? "مینیو (دراز)" : "القائمة (دراز)"}
+              <div className="w-4 h-4 flex flex-col justify-center gap-1">
+                <span className="h-0.5 w-4 bg-white rounded-full transition-all duration-300 group-hover:w-2.5" />
+                <span className="h-0.5 w-4 bg-white rounded-full" />
+                <span className="h-0.5 w-3 bg-white rounded-full transition-all duration-300 group-hover:w-4" />
+              </div>
+              <span className="hidden sm:inline">
+                {lang === "en" ? "Menu" : lang === "ur" ? "مینیو" : "القائمة"}
               </span>
             </button>
 
-            {/* Active Screen Indicator (Clickable to open Drawer) */}
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100/90 hover:bg-blue-50 hover:border-blue-300 border border-slate-200/80 text-xs font-bold text-slate-700 cursor-pointer transition-all shadow-2xs shrink-0"
-              title={lang === "en" ? "Current screen - Click to change via drawer" : lang === "ur" ? "موجودہ اسکرین - دراز کھولنے کیلئے کلک کریں" : "القسم المعروض - انقر للتغيير من القائمة"}
-            >
-              <span className="text-slate-400 font-medium">
-                {lang === "en" ? "Screen:" : lang === "ur" ? "سیکشن:" : "القسم:"}
-              </span>
-              <span className="font-black text-blue-700 flex items-center gap-1.5">
-                {activeTab === "buttons" && (
-                  <>
-                    <IconButtons className="w-4 h-4 text-blue-600" />
-                    <span>{t.tab_buttons}</span>
-                  </>
-                )}
-                {activeTab === "document" && (
-                  <>
-                    <IconDocument className="w-4 h-4 text-emerald-600" />
-                    <span>{t.tab_document}</span>
-                  </>
-                )}
-                {activeTab === "preview" && (
-                  <>
-                    <IconPreview className="w-4 h-4 text-purple-600" />
-                    <span>{t.tab_preview}</span>
-                  </>
-                )}
-                {activeTab === "footer" && (
-                  <>
-                    <IconSupport className="w-4 h-4 text-amber-600" />
-                    <span>{t.tab_footer}</span>
-                  </>
-                )}
-                {activeTab === "settings" && (
-                  <>
-                    <IconSettings className="w-4 h-4 text-indigo-600" />
-                    <span>{t.tab_settings}</span>
-                  </>
-                )}
-              </span>
-              <span className="text-[10px] text-blue-600 bg-white px-1.5 py-0.5 rounded-md border border-blue-200 shadow-2xs font-black">
-                {isRtl ? "تغيير ☰" : "Change ☰"}
-              </span>
-            </button>
-
-            {/* Logo Badge */}
-            <div className="relative group shrink-0">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm font-black text-sm sm:text-base">
+            {/* Glowing Brand Icon */}
+            <div className="relative group shrink-0 hidden xs:flex">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-slate-900 text-amber-400 flex items-center justify-center font-black text-xs sm:text-sm shadow-xs border border-slate-800 transition-transform group-hover:scale-105">
                 ⚡
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
             </div>
 
-            {/* Title & Facility Info (with smart flex truncation) */}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-xs sm:text-sm font-black text-slate-900 truncate tracking-tight">
+            {/* Portal Title & Active Section Badge */}
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight truncate min-w-0">
+                {/* On small mobile (< sm): clean concise title, on desktop: full title */}
+                <span className="sm:hidden">
+                  {lang === "en" ? "Portal Admin" : lang === "ur" ? "ایڈمن پینل" : "لوحة التحكم"}
+                </span>
+                <span className="hidden sm:inline">
                   {t.title}
-                </h1>
-                <span className="hidden lg:inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-50 text-blue-700 border border-blue-200/80 uppercase">
-                  {t.badge}
                 </span>
-              </div>
-
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 truncate font-medium">
-                <span className="font-bold text-slate-700 truncate max-w-[120px] sm:max-w-[220px]">
-                  {config.facilityName}
-                </span>
-                <span className="text-slate-300">|</span>
-                <span className="font-mono text-slate-400 truncate text-[10px]">
-                  #{config.requestNumber}
-                </span>
-              </div>
+              </h1>
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {activeTab === "buttons" && t.tab_buttons}
+                {activeTab === "document" && t.tab_document}
+                {activeTab === "preview" && t.tab_preview}
+                {activeTab === "footer" && t.tab_footer}
+                {activeTab === "settings" && t.tab_settings}
+              </span>
             </div>
           </div>
 
-          {/* Right Action Tools (Unified, consistent, non-wrapping) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Interactive Language Switcher (Segmented Pill) */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 text-xs font-bold shrink-0">
+          {/* Right: Language Switcher, Preview, and Save Actions */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Language Switcher */}
+            <div className="flex items-center bg-slate-100/90 p-0.5 sm:p-1 rounded-2xl border border-slate-200/80 text-xs font-bold shrink-0 shadow-2xs">
               <button
                 type="button"
                 onClick={() => handleLanguageChange("ar")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
+                className={`h-7 sm:h-8 px-1.5 sm:px-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs active:scale-95 ${
                   lang === "ar"
-                    ? "bg-white text-blue-700 shadow-2xs font-black"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-blue-700 shadow-xs font-black ring-1 ring-black/5"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
                 }`}
-                title="العربية"
+                title="العربية (Arabic)"
               >
                 <span>🇸🇦</span>
-                <span className="hidden md:inline">عربية</span>
+                <span className="hidden md:inline text-[11px]">عربية</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleLanguageChange("en")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
+                className={`h-7 sm:h-8 px-1.5 sm:px-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs active:scale-95 ${
                   lang === "en"
-                    ? "bg-white text-blue-700 shadow-2xs font-black"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-blue-700 shadow-xs font-black ring-1 ring-black/5"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
                 }`}
-                title="English"
+                title="English (English)"
               >
                 <span>🇬🇧</span>
-                <span className="hidden md:inline">EN</span>
+                <span className="hidden md:inline text-[11px]">EN</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleLanguageChange("ur")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
+                className={`h-7 sm:h-8 px-1.5 sm:px-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs active:scale-95 ${
                   lang === "ur"
-                    ? "bg-white text-blue-700 shadow-2xs font-black"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-blue-700 shadow-xs font-black ring-1 ring-black/5"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
                 }`}
-                title="اردو"
+                title="اردو (Urdu)"
               >
                 <span>🇵🇰</span>
-                <span className="hidden md:inline">اردو</span>
+                <span className="hidden md:inline text-[11px]">اردو</span>
               </button>
             </div>
 
-            {/* Unsaved Discard Button (Only when changes exist) */}
+            {/* Discard Unsaved Changes (Only when dirty) */}
             {hasUnsavedChanges && (
               <button
                 type="button"
                 onClick={handleDiscardChanges}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200/80 hover:border-rose-200 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                className="h-8 sm:h-9 px-2 sm:px-3 rounded-2xl text-xs font-bold text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs active:scale-95"
                 title={t.undo_changes}
               >
-                <span className="text-xs">✕</span>
+                <span className="text-xs font-black">✕</span>
                 <span className="hidden sm:inline">{t.undo_changes}</span>
               </button>
             )}
 
-            {/* Preview & Portal Link Controls (Harmonious Dual Group) */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 shrink-0">
+            {/* Preview & Portal Link Controls */}
+            <div className="flex items-center bg-slate-100/90 p-0.5 sm:p-1 rounded-2xl border border-slate-200/80 shrink-0 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setQuickPreviewOpen(true)}
-                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white transition-all cursor-pointer shadow-2xs"
+                className="h-7 sm:h-8 w-7 sm:w-8 rounded-xl text-slate-600 hover:text-blue-700 hover:bg-white transition-all cursor-pointer flex items-center justify-center active:scale-95 hover:shadow-xs"
                 title={t.quick_preview}
               >
                 <IconPreview className="w-3.5 h-3.5" />
@@ -1944,36 +1957,41 @@ export default function AdminDashboard() {
               <Link
                 href="/"
                 target="_blank"
-                className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-white transition-all cursor-pointer shadow-2xs"
+                className="h-7 sm:h-8 w-7 sm:w-8 rounded-xl text-slate-600 hover:text-blue-700 hover:bg-white transition-all cursor-pointer flex items-center justify-center active:scale-95 hover:shadow-xs group"
                 title={t.preview_btn}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </Link>
             </div>
 
-            {/* Primary Save Button */}
+            {/* Primary Save Button (100% visible on all viewports, never cut off) */}
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-black text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shrink-0 ${
+              className={`h-8 sm:h-9 md:h-10 px-2.5 sm:px-4 md:px-5 rounded-2xl text-xs font-black text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shrink-0 ${
                 hasUnsavedChanges
-                  ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/30 ring-2 ring-emerald-400/40"
+                  ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/30 ring-2 ring-emerald-400/40 animate-pulse"
                   : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/20"
               }`}
               title={t.shortcut_hint}
             >
               {saving ? (
                 <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="hidden sm:inline">{t.saving_btn}</span>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span className="hidden xs:inline">{t.saving_btn}</span>
                 </>
               ) : (
                 <>
-                  <IconCheck className="w-3.5 h-3.5" />
-                  <span>{t.save_btn}</span>
+                  <IconCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span className="sm:hidden">
+                    {lang === "en" ? "Save" : lang === "ur" ? "محفوظ" : "حفظ"}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {t.save_btn}
+                  </span>
                 </>
               )}
             </button>
@@ -1983,90 +2001,7 @@ export default function AdminDashboard() {
 
       {/* ═══════════════ MAIN CONTENT BODY ═══════════════ */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-        {/* ─── QUICK METRIC OVERVIEW CARDS (CLICKABLE JUMP) ─── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          {/* Metric 1: Facility Info */}
-          <div
-            onClick={() => setActiveTab("document")}
-            className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t.stats_document}</span>
-              <span className="text-xs text-blue-600 font-bold group-hover:translate-x-0.5 transition-transform">
-                {isRtl ? "←" : "→"}
-              </span>
-            </div>
-            <p className="text-sm font-black text-slate-900 truncate">
-              {config.facilityName}
-            </p>
-            <p className="text-xs font-mono text-slate-500 mt-0.5 truncate">
-              #{config.requestNumber}
-            </p>
-          </div>
 
-          {/* Metric 2: Button 1 Status */}
-          <div
-            onClick={() => setActiveTab("buttons")}
-            className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
-          >
-            <span className="text-xs font-bold text-slate-400 block mb-2">{t.stats_btn1}</span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              <p className="text-xs font-black text-slate-800 truncate">
-                {config.backButton.actionType === "file"
-                  ? t.status_file
-                  : config.backButton.actionType === "link"
-                  ? t.status_link
-                  : t.status_default}
-              </p>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1 truncate">
-              {config.backButton.label || "رجوع"}
-            </p>
-          </div>
-
-          {/* Metric 3: Button 2 Status */}
-          <div
-            onClick={() => setActiveTab("buttons")}
-            className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer"
-          >
-            <span className="text-xs font-bold text-slate-400 block mb-2">{t.stats_btn2}</span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-              <p className="text-xs font-black text-slate-800 truncate">
-                {config.verifyAgainButton.actionType === "file"
-                  ? t.status_file
-                  : config.verifyAgainButton.actionType === "link"
-                  ? t.status_link
-                  : t.status_animation}
-              </p>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1 truncate">
-              {config.verifyAgainButton.label || "إعادة التحقق"}
-            </p>
-          </div>
-
-          {/* Metric 4: Button 3 Status */}
-          <div
-            onClick={() => setActiveTab("buttons")}
-            className="bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 rounded-2xl border border-emerald-200 shadow-2xs hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer"
-          >
-            <span className="text-xs font-bold text-emerald-800 block mb-2">{t.stats_btn3}</span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
-              <p className="text-xs font-black text-emerald-950 truncate">
-                {config.downloadButton.actionType === "file" && config.downloadButton.fileUrl
-                  ? `${t.status_file} (${formatFileSize(config.downloadButton.fileSize)})`
-                  : config.downloadButton.url && config.downloadButton.url !== "#"
-                  ? t.status_link
-                  : t.status_default}
-              </p>
-            </div>
-            <p className="text-[11px] text-emerald-700 font-medium mt-1 truncate">
-              {config.downloadButton.fileName || config.downloadButton.label || "تحميل"}
-            </p>
-          </div>
-        </div>
 
         {/* ───────────────────────────────────────────────────────── */}
         {/* TAB 1: BUTTONS & FILES                                    */}
@@ -2117,12 +2052,7 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
-                          onClick={() =>
-                            setConfig({
-                              ...config,
-                              backButton: { ...config.backButton, actionType: "link" },
-                            })
-                          }
+                          onClick={() => updateButtonMode("backButton", "link")}
                           className={`py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                             config.backButton.actionType === "link"
                               ? "bg-blue-600 text-white shadow-xs"
@@ -2134,12 +2064,7 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setConfig({
-                              ...config,
-                              backButton: { ...config.backButton, actionType: "file" },
-                            })
-                          }
+                          onClick={() => updateButtonMode("backButton", "file")}
                           className={`py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                             config.backButton.actionType === "file"
                               ? "bg-blue-600 text-white shadow-xs"
@@ -2400,15 +2325,7 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
                           type="button"
-                          onClick={() =>
-                            setConfig({
-                              ...config,
-                              verifyAgainButton: {
-                                ...config.verifyAgainButton,
-                                actionType: "animation",
-                              },
-                            })
-                          }
+                          onClick={() => updateButtonMode("verifyAgainButton", "animation")}
                           className={`py-2 px-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                             config.verifyAgainButton.actionType === "animation"
                               ? "bg-indigo-600 text-white shadow-xs"
@@ -2419,15 +2336,7 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setConfig({
-                              ...config,
-                              verifyAgainButton: {
-                                ...config.verifyAgainButton,
-                                actionType: "link",
-                              },
-                            })
-                          }
+                          onClick={() => updateButtonMode("verifyAgainButton", "link")}
                           className={`py-2 px-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
                             config.verifyAgainButton.actionType === "link"
                               ? "bg-indigo-600 text-white shadow-xs"
@@ -2439,15 +2348,7 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setConfig({
-                              ...config,
-                              verifyAgainButton: {
-                                ...config.verifyAgainButton,
-                                actionType: "file",
-                              },
-                            })
-                          }
+                          onClick={() => updateButtonMode("verifyAgainButton", "file")}
                           className={`py-2 px-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
                             config.verifyAgainButton.actionType === "file"
                               ? "bg-indigo-600 text-white shadow-xs"
@@ -2730,15 +2631,7 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
-                          onClick={() =>
-                            setConfig({
-                              ...config,
-                              downloadButton: {
-                                ...config.downloadButton,
-                                actionType: "file",
-                              },
-                            })
-                          }
+                          onClick={() => updateButtonMode("downloadButton", "file")}
                           className={`py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                             config.downloadButton.actionType === "file"
                               ? "bg-emerald-600 text-white shadow-xs"
@@ -2750,15 +2643,7 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setConfig({
-                              ...config,
-                              downloadButton: {
-                                ...config.downloadButton,
-                                actionType: "link",
-                              },
-                            })
-                          }
+                          onClick={() => updateButtonMode("downloadButton", "link")}
                           className={`py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                             config.downloadButton.actionType === "link"
                               ? "bg-emerald-600 text-white shadow-xs"
