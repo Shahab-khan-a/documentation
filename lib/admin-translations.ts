@@ -124,6 +124,7 @@ export interface TranslationStrings {
   serial_number_hint: string;
   serial_number_required_error: string;
   unified_number_duplicate_error: string;
+  unified_number_change_required_error: string;
   firebase_records_btn: string;
   firebase_records_title: string;
   firebase_records_desc: string;
@@ -317,6 +318,7 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     record_deleted_success: "تم حذف السجل من Firebase بنجاح!",
     no_records_found: "لا توجد سجلات محفوظة حالياً في Firebase.",
     unified_number_duplicate_error: "الرقم الموحد مسجل مسبقاً في Firebase! يرجى استخدام رقم موحد آخر (الرقم التسلسلي يمكن تكراره بحرية).",
+    unified_number_change_required_error: "يجب تغيير الرقم الموحد (700) أولاً قبل حفظ التعديلات! لا يمكن حفظ التعديلات بنفس الرقم الموحد السابق.",
     search_records_placeholder: "ابحث برقم السجل، الرقم الموحد، أو اسم المنشأة...",
     chamber_name: "اسم الغرفة",
     facility_name: "اسم المنشأة الرئيسي",
@@ -494,6 +496,7 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     record_deleted_success: "Record deleted from Firebase successfully!",
     no_records_found: "No saved records found in Firebase yet.",
     unified_number_duplicate_error: "This Unified Number already exists in Firebase! Please use a different unified number (Serial number can be reused freely).",
+    unified_number_change_required_error: "You must change the Unified Number (700) before saving changes! It cannot remain the same as the previous one.",
     search_records_placeholder: "Search by serial number, unified number, or facility...",
     chamber_name: "Chamber Name (اسم الغرفة)",
     facility_name: "Facility Main Name (اسم المنشأة)",
@@ -671,6 +674,7 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     record_deleted_success: "ریکارڈ فائر بیس سے کامیابی سے ڈیلیٹ ہو گیا!",
     no_records_found: "فائر بیس میں کوئی محفوظ شدہ ریکارڈ موجود نہیں ہے۔",
     unified_number_duplicate_error: "یہ یونیفائیڈ نمبر پہلے سے Firebase میں محفوظ ہے! براہ کرم دوسرا یونیفائیڈ نمبر درج کریں (سیریل نمبر دوبارہ استعمال کیا جا سکتا ہے)۔",
+    unified_number_change_required_error: "تبدیلیاں محفوظ کرنے سے پہلے یونیفائیڈ نمبر (700) کو تبدیل کرنا لازمی ہے! پچھلے یونیفائیڈ نمبر کے ساتھ محفوظ نہیں کیا جا سکتا۔",
     search_records_placeholder: "سیریل نمبر، قومی نمبر یا ادارے کے نام سے تلاش کریں...",
     chamber_name: "چیمبر کا نام (اسم الغرفة)",
     facility_name: "ادارے کا نام (اسم المنشأة)",

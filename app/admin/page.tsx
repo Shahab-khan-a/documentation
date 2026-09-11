@@ -541,37 +541,74 @@ export default function AdminDashboard() {
     }
     setSerialError(false);
 
+    // ─── STRICT VALIDATION: UNIFIED NUMBER MUST BE CHANGED BEFORE SAVING ───
+    const initialUnified = (initialConfig.unifiedNumber || "").trim();
+
+    if (!cleanUnified) {
+      const errMsg =
+        lang === "en"
+          ? "Unified Number (700) is required!"
+          : lang === "ur"
+          ? "یونیفائیڈ نمبر (700) درج کرنا لازمی ہے!"
+          : "الرقم الموحد (700) إجباري لحفظ التعديلات!";
+      setUnifiedError(errMsg);
+      setActiveTab("document");
+      showToast(errMsg, "error");
+      setTimeout(() => {
+        const el = document.getElementById("unified-number-input");
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return;
+    }
+
+    // Must be changed from the previously loaded/initial unified number
+    if (initialUnified && cleanUnified === initialUnified) {
+      const errMsg = t.unified_number_change_required_error;
+      setUnifiedError(errMsg);
+      setActiveTab("document");
+      showToast(errMsg, "error");
+      setTimeout(() => {
+        const el = document.getElementById("unified-number-input");
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return;
+    }
+
     // ─── STRICT VALIDATION: UNIFIED NUMBER DUPLICATION IN FIREBASE ───
     // Re-using serial numbers is 100% fine.
     // Re-using an existing unified number that is already in Firebase is strictly forbidden!
-    if (cleanUnified) {
-      const existingDup = savedRecords.find(
-        (r) =>
-          (r.unifiedNumber || "").trim() === cleanUnified &&
-          r.id !== editingRecordId &&
-          r.id !== `${cleanSerial}_${cleanUnified}`
-      );
+    const existingDup = savedRecords.find(
+      (r) =>
+        (r.unifiedNumber || "").trim() === cleanUnified &&
+        r.id !== editingRecordId &&
+        r.id !== `${cleanSerial}_${cleanUnified}`
+    );
 
-      if (existingDup) {
-        const errMsg =
-          lang === "en"
-            ? `This Unified Number (${cleanUnified}) already exists in Firebase (under serial #${existingDup.serialNumber})! Please use a different unified number.`
-            : lang === "ur"
-            ? `یہ یونیفائیڈ نمبر (${cleanUnified}) پہلے سے Firebase میں محفوظ ہے (سیریل نمبر #${existingDup.serialNumber} کے تحت)! ایک ہی یونیفائیڈ نمبر دوبارہ استعمال نہیں کیا جا سکتا۔`
-            : `الرقم الموحد (${cleanUnified}) مسجل مسبقاً في Firebase (تحت السجل #${existingDup.serialNumber})! يرجى إدخال رقم موحد آخر.`;
+    if (existingDup) {
+      const errMsg =
+        lang === "en"
+          ? `This Unified Number (${cleanUnified}) already exists in Firebase (under serial #${existingDup.serialNumber})! Please use a different unified number.`
+          : lang === "ur"
+          ? `یہ یونیفائیڈ نمبر (${cleanUnified}) پہلے سے Firebase میں محفوظ ہے (سیریل نمبر #${existingDup.serialNumber} کے تحت)! ایک ہی یونیفائیڈ نمبر دوبارہ استعمال نہیں کیا جا سکتا۔`
+          : `الرقم الموحد (${cleanUnified}) مسجل مسبقاً في Firebase (تحت السجل #${existingDup.serialNumber})! يرجى إدخال رقم موحد آخر.`;
 
-        setUnifiedError(errMsg);
-        setActiveTab("document");
-        showToast(errMsg, "error");
-        setTimeout(() => {
-          const el = document.getElementById("unified-number-input");
-          if (el) {
-            el.focus();
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        }, 100);
-        return;
-      }
+      setUnifiedError(errMsg);
+      setActiveTab("document");
+      showToast(errMsg, "error");
+      setTimeout(() => {
+        const el = document.getElementById("unified-number-input");
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return;
     }
     setUnifiedError(null);
 
@@ -643,7 +680,7 @@ export default function AdminDashboard() {
     } finally {
       setSaving(false);
     }
-  }, [config, t, showToast, fetchSavedRecords, savedRecords, editingRecordId, lang]);
+  }, [config, initialConfig, t, showToast, fetchSavedRecords, savedRecords, editingRecordId, lang]);
 
   const handleDiscardChanges = () => {
     setConfig(initialConfig);
@@ -1328,8 +1365,8 @@ export default function AdminDashboard() {
             className="bg-white rounded-3xl shadow-2xl border border-rose-100 max-w-md w-full overflow-hidden p-6 animate-in fade-in zoom-in duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-xs">
-              🗑️
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-3 shadow-xs">
+              <IconTrash className="w-7 h-7 text-rose-600" />
             </div>
             <h3 className="text-center font-black text-slate-900 text-base sm:text-lg mb-1">
               {lang === "en"
@@ -3438,8 +3475,8 @@ export default function AdminDashboard() {
                     <label className="block text-xs font-bold text-slate-700">
                       {t.unified_number}
                     </label>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      {lang === "en" ? "Unique in Firebase" : lang === "ur" ? "Firebase میں منفرد" : "فريد في Firebase"}
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-700 border border-rose-200">
+                      {lang === "en" ? "Change required to save" : lang === "ur" ? "سیو کیلئے تبدیل کرنا لازمی" : "يلزم تغييره لحفظ التعديلات"}
                     </span>
                   </div>
                   <input
