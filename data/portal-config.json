@@ -1,0 +1,59 @@
+{
+  "portalTitle": "بوابة خدمات الغرفة",
+  "pageTitle": "التحقق من الوثائق",
+  "chamberName": "ينبع",
+  "facilityName": "مؤسسة العنود سلمان شوعان",
+  "facilitySubName": "القحطاني للمقاولات العامة",
+  "unifiedNumber": "7032840279",
+  "requestNumber": "13255887",
+  "requestType": "طلب مفتوح ملف",
+  "applicantName": "العنود سلمان شوعان",
+  "creationDate": "09/06/2026-",
+  "creationTime": "6:12م",
+  "amount": "35 ريال",
+  "expiryDate": "09/06/2027-",
+  "expiryTime": "6:00م",
+  "commercialRegNo": "7032840279",
+  "requestStatus": "تم قبول الطلب وساري",
+  "statusColor": "#32c5cb",
+  "customFields": [],
+  "backButton": {
+    "label": "العودة",
+    "actionType": "link",
+    "url": "#",
+    "openInNewTab": false,
+    "showLoader": false
+  },
+  "verifyAgainButton": {
+    "label": "التحقق مرة آخرى",
+    "actionType": "animation",
+    "url": "#",
+    "openInNewTab": false,
+    "showLoader": true
+  },
+  "downloadButton": {
+    "label": "تحميل",
+    "actionType": "animation",
+    "url": "#",
+    "fileUrl": "",
+    "fileName": "",
+    "openInNewTab": false,
+    "showLoader": true
+  },
+  "devLabel": "تطوير وتشغيل",
+  "companyNameAr": "عالم النظم و البرامج",
+  "companyNameEn": "World of Systems & Software",
+  "supportPhone": "00966112641362",
+  "socialLinks": {
+    "skype": "#skype",
+    "instagram": "#instagram",
+    "youtube": "#youtube",
+    "twitter": "#twitter",
+    "facebook": "#facebook"
+  },
+  "loaderGifUrl": "/loader.gif",
+  "buttonLoaderGifUrl": "/button-loader.gif",
+  "loaderDurationMs": 10000,
+  "buttonLoaderDurationMs": 4000,
+  "enableInitialLoader": false
+}

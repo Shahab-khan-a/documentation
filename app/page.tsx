@@ -1,76 +1,61 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
+import { PortalConfig } from "@/lib/portal-types";
 
-// =========================================================
-// CUSTOMIZE YOUR DATA AND BRAND HERE
-// =========================================================
-const CONFIG = {
-  portalTitle: "بوابة خدمات الغرف",
-  pageTitle: "التحقق من الوثائق",
-  backUrl: "#",
-  verifyAgainUrl: "#",
-  downloadUrl: "#",
-  chamberName: "ينبع",
-  facilityName: "مؤسسة العنود سلمان شوعان",
-  facilitySubName: "القحطاني للمقاولات العامة",
-  unifiedNumber: "7032840279",
-  requestNumber: "13255887",
-  requestType: "طلب فتح ملف",
-  applicantName: "العنود سلمان شوعان",
-  creationDate: "06/09/2026",
-  creationTime: "6:12 م",
-  amount: "35 ريال",
-  expiryDate: "06/09/2027",
-  expiryTime: "6:00 م",
-  commercialRegNo: "7032840279",
-  requestStatus: "معتمد وفعال",
-  devLabel: "تطوير وتشغيل",
-  companyNameAr: "عالم النظم و البرامج",
-  companyNameEn: "World of Systems & Software",
-  supportPhone: "00966112641362",
-  // Loader — local GIF asset for instant zero-latency loading
-  loaderGifUrl: "/loader.gif",
-  buttonLoaderGifUrl: "/button-loader.gif",
-  loaderDurationMs: 10000, // 10 seconds, matching the real site's meta-refresh
-  buttonLoaderDurationMs: 4000, // 4 seconds for button click animation
-};
-
-const SOCIAL = [
+// Social icons data ordered for RTL display (Facebook on far right, then Twitter, YouTube, Instagram, Skype)
+const SOCIAL_ICONS = [
   {
-    label: "Skype",
-    svg: <path d="M12.069 18.874c-4.023 0-5.82-1.979-5.82-3.464 0-.765.561-1.296 1.333-1.296 1.723 0 1.273 2.477 4.487 2.477 1.641 0 2.55-.895 2.55-1.811 0-.551-.269-1.16-1.354-1.429l-3.576-.895c-2.88-.724-3.403-2.286-3.403-3.751 0-3.047 2.861-4.191 5.549-4.191 2.471 0 5.393 1.373 5.393 3.199 0 .784-.688 1.24-1.453 1.24-1.469 0-1.213-2.039-4.164-2.039-1.469 0-2.292.664-2.292 1.617s1.153 1.258 2.157 1.487l2.637.587c2.891.649 3.624 2.346 3.624 3.944 0 2.476-1.902 4.325-5.668 4.325zm11.931 1.37c-.302 1.686-1.715 2.986-3.411 3.289a4.888 4.888 0 0 1-.88.08 4.79 4.79 0 0 1-2.682-.814l.004.003a8.946 8.946 0 0 1-4.892 1.454C5.374 24.256.9 19.692.9 14.024c0-1.861.517-3.57 1.376-5.079A5.11 5.11 0 0 1 2.1 7.9 4.963 4.963 0 0 1 2 6.744a5.001 5.001 0 0 1 5-4.999c.637 0 1.244.124 1.803.334A9.026 9.026 0 0 1 14 .256c4.939 0 8.941 3.999 8.941 8.933 0 .568-.053 1.123-.153 1.66.328.675.513 1.433.513 2.235a4.956 4.956 0 0 1-.301 1.716v-.004z" />,
-  },
-  {
-    label: "Instagram",
-    svg: <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />,
-  },
-  {
-    label: "YouTube",
-    svg: <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z" />,
-  },
-  {
-    label: "Twitter",
-    svg: <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />,
-  },
-  {
+    key: "facebook",
     label: "Facebook",
-    svg: <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />,
+    svg: (
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    ),
+  },
+  {
+    key: "twitter",
+    label: "Twitter",
+    svg: (
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    ),
+  },
+  {
+    key: "youtube",
+    label: "YouTube",
+    svg: (
+      <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z" />
+    ),
+  },
+  {
+    key: "instagram",
+    label: "Instagram",
+    svg: (
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+    ),
+  },
+  {
+    key: "skype",
+    label: "Skype",
+    svg: (
+      <path d="M12.069 18.874c-4.023 0-5.82-1.979-5.82-3.464 0-.765.561-1.296 1.333-1.296 1.723 0 1.273 2.477 4.487 2.477 1.641 0 2.55-.895 2.55-1.811 0-.551-.269-1.16-1.354-1.429l-3.576-.895c-2.88-.724-3.403-2.286-3.403-3.751 0-3.047 2.861-4.191 5.549-4.191 2.471 0 5.393 1.373 5.393 3.199 0 .784-.688 1.24-1.453 1.24-1.469 0-1.213-2.039-4.164-2.039-1.469 0-2.292.664-2.292 1.617s1.153 1.258 2.157 1.487l2.637.587c2.891.649 3.624 2.346 3.624 3.944 0 2.476-1.902 4.325-5.668 4.325zm11.931 1.37c-.302 1.686-1.715 2.986-3.411 3.289a4.888 4.888 0 0 1-.88.08 4.79 4.79 0 0 1-2.682-.814l.004.003a8.946 8.946 0 0 1-4.892 1.454C5.374 24.256.9 19.692.9 14.024c0-1.861.517-3.57 1.376-5.079A5.11 5.11 0 0 1 2.1 7.9 4.963 4.963 0 0 1 2 6.744a5.001 5.001 0 0 1 5-4.999c.637 0 1.244.124 1.803.334A9.026 9.026 0 0 1 14 .256c4.939 0 8.941 3.999 8.941 8.933 0 .568-.053 1.123-.153 1.66.328.675.513 1.433.513 2.235a4.956 4.956 0 0 1-.301 1.716v-.004z" />
+    ),
   },
 ];
 
 // ─────────────────────────────────────────────────────────
-//  LOADER SCREEN  (exact replica of the real site's flow)
+//  LOADER SCREEN (Full screen animation)
 // ─────────────────────────────────────────────────────────
 function LoaderScreen({
   onDone,
   durationMs,
-  gifUrl = CONFIG.loaderGifUrl,
+  gifUrl,
   restartKey,
 }: {
   onDone: () => void;
   durationMs: number;
-  gifUrl?: string;
+  gifUrl: string;
   restartKey?: number | string;
 }) {
   const [fadeOut, setFadeOut] = useState(false);
@@ -113,17 +98,16 @@ function LoaderScreen({
         fontFamily: "'Cairo','Segoe UI',Arial,sans-serif",
       }}
     >
-      {/* The exact GIF used by the real site — fills full screen height */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         key={gifSrc}
         src={gifSrc}
-        alt="بوابة خدمات الغرف"
+        alt="بوابة خدمات الغرفة"
         loading="eager"
         decoding="sync"
         onError={(e) => {
-          // Fallback if local file fails
-          e.currentTarget.src = "https://lottie.host/73358927-6e0d-453a-9a9f-e0607ae61ad8/9sISJeaK1n.gif";
+          e.currentTarget.src =
+            "https://lottie.host/73358927-6e0d-453a-9a9f-e0607ae61ad8/9sISJeaK1n.gif";
         }}
         style={{ width: "100%", height: "100vh", objectFit: "contain" }}
       />
@@ -132,214 +116,751 @@ function LoaderScreen({
 }
 
 // ─────────────────────────────────────────────────────────
-//  VERIFICATION RESULTS PAGE
+//  QUICK EDIT MODAL ON MAIN PAGE
 // ─────────────────────────────────────────────────────────
-function ResultsPage({
-  revealed,
-  onDownload,
-  onVerifyAgain,
+function QuickEditModal({
+  config,
+  isOpen,
+  onClose,
+  onSave,
 }: {
-  revealed: boolean;
-  onDownload: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  onVerifyAgain: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  config: PortalConfig;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (newConfig: PortalConfig) => Promise<void>;
 }) {
-  const d = CONFIG;
+  const [formData, setFormData] = useState<PortalConfig>(config);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setFormData(config);
+  }, [config]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    await onSave(formData);
+    setSaving(false);
+    onClose();
+  };
 
   return (
     <div
+      className="fixed inset-0 z-99999 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
       dir="rtl"
-      className="min-h-screen bg-white text-[#212529]"
-      style={{
-        fontFamily: "'Cairo','Segoe UI',Arial,sans-serif",
-        transition: "opacity 0.6s ease, transform 0.6s ease",
-        opacity: revealed ? 1 : 0,
-        transform: revealed ? "translateY(0)" : "translateY(10px)",
-        pointerEvents: revealed ? "auto" : "none",
-      }}
     >
-      {/* ══════════════════ HEADER ══════════════════ */}
-      <header className="w-full bg-white border-b border-gray-100 relative overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            opacity: 0.06,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M40 5 L75 40 L40 75 L5 40 Z' stroke='%23555' stroke-width='1.5' fill='none'/%3E%3Cpath d='M40 20 L60 40 L40 60 L20 40 Z' stroke='%23555' stroke-width='1.5' fill='none'/%3E%3Cpath d='M5 40 L75 40 M40 5 L40 75 M17 17 L63 63 M63 17 L17 63' stroke='%23555' stroke-width='0.8' fill='none'/%3E%3C/svg%3E")`,
-            backgroundSize: "80px 80px",
-          }}
-        />
-        <div className="max-w-4xl mx-auto px-6 py-5 flex items-center gap-3 relative z-10">
-          <div className="w-[52px] h-[52px] shrink-0 flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/chamber-logo.png"
-              alt="شعار بوابة خدمات الغرف"
-              width={52}
-              height={52}
-              className="w-full h-full object-contain select-none"
-            />
+      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">✏️</span>
+            <div>
+              <h3 className="font-bold text-base">تعديل بيانات الصفحة السريع</h3>
+              <p className="text-xs text-slate-400">
+                يمكنك أيضاً الدخول للوحة التحكم الكاملة عبر كتابة /admin في الرابط
+              </p>
+            </div>
           </div>
-          <span className="font-bold text-[20px]" style={{ color: "#1a3a5c" }}>
-            {d.portalTitle}
-          </span>
-        </div>
-      </header>
-
-      {/* ══════════════════ MAIN ══════════════════ */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-8">
-        {/* Title bar */}
-        <div className="flex items-center justify-between pt-6 pb-3">
-          <div className="flex items-center gap-1.5">
-            <span style={{ display: "inline-block", width: "4px", height: "28px", backgroundColor: "#2878c8", borderRadius: "2px" }} />
-            <h1 className="font-bold m-0" style={{ color: "#1c2833", fontSize: "20px" }}>{d.pageTitle}</h1>
-          </div>
-          <a href={d.backUrl} className="inline-block text-white font-bold text-[14px] rounded px-6 py-[5px] no-underline hover:brightness-110 active:scale-95 transition-all" style={{ backgroundColor: "rgb(110,168,254)", border: "3px solid rgb(110,168,254)" }}>
-            رجوع
-          </a>
-        </div>
-
-        <hr style={{ borderColor: "#d5d5d5", borderTopWidth: "1px", margin: 0 }} />
-
-        {/* Intro text */}
-        <div className="text-center py-5" style={{ color: "#3c4a55", fontSize: "14px", lineHeight: 1.9 }}>
-          <p className="m-0">خدمة تتيح التحقق من الوثائق التي تم تصديقها</p>
-          <p className="m-0">إلكترونياً من خلال بوابة الخدمات الإلكترونية للغرفة وللتحقق</p>
-          <p className="m-0">من شهادة الإشتراك يرجى إدخال الرقم المرجعي</p>
-          <p className="m-0">الخاص بالوثيقة</p>
-        </div>
-
-        <hr style={{ borderColor: "#d5d5d5", borderTopWidth: "1px", margin: 0 }} />
-
-        {/* Data fields */}
-        <div className="text-center py-6 mx-auto" style={{ maxWidth: "600px", color: "#212529", lineHeight: 2.0 }}>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>اسم الغرفة : </strong><span>{d.chamberName}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>اسم المنشأة : </strong><span>{d.facilityName}</span></p>
-          {d.facilitySubName && <p className="m-0" style={{ fontSize: "14.5px" }}><span>{d.facilitySubName}</span></p>}
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>الرقم الموحد (700) : </strong><span style={{ fontFamily: "monospace" }}>{d.unifiedNumber}</span></p>
-          <p className="m-0" style={{ fontSize: "16px" }}><strong>رقم الطلب : </strong><span style={{ fontFamily: "monospace" }}>{d.requestNumber}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>نوع الطلب : </strong><span>{d.requestType}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>اسم مقدم الطلب : </strong><span>{d.applicantName}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>تاريخ ووقت الإنشاء : </strong><span style={{ fontFamily: "monospace" }}>{d.creationDate}</span></p>
-          <p className="m-0" style={{ fontSize: "13.5px", color: "#4b5563" }}>{d.creationTime}</p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>مبلغ الطلب : </strong><span>{d.amount}</span></p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>تاريخ الصلاحية : </strong><span style={{ fontFamily: "monospace" }}>{d.expiryDate}</span></p>
-          <p className="m-0" style={{ fontSize: "13.5px", color: "#4b5563" }}>{d.expiryTime}</p>
-          <p className="m-0" style={{ fontSize: "14.5px" }}><strong>رقم السجل التجاري : </strong><span style={{ fontFamily: "monospace" }}>{d.commercialRegNo}</span></p>
-          <p className="m-0 pt-2" style={{ fontSize: "15px" }}>
-            <strong>حالة الطلب : </strong>
-            <strong style={{ color: "rgb(85,219,221)" }}>{d.requestStatus}</strong>
-          </p>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex items-center justify-center gap-4 pb-10 pt-2">
           <button
             type="button"
-            onClick={onVerifyAgain}
-            className="inline-block text-white font-bold text-[14px] rounded px-6 py-[5px] cursor-pointer hover:brightness-110 active:scale-95 transition-all"
-            style={{ backgroundColor: "rgb(110,168,254)", border: "3px solid rgb(110,168,254)" }}
+            onClick={onClose}
+            className="text-slate-400 hover:text-white text-lg font-bold p-1 cursor-pointer"
           >
-            إعادة التحقق
-          </button>
-          <button
-            type="button"
-            onClick={onDownload}
-            className="inline-block text-white font-bold text-[14px] rounded px-8 py-[5px] cursor-pointer hover:brightness-110 active:scale-95 transition-all"
-            style={{ backgroundColor: "rgb(110,168,254)", border: "3px solid rgb(110,168,254)" }}
-          >
-            تحميل
+            ✕
           </button>
         </div>
 
-        <hr style={{ borderColor: "#d5d5d5", borderTopWidth: "1px" }} />
-      </main>
-
-      {/* ══════════════════ FOOTER BLUE BANNER ══════════════════ */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-8 pb-12 pt-6">
-        <div
-          className="relative overflow-hidden rounded-xl"
-          style={{ background: "linear-gradient(180deg,#4a9de8 0%,#2e7fd4 35%,#2269c0 70%,#1a54a8 100%)", color: "white" }}
-        >
-          {/* City skyline backdrop */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              opacity: 0.18,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1400 500'%3E%3Cpath fill='%23ffffff' d='M0,500 L0,310 L25,310 L25,280 L45,280 L45,310 L70,310 L70,260 L85,260 L85,240 L110,240 L110,210 L140,210 L140,280 L160,280 L160,240 L175,240 L175,210 L200,210 L200,500 L225,500 L225,250 L245,250 L245,220 L265,220 L265,180 L310,180 L310,220 L340,220 L340,250 L360,250 L360,500 L390,500 L390,200 L415,200 L415,170 L440,170 L440,140 L490,140 L490,170 L510,170 L510,200 L530,200 L530,500 L560,500 L560,260 L580,260 L580,230 L605,230 L605,500 L630,500 L630,210 L655,210 L655,180 L680,180 L680,150 L720,150 L720,180 L745,180 L745,210 L770,210 L770,500 L800,500 L800,270 L820,270 L820,245 L845,245 L845,500 L875,500 L875,190 L900,190 L900,160 L925,160 L925,130 L975,130 L975,160 L1000,160 L1000,190 L1020,190 L1020,500 L1050,500 L1050,250 L1070,250 L1070,220 L1095,220 L1095,500 L1120,500 L1120,200 L1145,200 L1145,170 L1170,170 L1170,200 L1200,200 L1200,240 L1225,240 L1225,500 L1260,500 L1260,220 L1285,220 L1285,500 L1310,500 L1310,260 L1340,260 L1340,300 L1370,300 L1370,500 L1400,500 Z'/%3E%3C/svg%3E")`,
-              backgroundPosition: "bottom center",
-              backgroundRepeat: "no-repeat",
-              backgroundSize: "100% 100%",
-            }}
-          />
-
-          <div className="relative z-10 px-7 pt-6 pb-5">
-            {/* Row 1: dev label */}
-            <div className="flex justify-start mb-1">
-              <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.85)", fontWeight: 400 }}>{d.devLabel}</span>
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">اسم الغرفة</label>
+              <input
+                type="text"
+                value={formData.chamberName}
+                onChange={(e) => setFormData({ ...formData, chamberName: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+              />
             </div>
-
-            {/* Row 2: Company + hatched logo */}
-            <div className="flex items-center justify-start gap-3 mb-5">
-              <div className="text-right leading-snug">
-                <div style={{ fontSize: "19px", fontWeight: 700, color: "white" }}>{d.companyNameAr}</div>
-                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", fontWeight: 400 }}>{d.companyNameEn}</div>
-              </div>
-              <div style={{ width: "56px", height: "56px", border: "2.5px solid rgba(255,255,255,0.7)", borderRadius: "4px", overflow: "hidden", flexShrink: 0, background: "rgba(255,255,255,0.05)" }}>
-                <svg viewBox="0 0 56 56" className="w-full h-full">
-                  {[-24,-16,-8,0,8,16,24,32,40,48,56,64,72,80].map((o,i) => (
-                    <line key={i} x1={o} y1="0" x2={o+56} y2="56" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                  ))}
-                </svg>
-              </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">اسم المنشأة</label>
+              <input
+                type="text"
+                value={formData.facilityName}
+                onChange={(e) => setFormData({ ...formData, facilityName: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+              />
             </div>
-
-            {/* Row 3: Support + phone + white oval */}
-            <div className="flex justify-start mb-5">
-              <div className="flex flex-col items-start gap-1">
-                <span style={{ fontSize: "15px", fontWeight: 500, color: "white" }}>للاستفسارات والدعم الفني</span>
-                <a href={`tel:${d.supportPhone}`} dir="ltr" className="no-underline hover:underline" style={{ fontSize: "24px", fontWeight: 700, color: "white", fontFamily: "monospace", letterSpacing: "0.5px" }}>{d.supportPhone}</a>
-                <div style={{ width: "64px", height: "22px", background: "rgba(255,255,255,0.92)", borderRadius: "30px", marginTop: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.18)" }} />
-              </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">الاسم الفرعي</label>
+              <input
+                type="text"
+                value={formData.facilitySubName || ""}
+                onChange={(e) => setFormData({ ...formData, facilitySubName: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+              />
             </div>
-
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.2)", marginBottom: "16px" }} />
-
-            {/* Row 4: SSL + Social */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col items-center gap-0.5">
-                <div style={{ width: "46px", height: "52px" }}>
-                  <svg viewBox="0 0 46 52" className="w-full h-full">
-                    <path d="M23 2 L42 10 L42 28 C42 39 33 47 23 50 C13 47 4 39 4 28 L4 10 Z" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" />
-                    <text x="23" y="27" textAnchor="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="Arial,sans-serif" letterSpacing="0.5">SSL</text>
-                  </svg>
-                </div>
-                <span style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "1.5px", textTransform: "uppercase" }}>SECURED</span>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                {SOCIAL.map(({ label, svg }) => (
-                  <a key={label} href={`#${label.toLowerCase()}`} aria-label={label} className="no-underline transition-transform hover:scale-110" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "38px", height: "38px", borderRadius: "50%", background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.3)" }}>
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="white">{svg}</svg>
-                  </a>
-                ))}
-              </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">الرقم الموحد (700)</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={formData.unifiedNumber}
+                onChange={(e) => setFormData({ ...formData, unifiedNumber: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
+              />
             </div>
-
-            <div className="text-center mt-4" style={{ fontSize: "13px", color: "rgba(255,255,255,0.75)" }}>
-              يرجى استخدام متصفح جوجل كروم
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">رقم الطلب</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={formData.requestNumber}
+                onChange={(e) => setFormData({ ...formData, requestNumber: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">نوع الطلب</label>
+              <input
+                type="text"
+                value={formData.requestType}
+                onChange={(e) => setFormData({ ...formData, requestType: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">اسم مقدم الطلب</label>
+              <input
+                type="text"
+                value={formData.applicantName}
+                onChange={(e) => setFormData({ ...formData, applicantName: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">مبلغ الطلب</label>
+              <input
+                type="text"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">تاريخ الإنشاء</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={formData.creationDate}
+                onChange={(e) => setFormData({ ...formData, creationDate: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">وقت الإنشاء</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={formData.creationTime}
+                onChange={(e) => setFormData({ ...formData, creationTime: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">تاريخ الصلاحية</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={formData.expiryDate}
+                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">وقت الصلاحية</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={formData.expiryTime}
+                onChange={(e) => setFormData({ ...formData, expiryTime: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">حالة الطلب</label>
+              <input
+                type="text"
+                value={formData.requestStatus}
+                onChange={(e) => setFormData({ ...formData, requestStatus: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">رقم السجل التجاري</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={formData.commercialRegNo}
+                onChange={(e) => setFormData({ ...formData, commercialRegNo: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
+              />
             </div>
           </div>
-        </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <Link
+              href="/admin"
+              className="text-blue-600 hover:text-blue-800 text-xs font-bold underline"
+            >
+              الانتقال إلى لوحة التحكم المتقدمة /admin ↗
+            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-//  ROOT  — loader overlays the pre-rendered results page
+//  VERIFICATION RESULTS PAGE
+// ─────────────────────────────────────────────────────────
+function ResultsPage({
+  config,
+  revealed,
+  onDownload,
+  onVerifyAgain,
+  onBack,
+  onOpenQuickEdit,
+}: {
+  config: PortalConfig;
+  revealed: boolean;
+  onDownload: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onVerifyAgain: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onBack: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  onOpenQuickEdit: () => void;
+}) {
+  const d = config;
+
+  return (
+    <div
+      dir="rtl"
+      className="min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
+      style={{
+        fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
+        opacity: revealed ? 1 : 0,
+        pointerEvents: revealed ? "auto" : "none",
+        transition: "opacity 0.25s ease",
+      }}
+    >
+      {/* Hidden floating edit button for admin convenience (Ctrl+E or hover) */}
+      <button
+        type="button"
+        onClick={onOpenQuickEdit}
+        title="تعديل الصفحة (Ctrl+E)"
+        className="fixed bottom-6 right-6 z-40 bg-slate-900/70 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center gap-1.5 transition-all opacity-20 hover:opacity-100 cursor-pointer"
+      >
+        <span>✏️</span>
+        <span className="hidden sm:inline">تعديل</span>
+      </button>
+
+      {/* ══════════════════ HEADER ══════════════════ */}
+      <header className="w-full bg-white relative overflow-hidden">
+        {/* Subtle Islamic geometric star pattern backdrop */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            opacity: 0.05,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z' fill='none' stroke='%23333' stroke-width='1'/%3E%3Cpath d='M30 15 L45 30 L30 45 L15 30 Z' fill='none' stroke='%23333' stroke-width='1'/%3E%3Cpath d='M0 0 L60 60 M60 0 L0 60' fill='none' stroke='%23333' stroke-width='0.6'/%3E%3C/svg%3E")`,
+            backgroundSize: "60px 60px",
+          }}
+        />
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-start gap-2 relative z-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/chamber-logo.png"
+            alt="شعار بوابة خدمات الغرفة"
+            width={36}
+            height={40}
+            className="w-[34px] h-[38px] object-contain select-none"
+          />
+          <span
+            className="font-bold text-[17px] sm:text-[18px] tracking-tight"
+            style={{ color: "#136d93" }}
+          >
+            {d.portalTitle || "بوابة خدمات الغرفة"}
+          </span>
+        </div>
+        <hr className="border-t border-slate-200 m-0" />
+      </header>
+
+      {/* ══════════════════ MAIN CONTENT ══════════════════ */}
+      <main className="max-w-md mx-auto px-4">
+        {/* Title bar: Right has blue accent bar + title; Left has button العودة */}
+        <div className="flex items-center justify-between pt-3.5 pb-2.5">
+          {/* Right: Vertical accent bar + Page Title */}
+          <div className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-[3.5px] h-[22px] rounded-xs"
+              style={{ backgroundColor: "#1e72b8" }}
+            />
+            <h1 className="font-bold text-[17px] sm:text-[19px] text-[#192532] m-0">
+              {d.pageTitle || "التحقق من الوثائق"}
+            </h1>
+          </div>
+
+          {/* Left: Button العودة */}
+          <a
+            href={
+              d.backButton.actionType === "file" && d.backButton.fileUrl
+                ? d.backButton.fileUrl
+                : d.backButton.url || "#"
+            }
+            target={d.backButton.openInNewTab ? "_blank" : undefined}
+            rel={d.backButton.openInNewTab ? "noreferrer" : undefined}
+            onClick={onBack}
+            className="inline-flex items-center justify-center text-white font-bold text-[13px] rounded-md px-4 py-1.5 no-underline hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
+            style={{
+              backgroundColor: "#5c9df6",
+            }}
+          >
+            {d.backButton.label || "العودة"}
+          </a>
+        </div>
+
+        <hr className="border-t border-slate-200 m-0" />
+
+        {/* Intro text: Aligned to start (right in RTL), matching the rest of the text */}
+        <div
+          className="max-w-[325px] sm:max-w-[360px] mx-auto py-3.5 text-right text-[12.5px] sm:text-[13px] leading-relaxed text-[#475569]"
+        >
+          <p className="m-0">خدمة تتيح التحقق من الوثائق التي تم تصديقها</p>
+          <p className="m-0">إلكترونياً عبر بوابة خدمات ركين وللتحقق من</p>
+          <p className="m-0">شهادة الاشتراك الرجاء ادخال الرقم المرجعي الخاص</p>
+          <p className="m-0">بالوثيقة.</p>
+        </div>
+
+        <hr className="border-t border-slate-200 m-0" />
+
+        {/* Data fields: Perfectly aligned from line start on the right */}
+        <div className="max-w-[325px] sm:max-w-[360px] mx-auto py-4 text-right space-y-1 text-[13px] sm:text-[13.5px] leading-relaxed">
+          {/* 1. إسم الغرفة */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-[#14202c] shrink-0">إسم الغرفة</span>
+            <span className="text-[#41515e]">{d.chamberName}</span>
+          </div>
+
+          {/* 2. إسم المنشأة */}
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-bold text-[#14202c] shrink-0">إسم المنشأة</span>
+              <span className="text-[#41515e]">{d.facilityName}</span>
+            </div>
+            {d.facilitySubName && (
+              <div className="text-[#41515e] text-[12px] sm:text-[12.5px] text-right">
+                {d.facilitySubName}
+              </div>
+            )}
+          </div>
+
+          {/* 3. الرقم الموحد (700) */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-[#14202c] shrink-0">الرقم الموحد (700)</span>
+            <span className="text-[#41515e] font-sans" dir="ltr">{d.unifiedNumber}</span>
+          </div>
+
+          {/* 4. رقم الطلب */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-[#14202c] shrink-0">رقم الطلب</span>
+            <span className="text-[#41515e] font-sans" dir="ltr">{d.requestNumber}</span>
+          </div>
+
+          {/* 5. نوع الطلب */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-[#14202c] shrink-0">نوع الطلب</span>
+            <span className="text-[#41515e]">{d.requestType}</span>
+          </div>
+
+          {/* 6. إسم مقدم الطلب */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-[#14202c] shrink-0">إسم مقدم الطلب</span>
+            <span className="text-[#41515e]">{d.applicantName}</span>
+          </div>
+
+          {/* 7. تاريخ ووقت إنشاء الطلب */}
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-bold text-[#14202c] shrink-0">تاريخ ووقت إنشاء الطلب</span>
+              <span className="text-[#41515e]" dir="ltr">{d.creationDate}</span>
+            </div>
+            <div className="text-[#41515e] text-[11.5px] sm:text-[12px] text-right" dir="rtl">
+              {d.creationTime}
+            </div>
+          </div>
+
+          {/* 8. مبلغ الطلب */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-[#14202c] shrink-0">مبلغ الطلب</span>
+            <span className="text-[#41515e]">{d.amount}</span>
+          </div>
+
+          {/* 9. تاريخ صلاحية الطلب */}
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-bold text-[#14202c] shrink-0">تاريخ صلاحية الطلب</span>
+              <span className="text-[#41515e]" dir="ltr">{d.expiryDate}</span>
+            </div>
+            <div className="text-[#41515e] text-[11.5px] sm:text-[12px] text-right" dir="rtl">
+              {d.expiryTime}
+            </div>
+          </div>
+
+          {/* 10. رقم السجل التجاري */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-[#14202c] shrink-0">رقم السجل التجاري</span>
+            <span className="text-[#41515e] font-sans" dir="ltr">{d.commercialRegNo}</span>
+          </div>
+
+          {/* 11. حالة الطلب */}
+          <div className="flex items-baseline gap-1.5 pt-0.5">
+            <span className="font-bold text-[#14202c] shrink-0">حالة الطلب</span>
+            <span className="font-bold" style={{ color: d.statusColor || "#32c5cb" }}>
+              {d.requestStatus}
+            </span>
+          </div>
+
+          {/* Dynamic custom fields if any */}
+          {d.customFields && d.customFields.length > 0 && d.customFields.map((f) => (
+            <div key={f.id} className="flex items-baseline gap-1.5">
+              <span className="font-bold text-[#14202c] shrink-0">{f.label}</span>
+              <span className="text-[#41515e]">{f.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Action buttons (Buttons 2 & 3) */}
+        {/* In RTL: First child in DOM is rendered on the RIGHT, second child on the LEFT */}
+        <div className="flex items-center justify-center gap-3 pt-1 pb-5">
+          {/* Right button in RTL: تحميل */}
+          <button
+            type="button"
+            onClick={onDownload}
+            className="inline-flex items-center justify-center text-white font-bold text-[13px] rounded-md px-7 py-2 cursor-pointer hover:opacity-90 active:scale-95 transition-all shadow-xs"
+            style={{
+              backgroundColor: "#5c9df6",
+            }}
+          >
+            {d.downloadButton.label || "تحميل"}
+          </button>
+
+          {/* Left button in RTL: التحقق مرة آخرى */}
+          <button
+            type="button"
+            onClick={onVerifyAgain}
+            className="inline-flex items-center justify-center text-white font-bold text-[13px] rounded-md px-5 py-2 cursor-pointer hover:opacity-90 active:scale-95 transition-all shadow-xs"
+            style={{
+              backgroundColor: "#5c9df6",
+            }}
+          >
+            {d.verifyAgainButton.label || "التحقق مرة آخرى"}
+          </button>
+        </div>
+
+        <hr className="border-t border-slate-200 m-0" />
+      </main>
+
+      {/* ══════════════════ FOOTER BLUE BANNER ══════════════════ */}
+      <div className="max-w-md mx-auto px-4 pt-4 pb-8">
+        <div
+          className="relative overflow-hidden rounded-xl shadow-md"
+          style={{
+            backgroundImage: `linear-gradient(180deg, rgba(62, 142, 235, 0.90) 0%, rgba(38, 114, 210, 0.92) 45%, rgba(22, 85, 180, 0.95) 100%), url(/footer-bg.jpg)`,
+            backgroundSize: "cover",
+            backgroundPosition: "bottom center",
+            color: "white",
+          }}
+        >
+          <div className="relative z-10 px-5 pt-4 pb-4">
+            {/* Row 1: dev label */}
+            <div className="flex justify-start mb-0.5">
+              <span
+                style={{
+                  fontSize: "11.5px",
+                  color: "rgba(255,255,255,0.85)",
+                  fontWeight: 400,
+                }}
+              >
+                {d.devLabel || "تطوير وتشغيل"}
+              </span>
+            </div>
+
+            {/* Row 2: Striped logo on right, Company Name on left */}
+            <div className="flex items-center justify-start gap-2.5 mb-3.5">
+              <div
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  border: "2px solid rgba(255,255,255,0.75)",
+                  borderRadius: "5px",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  background: "rgba(255,255,255,0.06)",
+                }}
+              >
+                <svg viewBox="0 0 56 56" className="w-full h-full">
+                  {[-24, -16, -8, 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80].map((o, i) => (
+                    <line
+                      key={i}
+                      x1={o}
+                      y1="0"
+                      x2={o + 56}
+                      y2="56"
+                      stroke="white"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                  ))}
+                </svg>
+              </div>
+
+              <div className="text-right leading-tight">
+                <div style={{ fontSize: "15px", fontWeight: 700, color: "white" }}>
+                  {d.companyNameAr || "عالم النظم و البرامج"}
+                </div>
+                <div
+                  style={{
+                    fontSize: "10.5px",
+                    color: "rgba(255,255,255,0.8)",
+                    fontWeight: 400,
+                  }}
+                >
+                  {d.companyNameEn || "World of Systems & Software"}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3: Support + phone + white pill */}
+            <div className="flex justify-start mb-3">
+              <div className="flex flex-col items-start gap-0.5">
+                <span style={{ fontSize: "12px", fontWeight: 500, color: "white" }}>
+                  للإستفسار والدعم الفني
+                </span>
+                <a
+                  href={`tel:${d.supportPhone}`}
+                  dir="ltr"
+                  className="no-underline hover:underline"
+                  style={{
+                    fontSize: "17px",
+                    fontWeight: 700,
+                    color: "white",
+                    fontFamily: "monospace",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {d.supportPhone}
+                </a>
+                <div
+                  style={{
+                    width: "52px",
+                    height: "18px",
+                    background: "rgba(255,255,255,0.95)",
+                    borderRadius: "20px",
+                    marginTop: "2px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  }}
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                borderTop: "1px solid rgba(255,255,255,0.22)",
+                marginBottom: "12px",
+              }}
+            />
+
+            {/* Row 4: SSL badge on the left, Social Icons on the right */}
+            {/* In RTL: Child 1 (Social) is on the RIGHT; Child 2 (SSL) is on the LEFT */}
+            <div className="flex items-center justify-between">
+              {/* Social icons on the right */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {SOCIAL_ICONS.map(({ key, label, svg }) => {
+                  const href =
+                    (d.socialLinks as Record<string, string | undefined>)[key] ||
+                    `#${label.toLowerCase()}`;
+                  return (
+                    <a
+                      key={label}
+                      href={href}
+                      target={href.startsWith("http") ? "_blank" : undefined}
+                      rel={href.startsWith("http") ? "noreferrer" : undefined}
+                      aria-label={label}
+                      className="no-underline transition-transform hover:scale-110"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.18)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="white">
+                        {svg}
+                      </svg>
+                    </a>
+                  );
+                })}
+              </div>
+
+              {/* SSL Secured Badge on the left */}
+              <div className="flex flex-col items-center gap-0.5">
+                <div style={{ width: "34px", height: "38px" }}>
+                  <svg viewBox="0 0 46 52" className="w-full h-full">
+                    <path
+                      d="M23 2 L42 10 L42 28 C42 39 33 47 23 50 C13 47 4 39 4 28 L4 10 Z"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.9)"
+                      strokeWidth="2.5"
+                    />
+                    <text
+                      x="23"
+                      y="27"
+                      textAnchor="middle"
+                      fill="white"
+                      fontSize="11"
+                      fontWeight="800"
+                      fontFamily="Arial,sans-serif"
+                      letterSpacing="0.5"
+                    >
+                      SSL
+                    </text>
+                  </svg>
+                </div>
+                <span
+                  style={{
+                    fontSize: "7.5px",
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.9)",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  SECURED
+                </span>
+              </div>
+            </div>
+
+            {/* Row 5: Browser recommendation */}
+            <div
+              className="text-center mt-3"
+              style={{ fontSize: "11.5px", color: "rgba(255,255,255,0.85)" }}
+            >
+              يفضل استخدام متصفح جوجل كروم
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating badge on bottom left as in screenshot */}
+      <div
+        className="fixed bottom-3 left-3 z-30 w-7 h-7 rounded-full bg-[#18181b] text-white flex items-center justify-center text-[11px] font-bold shadow-lg select-none"
+        title="Next"
+      >
+        N
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+//  MAIN ROOT COMPONENT
 // ─────────────────────────────────────────────────────────
 export default function DocumentVerificationPage() {
-  const [loaded, setLoaded] = useState(false);
+  const [config, setConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
+  const [loaded, setLoaded] = useState(true);
   const [buttonLoaderKey, setButtonLoaderKey] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [quickEditOpen, setQuickEditOpen] = useState(false);
+
+  // Hidden download trigger helper
+  const triggerDownload = (fileUrl: string, fileName?: string) => {
+    const a = document.createElement("a");
+    a.href = fileUrl;
+    a.download = fileName || "document.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // 1. Fetch live config from server or localStorage cache
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("portal_config_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        setConfig(parsed);
+        if (parsed.enableInitialLoader) {
+          setLoaded(false);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    async function fetchLiveConfig() {
+      try {
+        const res = await fetch("/api/config", { cache: "no-store" });
+        if (res.ok) {
+          const data: PortalConfig = await res.json();
+          setConfig(data);
+          try {
+            localStorage.setItem("portal_config_cache", JSON.stringify(data));
+          } catch {
+            // ignore
+          }
+          if (data.enableInitialLoader) {
+            setLoaded(false);
+          } else {
+            setLoaded(true);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching live config:", err);
+      }
+    }
+    fetchLiveConfig();
+  }, []);
+
+  // Handle keyboard shortcut (Ctrl+E or Cmd+E) to toggle quick edit
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        setQuickEditOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleLoaderDone = useCallback(() => {
     setLoaded(true);
@@ -347,41 +868,150 @@ export default function DocumentVerificationPage() {
 
   const handleButtonLoaderDone = useCallback(() => {
     setButtonLoaderKey(null);
-  }, []);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  }, [pendingAction]);
 
-  const triggerButtonAnimation = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+  // Action: Button 1 (العودة / Back)
+  const handleBackClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const btn = config.backButton;
+    if (btn.actionType === "file" && btn.fileUrl) {
+      e.preventDefault();
+      triggerDownload(btn.fileUrl, btn.fileName || "document.pdf");
+      return;
+    }
+
+    if (btn.url && btn.url !== "#") {
+      if (btn.openInNewTab) {
+        e.preventDefault();
+        window.open(btn.url, "_blank");
+      }
+      return;
+    }
+
+    if (window.history.length > 1) {
+      e.preventDefault();
+      window.history.back();
+    }
+  };
+
+  // Action: Button 2 (التحقق مرة آخرى / Verify Again)
+  const handleVerifyAgainClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    setButtonLoaderKey(Date.now());
-  }, []);
+    const btn = config.verifyAgainButton;
+
+    const executeAction = () => {
+      if (btn.actionType === "file" && btn.fileUrl) {
+        triggerDownload(btn.fileUrl, btn.fileName || "document.pdf");
+      } else if (btn.actionType === "link" && btn.url && btn.url !== "#") {
+        if (btn.openInNewTab) {
+          window.open(btn.url, "_blank");
+        } else {
+          window.location.href = btn.url;
+        }
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+
+    if (btn.showLoader) {
+      setPendingAction(() => executeAction);
+      setButtonLoaderKey(Date.now());
+    } else {
+      executeAction();
+    }
+  };
+
+  // Action: Button 3 (تحميل / Download)
+  const handleDownloadClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const btn = config.downloadButton;
+
+    const executeAction = () => {
+      if (btn.actionType === "file" && btn.fileUrl) {
+        triggerDownload(btn.fileUrl, btn.fileName || "certificate.pdf");
+        return;
+      }
+
+      if (btn.url && btn.url !== "#") {
+        if (btn.openInNewTab) {
+          window.open(btn.url, "_blank");
+        } else {
+          window.location.href = btn.url;
+        }
+        return;
+      }
+
+      window.print();
+    };
+
+    if (btn.showLoader) {
+      setPendingAction(() => executeAction);
+      setButtonLoaderKey(Date.now());
+    } else {
+      executeAction();
+    }
+  };
+
+  // Save changes from Quick Edit modal
+  const handleQuickSave = async (updated: PortalConfig) => {
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setConfig(result.data);
+        localStorage.setItem("portal_config_cache", JSON.stringify(result.data));
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+    }
+  };
 
   return (
     <>
-      {/* Results page: always pre-rendered, but invisible until loader finishes */}
-      <ResultsPage
-        revealed={loaded}
-        onDownload={triggerButtonAnimation}
-        onVerifyAgain={triggerButtonAnimation}
+      {/* Quick In-Page Edit Modal */}
+      <QuickEditModal
+        config={config}
+        isOpen={quickEditOpen}
+        onClose={() => setQuickEditOpen(false)}
+        onSave={handleQuickSave}
       />
 
-      {/* Initial page loader: fixed full-screen white overlay */}
-      {!loaded && (
+      {/* Results page */}
+      <ResultsPage
+        config={config}
+        revealed={loaded}
+        onDownload={handleDownloadClick}
+        onVerifyAgain={handleVerifyAgainClick}
+        onBack={handleBackClick}
+        onOpenQuickEdit={() => setQuickEditOpen(true)}
+      />
+
+      {/* Initial page loader if enabled */}
+      {!loaded && config.enableInitialLoader && (
         <LoaderScreen
           onDone={handleLoaderDone}
-          durationMs={CONFIG.loaderDurationMs}
+          durationMs={config.loaderDurationMs}
+          gifUrl={config.loaderGifUrl}
         />
       )}
 
-      {/* Button click loader: exact same logo animation for 4 seconds */}
+      {/* Button click loader animation */}
       {buttonLoaderKey !== null && (
         <LoaderScreen
           key={buttonLoaderKey}
           restartKey={buttonLoaderKey}
-          gifUrl={CONFIG.buttonLoaderGifUrl}
+          gifUrl={config.buttonLoaderGifUrl}
           onDone={handleButtonLoaderDone}
-          durationMs={CONFIG.buttonLoaderDurationMs}
+          durationMs={config.buttonLoaderDurationMs}
         />
       )}
     </>
   );
 }
-
