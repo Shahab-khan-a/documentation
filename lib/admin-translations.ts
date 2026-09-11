@@ -21,11 +21,58 @@ export interface TranslationStrings {
   shortcut_hint: string;
   
   // Tabs (clean without double emojis)
+  tab_dashboard: string;
   tab_buttons: string;
   tab_document: string;
   tab_footer: string;
   tab_settings: string;
   tab_preview: string;
+
+  // Main Dashboard & Google Drive File Manager
+  dashboard_title: string;
+  dashboard_desc: string;
+  drive_storage_used: string;
+  drive_total_files: string;
+  drive_cloud_status: string;
+  drive_refresh_btn: string;
+  drive_upload_btn: string;
+  drive_uploading: string;
+  drive_search_placeholder: string;
+  drive_filter_all: string;
+  drive_filter_pdf: string;
+  drive_filter_images: string;
+  drive_filter_docs: string;
+  drive_delete_btn: string;
+  drive_delete_confirm_title: string;
+  drive_delete_confirm_desc: string;
+  drive_delete_confirm_btn: string;
+  drive_delete_cancel_btn: string;
+  drive_delete_success: string;
+  drive_delete_error: string;
+  drive_copy_link: string;
+  drive_copied: string;
+  drive_use_as_download: string;
+  drive_file_used_success: string;
+  drive_empty_state: string;
+  drive_empty_state_sub: string;
+  drive_view_grid: string;
+  drive_view_list: string;
+  drive_storage_used_label: string;
+  drive_storage_free_label: string;
+  drive_storage_total_label: string;
+  drive_storage_breakdown: string;
+  drive_storage_plan_select: string;
+  drive_sort_by: string;
+  drive_sort_newest: string;
+  drive_sort_oldest: string;
+  drive_sort_size_desc: string;
+  drive_sort_size_asc: string;
+  drive_sort_name_asc: string;
+  drive_dropzone_title: string;
+  drive_dropzone_sub: string;
+  drive_storage_status_good: string;
+  drive_storage_percent_used: string;
+  drive_storage_percent_free: string;
 
   // Stats bar
   stats_document: string;
@@ -146,11 +193,57 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     quick_preview: "معاينة سريعة",
     shortcut_hint: "Ctrl + S للحفظ الفوري",
 
+    tab_dashboard: "الرئيسية وملفات Drive",
     tab_buttons: "الأزرار والملفات",
     tab_document: "بيانات الوثيقة",
     tab_footer: "الدعم والتواصل",
     tab_settings: "الشاشات والمؤثرات",
     tab_preview: "المعاينة الحية",
+
+    dashboard_title: "لوحة التحكم الرئيسية وإدارة ملفات Google Drive",
+    dashboard_desc: "استعراض كافة الملفات المخزنة في Google Drive، فحص الحجم، التحميل المباشر، ربطها بالبوابة أو حذفها نهائياً.",
+    drive_storage_used: "المساحة المستخدمة",
+    drive_total_files: "إجمالي الملفات في Drive",
+    drive_cloud_status: "سحابة Google Drive متصلة",
+    drive_refresh_btn: "تحديث الملفات",
+    drive_upload_btn: "رفع ملف جديد إلى Drive",
+    drive_uploading: "جاري رفع الملف إلى Google Drive...",
+    drive_search_placeholder: "ابحث بالاسم عن أي ملف في Google Drive...",
+    drive_filter_all: "كافة الملفات",
+    drive_filter_pdf: "ملفات PDF",
+    drive_filter_images: "الصور والوسائط",
+    drive_filter_docs: "ملفات أخرى",
+    drive_delete_btn: "حذف من Drive",
+    drive_delete_confirm_title: "تأكيد حذف الملف من Google Drive",
+    drive_delete_confirm_desc: "هل أنت متأكد من حذف هذا الملف نهائياً من Google Drive؟ لن تتمكن من التراجع عن هذه العملية بعد إتمامها.",
+    drive_delete_confirm_btn: "نعم، احذف الملف نهائياً",
+    drive_delete_cancel_btn: "إلغاء الأمر",
+    drive_delete_success: "تم حذف الملف بنجاح من Google Drive!",
+    drive_delete_error: "حدث خطأ أثناء محاولة حذف الملف من Google Drive",
+    drive_copy_link: "نسخ الرابط",
+    drive_copied: "تم النسخ بنجاح!",
+    drive_use_as_download: "تعيين كملف زر التحميل",
+    drive_file_used_success: "تم تعيين هذا الملف كملف تنزيل رسمي للبوابة بنجاح!",
+    drive_empty_state: "لا توجد ملفات متطابقة في Google Drive",
+    drive_empty_state_sub: "قم برفع ملف جديد أو مسح كلمة البحث لرؤية كافة ملفات السحابة.",
+    drive_view_grid: "عرض شبكي",
+    drive_view_list: "عرض قائمة",
+    drive_storage_used_label: "المساحة المستهلكة (المغطاة)",
+    drive_storage_free_label: "المساحة المتبقية الشاغرة",
+    drive_storage_total_label: "إجمالي السعة التخزينية للسحابة",
+    drive_storage_breakdown: "توزيع المساحة حسب النوع",
+    drive_storage_plan_select: "خطة سعة التخزين",
+    drive_sort_by: "ترتيب الملفات",
+    drive_sort_newest: "الأحدث أولاً",
+    drive_sort_oldest: "الأقدم أولاً",
+    drive_sort_size_desc: "الأكبر حجماً",
+    drive_sort_size_asc: "الأصغر حجماً",
+    drive_sort_name_asc: "الاسم (أ - ي)",
+    drive_dropzone_title: "اسحب الملفات وأفلتها هنا للرفع الفوري",
+    drive_dropzone_sub: "يتم حفظ وتشفير الملفات مباشرة في مجلد Google Drive الخاص بك",
+    drive_storage_status_good: "المساحة التخزينية ممتازة - تتوفر سعة كبيرة جداً",
+    drive_storage_percent_used: "نسبة الاستهلاك",
+    drive_storage_percent_free: "نسبة المساحة المتاحة",
 
     stats_document: "المنشأة الحالية",
     stats_btn1: "زر الرجوع (1)",
@@ -261,11 +354,57 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     quick_preview: "Quick Preview",
     shortcut_hint: "Ctrl + S to save",
 
+    tab_dashboard: "Dashboard & Drive Files",
     tab_buttons: "Buttons & Files",
     tab_document: "Document Details",
     tab_footer: "Support & Social",
     tab_settings: "Display & Timers",
     tab_preview: "Live Preview",
+
+    dashboard_title: "Main Dashboard & Google Drive Cloud Storage",
+    dashboard_desc: "Manage all Google Drive files, inspect storage sizes, preview, download, assign to portal buttons, or permanently delete files.",
+    drive_storage_used: "Storage Consumed",
+    drive_total_files: "Total Cloud Files",
+    drive_cloud_status: "Connected to Google Drive Cloud",
+    drive_refresh_btn: "Refresh Files",
+    drive_upload_btn: "Upload to Drive",
+    drive_uploading: "Uploading file to Google Drive...",
+    drive_search_placeholder: "Search Google Drive files by name...",
+    drive_filter_all: "All Files",
+    drive_filter_pdf: "PDF Documents",
+    drive_filter_images: "Images & Media",
+    drive_filter_docs: "Other Documents",
+    drive_delete_btn: "Delete from Drive",
+    drive_delete_confirm_title: "Confirm Delete from Google Drive",
+    drive_delete_confirm_desc: "Are you sure you want to permanently delete this file from Google Drive? This action cannot be undone.",
+    drive_delete_confirm_btn: "Yes, Delete File",
+    drive_delete_cancel_btn: "Cancel",
+    drive_delete_success: "File successfully deleted from Google Drive!",
+    drive_delete_error: "Failed to delete file from Google Drive",
+    drive_copy_link: "Copy Link",
+    drive_copied: "Copied!",
+    drive_use_as_download: "Set as Download Button File",
+    drive_file_used_success: "File assigned to portal download button successfully!",
+    drive_empty_state: "No matching files found in Google Drive",
+    drive_empty_state_sub: "Upload a new file or clear search filters to view cloud items.",
+    drive_view_grid: "Grid View",
+    drive_view_list: "List View",
+    drive_storage_used_label: "Storage Covered / Used",
+    drive_storage_free_label: "Available / Free Storage",
+    drive_storage_total_label: "Total Cloud Quota",
+    drive_storage_breakdown: "Storage Breakdown",
+    drive_storage_plan_select: "Storage Quota Plan",
+    drive_sort_by: "Sort Files",
+    drive_sort_newest: "Newest First",
+    drive_sort_oldest: "Oldest First",
+    drive_sort_size_desc: "Largest Size",
+    drive_sort_size_asc: "Smallest Size",
+    drive_sort_name_asc: "Name (A - Z)",
+    drive_dropzone_title: "Drag & Drop files here or click to browse",
+    drive_dropzone_sub: "Files are saved and encrypted directly into your Google Drive folder",
+    drive_storage_status_good: "Storage Status: Optimal - Plenty of free space available",
+    drive_storage_percent_used: "Quota Used",
+    drive_storage_percent_free: "Free Remaining",
 
     stats_document: "Active Facility",
     stats_btn1: "Back Button (1)",
@@ -376,11 +515,57 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
     quick_preview: "فوری پریویو",
     shortcut_hint: "فوری محفوظ کرنے کیلئے Ctrl + S",
 
+    tab_dashboard: "مین ڈیش بورڈ اور ڈرائیو فائلز",
     tab_buttons: "بٹنز اور فائلیں",
     tab_document: "دستاویز کی تفصیلات",
     tab_footer: "سپورٹ اور سوشل",
     tab_settings: "ڈسپلے اور ٹائمرز",
     tab_preview: "لائیو پریویو",
+
+    dashboard_title: "مرکزی ڈیش بورڈ اور گوگل ڈرائیو فائل منیجر",
+    dashboard_desc: "گوگل ڈرائیو کی تمام فائلز دیکھیں، سائز چیک کریں، لائیو پریویو دیکھیں، لنک کاپی کریں، پورٹل پر سیٹ کریں یا ڈرائیو سے ہمیشہ کیلئے ڈیلیٹ کریں۔",
+    drive_storage_used: "استعمال شدہ اسپیس",
+    drive_total_files: "ڈرائیو میں کل فائلز",
+    drive_cloud_status: "گوگل ڈرائیو کلاؤڈ منسلک ہے",
+    drive_refresh_btn: "فائلز ریفریش کریں",
+    drive_upload_btn: "ڈرائیو پر نئی فائل اپلوڈ کریں",
+    drive_uploading: "گوگل ڈرائیو پر فائل اپلوڈ ہو رہی ہے...",
+    drive_search_placeholder: "گوگل ڈرائیو کی کسی بھی فائل کا نام تلاش کریں...",
+    drive_filter_all: "تمام فائلیں",
+    drive_filter_pdf: "پی ڈی ایف فائلیں",
+    drive_filter_images: "تصاویر اور میڈیا",
+    drive_filter_docs: "دیگر فائلیں",
+    drive_delete_btn: "ڈرائیو سے ڈیلیٹ کریں",
+    drive_delete_confirm_title: "گوگل ڈرائیو سے فائل ڈیلیٹ کرنے کی تصدیق",
+    drive_delete_confirm_desc: "کیا آپ واقعی یہ فائل گوگل ڈرائیو سے ہمیشہ کیلئے ڈیلیٹ کرنا چاہتے ہیں؟ ڈیلیٹ کرنے کے بعد اسے واپس نہیں لایا جا سکے گا۔",
+    drive_delete_confirm_btn: "ہاں، فائل ڈیلیٹ کریں",
+    drive_delete_cancel_btn: "کینسل کریں",
+    drive_delete_success: "فائل گوگل ڈرائیو سے کامیابی سے ڈیلیٹ ہو گئی!",
+    drive_delete_error: "گوگل ڈرائیو سے فائل ڈیلیٹ کرنے میں خرابی پیش آئی",
+    drive_copy_link: "لنک کاپی کریں",
+    drive_copied: "کاپی ہو گیا!",
+    drive_use_as_download: "ڈاؤن لوڈ بٹن پر سیٹ کریں",
+    drive_file_used_success: "یہ فائل پورٹل کے ڈاؤن لوڈ بٹن کے ساتھ منسلک ہو گئی ہے!",
+    drive_empty_state: "گوگل ڈرائیو میں کوئی فائل نہیں ملی",
+    drive_empty_state_sub: "نئی فائل اپلوڈ کریں یا سرچ فیلڈ خالی کریں تاکہ تمام کلاؤڈ فائلز دکھائی دیں۔",
+    drive_view_grid: "گرڈ ویو",
+    drive_view_list: "لسٹ ویو",
+    drive_storage_used_label: "استعمال شدہ اسٹوریج (کور ہوا)",
+    drive_storage_free_label: "باقی ماندہ گنجائش (اسٹوریج باقی ہے)",
+    drive_storage_total_label: "کل کلاؤڈ اسٹوریج گنجائش",
+    drive_storage_breakdown: "اسٹوریج کی تفصیل بلحاظ فائل",
+    drive_storage_plan_select: "اسٹوریج پلان تبدیل کریں",
+    drive_sort_by: "فائلز کی ترتیب",
+    drive_sort_newest: "تازہ ترین پہلے",
+    drive_sort_oldest: "پرانی پہلے",
+    drive_sort_size_desc: "سب سے بڑی پہلے",
+    drive_sort_size_asc: "سب سے چھوٹی پہلے",
+    drive_sort_name_asc: "نام (الف تا ے)",
+    drive_dropzone_title: "یہاں فائل ڈریگ اینڈ ڈراپ کریں یا براؤز کریں",
+    drive_dropzone_sub: "فائلیں فوراً آپ کے گوگل ڈرائیو کلاؤڈ میں محفوظ ہو جائیں گی",
+    drive_storage_status_good: "اسٹوریج حالت: بہترین - کافی گنجائش دستیاب ہے",
+    drive_storage_percent_used: "استعمال فیصد",
+    drive_storage_percent_free: "باقی فیصد",
 
     stats_document: "موجودہ ادارہ",
     stats_btn1: "واپسی بٹن (1)",
