@@ -187,19 +187,7 @@ export default function AdminDashboard() {
   } | null>(null);
 
   // Language for admin panel (persisted in localStorage)
-  const [lang, setLang] = useState<AdminLanguage>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const savedLang = localStorage.getItem("admin_portal_lang") as AdminLanguage | null;
-        if (savedLang && (savedLang === "ar" || savedLang === "en" || savedLang === "ur")) {
-          return savedLang;
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return "ar";
-  });
+  const [lang, setLang] = useState<AdminLanguage>("ar");
   const [activeTab, setActiveTab] = useState<"buttons" | "document" | "preview" | "footer" | "settings">("buttons");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [isDragOverBtn, setIsDragOverBtn] = useState<string | null>(null);
@@ -306,6 +294,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     let active = true;
     async function init() {
+      // Restore client-saved language after hydration
+      try {
+        const savedLang = localStorage.getItem("admin_portal_lang") as AdminLanguage | null;
+        if (active && savedLang && (savedLang === "ar" || savedLang === "en" || savedLang === "ur")) {
+          setLang(savedLang);
+        }
+      } catch {
+        // ignore
+      }
+
       try {
         const [configRes, driveRes] = await Promise.all([
           fetch("/api/config", { cache: "no-store" }),
@@ -659,11 +657,11 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center" dir="rtl" suppressHydrationWarning>
         <div className="flex flex-col items-center gap-4 text-white">
           <div className="w-14 h-14 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-bold text-sm tracking-wide">
-            {lang === "en" ? "Loading Admin Dashboard..." : "جاري تحميل لوحة التحكم..."}
+          <p className="font-bold text-sm tracking-wide text-slate-300" suppressHydrationWarning>
+            جاري تحميل لوحة التحكم...
           </p>
         </div>
       </div>
@@ -672,6 +670,7 @@ export default function AdminDashboard() {
 
   return (
     <div
+      suppressHydrationWarning
       dir={isRtl ? "rtl" : "ltr"}
       className="min-h-screen bg-gradient-to-b from-[#f8fafc] via-[#f1f5f9] to-[#edf2f7] text-slate-800 font-sans pb-32 selection:bg-blue-600 selection:text-white antialiased"
     >

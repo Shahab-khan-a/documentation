@@ -32,21 +32,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // Ensure local backup directory exists
-    if (!fs.existsSync(UPLOADS_DIR)) {
-      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-    }
-
     const originalName = file.name || "document.pdf";
     const sanitizedName = originalName.replace(/[^a-zA-Z0-9._\-\u0600-\u06FF]/g, "_");
     const uniqueFileName = `${Date.now()}-${sanitizedName}`;
-    const filePath = path.join(UPLOADS_DIR, uniqueFileName);
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    fs.writeFileSync(filePath, buffer);
 
+    // Optional local backup cache (safe for serverless/read-only environments like Vercel /var/task)
     const localFileUrl = `/uploads/${uniqueFileName}`;
+    try {
+      if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+      }
+      const filePath = path.join(UPLOADS_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, buffer);
+    } catch (fsErr) {
+      console.warn("Local uploads dir is read-only or unavailable (serverless environment):", fsErr);
+      // In serverless environments (e.g. Vercel /var/task), the filesystem is read-only.
+      // Google Drive handles the persistent cloud upload, so local write failure is non-critical.
+    }
 
     // ─── 1. GOOGLE APPS SCRIPT DIRECT DRIVE UPLOAD (Personal Folder Storage) ───
     if (APPS_SCRIPT_URL) {

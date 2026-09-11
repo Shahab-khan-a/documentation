@@ -363,6 +363,7 @@ function ResultsPage({
 
   return (
     <div
+      suppressHydrationWarning
       dir="rtl"
       className="min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
       style={{
@@ -804,19 +805,7 @@ function ResultsPage({
 // ─────────────────────────────────────────────────────────
 export default function DocumentVerificationPage() {
   const router = useRouter();
-  const [config, setConfig] = useState<PortalConfig>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("portal_config_cache");
-        if (cached) {
-          return JSON.parse(cached);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return DEFAULT_PORTAL_CONFIG;
-  });
+  const [config, setConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
   const [loaded, setLoaded] = useState(true);
   const [buttonLoaderKey, setButtonLoaderKey] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -888,6 +877,20 @@ export default function DocumentVerificationPage() {
   // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
     async function fetchLiveConfig() {
+      // Restore client-cached config after hydration
+      try {
+        const cached = localStorage.getItem("portal_config_cache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setConfig(parsed);
+          if (parsed.enableInitialLoader) {
+            setLoaded(false);
+          }
+        }
+      } catch {
+        // ignore
+      }
+
       try {
         const res = await fetch(`/api/config?_t=${Date.now()}`, { cache: "no-store" });
         if (res.ok) {
