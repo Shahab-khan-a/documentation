@@ -231,6 +231,7 @@ export default function AdminDashboard() {
   const [driveFiles, setDriveFiles] = useState<DriveItem[]>([]);
   const [loadingDriveFiles, setLoadingDriveFiles] = useState(false);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<DriveItem | null>(null);
 
   const fetchDriveFiles = useCallback(async () => {
     setLoadingDriveFiles(true);
@@ -247,17 +248,8 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // ─── PERMANENT DELETE FROM GOOGLE DRIVE ───
-  const handleDeleteDriveFile = async (file: DriveItem) => {
-    const confirmMessage =
-      lang === "en"
-        ? `Are you sure you want to permanently delete "${file.name}" from Google Drive?`
-        : lang === "ur"
-        ? `کیا آپ واقعی "${file.name}" کو گوگل ڈرائیو سے مستقل ڈیلیٹ کرنا چاہتے ہیں؟`
-        : `هل أنت متأكد من حذف الملف "${file.name}" نهائياً من Google Drive؟`;
-
-    if (!window.confirm(confirmMessage)) return;
-
+  // ─── PERMANENT DELETE FROM GOOGLE DRIVE (TRIGGERED FROM NOTIFICATION) ───
+  const confirmDeleteDriveFile = async (file: DriveItem) => {
     setDeletingFileId(file.id);
     try {
       const res = await fetch(`/api/drive?fileId=${encodeURIComponent(file.id)}&fileName=${encodeURIComponent(file.name)}`, {
@@ -287,6 +279,9 @@ export default function AdminDashboard() {
           }
           return hasChange ? updated : prev;
         });
+
+        // Close the delete notification modal
+        setFileToDelete(null);
 
         showToast(
           lang === "en"
@@ -919,12 +914,12 @@ export default function AdminDashboard() {
                       key={file.id}
                       className="p-3.5 rounded-2xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 transition-all flex items-center justify-between gap-3 bg-white shadow-2xs"
                     >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <span className="text-2xl">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="text-2xl shrink-0">
                           {file.mimeType.includes("pdf") ? "📄" : file.mimeType.includes("image") ? "🖼️" : "📁"}
                         </span>
-                        <div className="truncate">
-                          <p className="text-xs font-bold text-slate-900 truncate">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-900 truncate" title={file.name}>
                             {file.name}
                           </p>
                           <p className="text-[11px] text-slate-400 mt-0.5">
@@ -933,7 +928,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         {file.webViewLink && (
                           <a
                             href={file.webViewLink}
@@ -980,12 +975,11 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           type="button"
-                          disabled={deletingFileId === file.id}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteDriveFile(file);
+                            setFileToDelete(file);
                           }}
-                          className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/80 hover:bg-rose-600 text-rose-600 hover:text-white text-xs font-bold shadow-2xs cursor-pointer transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
+                          className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/80 hover:bg-rose-600 text-rose-600 hover:text-white text-xs font-bold shadow-2xs cursor-pointer transition-all flex items-center gap-1.5 group active:scale-95"
                           title={
                             lang === "en"
                               ? "Delete permanently from Google Drive"
@@ -994,15 +988,9 @@ export default function AdminDashboard() {
                               : "حذف نهائي من Google Drive"
                           }
                         >
-                          {deletingFileId === file.id ? (
-                            <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <IconTrash className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
-                          )}
+                          <IconTrash className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
                           <span>
-                            {deletingFileId === file.id
-                              ? (lang === "en" ? "Deleting..." : lang === "ur" ? "ڈیلیٹ ہو رہا ہے..." : "جاري الحذف...")
-                              : (lang === "en" ? "Delete" : lang === "ur" ? "حذف" : "حذف")}
+                            {lang === "en" ? "Delete" : lang === "ur" ? "ڈیلیٹ" : "حذف"}
                           </span>
                         </button>
                       </div>
@@ -1023,6 +1011,83 @@ export default function AdminDashboard() {
                 className="px-4 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold cursor-pointer transition-colors"
               >
                 {lang === "en" ? "Cancel" : lang === "ur" ? "منسوخ" : "إلغاء"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── GOOGLE DRIVE DELETE CONFIRMATION NOTIFICATION MODAL ─── */}
+      {fileToDelete && (
+        <div
+          className="fixed inset-0 z-[100005] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => !deletingFileId && setFileToDelete(null)}
+        >
+          <div
+            dir={isRtl ? "rtl" : "ltr"}
+            className="bg-white rounded-3xl shadow-2xl border border-rose-100 max-w-md w-full overflow-hidden p-6 animate-in fade-in zoom-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-xs">
+              🗑️
+            </div>
+            <h3 className="text-center font-black text-slate-900 text-base sm:text-lg mb-1">
+              {lang === "en"
+                ? "Delete file from Google Drive?"
+                : lang === "ur"
+                ? "کیا آپ یہ فائل گوگل ڈرائیو سے ڈیلیٹ کرنا چاہتے ہیں؟"
+                : "هل تريد حذف هذا الملف نهائياً من Google Drive؟"}
+            </h3>
+            <p className="text-center text-xs text-slate-500 mb-4 px-2 leading-relaxed">
+              {lang === "en"
+                ? "This file will be permanently deleted from your Google Drive storage. This action cannot be undone."
+                : lang === "ur"
+                ? "یہ فائل آپ کے منسلک گوگل ڈرائیو سے ہمیشہ کیلئے ڈیلیٹ کر دی جائے گی۔ یہ عمل واپس نہیں ہو سکتا۔"
+                : "سيتم حذف هذا الملف نهائياً من مساحة Google Drive المتصلة. لا يمكن التراجع عن هذا الإجراء."}
+            </p>
+
+            {/* File info card inside notification */}
+            <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 flex items-center gap-3 mb-5">
+              <span className="text-2xl shrink-0">
+                {fileToDelete.mimeType.includes("pdf") ? "📄" : fileToDelete.mimeType.includes("image") ? "🖼️" : "📁"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-900 truncate" title={fileToDelete.name}>
+                  {fileToDelete.name}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {fileToDelete.size ? formatFileSize(parseInt(fileToDelete.size)) : "Google Drive"}
+                </p>
+              </div>
+            </div>
+
+            {/* Action buttons inside notification */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={Boolean(deletingFileId)}
+                onClick={() => setFileToDelete(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 text-center"
+              >
+                {lang === "en" ? "Cancel" : lang === "ur" ? "منسوخ" : "إلغاء"}
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(deletingFileId)}
+                onClick={() => confirmDeleteDriveFile(fileToDelete)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
+              >
+                {deletingFileId === fileToDelete.id ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>{lang === "en" ? "Deleting..." : lang === "ur" ? "ڈیلیٹ ہو رہا ہے..." : "جاري الحذف..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <IconTrash className="w-4 h-4" />
+                    <span>{lang === "en" ? "Delete File" : lang === "ur" ? "ڈیلیٹ کریں" : "حذف الملف"}</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

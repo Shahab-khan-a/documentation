@@ -75,19 +75,29 @@ export async function DELETE(req: Request) {
       });
       deletedMethod = "permanent";
     } catch (delErr: unknown) {
-      // ─── Tier 2: If service account lacks delete permission (shared file/folder), remove from shared folder ───
+      // ─── Tier 2: Try moving to Google Drive trash (trashed = true) ───
       try {
         await drive.files.update({
           fileId,
-          removeParents: FOLDER_ID,
+          requestBody: { trashed: true },
           supportsAllDrives: true,
         });
-        deletedMethod = "removed_from_folder";
-      } catch (removeErr: unknown) {
-        const removeMsg = removeErr instanceof Error ? removeErr.message : String(removeErr);
-        const delMsg = delErr instanceof Error ? delErr.message : String(delErr);
-        console.error("Failed both delete and removeParents:", { delErr, removeErr });
-        throw new Error(delMsg || removeMsg || "Failed to delete file from Google Drive");
+        deletedMethod = "trashed";
+      } catch (trashErr: unknown) {
+        // ─── Tier 3: Remove from shared folder ───
+        try {
+          await drive.files.update({
+            fileId,
+            removeParents: FOLDER_ID,
+            supportsAllDrives: true,
+          });
+          deletedMethod = "removed_from_folder";
+        } catch (removeErr: unknown) {
+          const removeMsg = removeErr instanceof Error ? removeErr.message : String(removeErr);
+          const delMsg = delErr instanceof Error ? delErr.message : String(delErr);
+          console.error("Failed delete, trash, and removeParents:", { delErr, trashErr, removeErr });
+          throw new Error(delMsg || removeMsg || "Failed to delete file from Google Drive");
+        }
       }
     }
 
