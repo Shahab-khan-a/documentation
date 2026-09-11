@@ -26,6 +26,8 @@
     "typescript": "^5"
   },
   "allowScripts": {
+    "@firebase/util": true,
+    "protobufjs": true,
     "unrs-resolver": true,
     "unrs-resolver@1.12.2": true
   }
