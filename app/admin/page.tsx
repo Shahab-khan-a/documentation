@@ -250,7 +250,6 @@ export default function AdminDashboard() {
   }, []);
 
   const handleDeleteRecord = async (record: PortalRecord) => {
-    if (!confirm(t.confirm_delete_record)) return;
     setDeletingRecordId(record.id);
     try {
       // 1. Delete from Firestore directly on client

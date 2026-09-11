@@ -5,6 +5,95 @@ import Link from "next/link";
 import { PortalRecord } from "@/lib/portal-types";
 import { AdminLanguage, TranslationStrings } from "@/lib/admin-translations";
 
+// ─────────────────────────────────────────────────────────────────
+// CRISP MODERN SVG ICONS (CRYSTAL CLEAR ON ALL PLATFORMS & SCREENS)
+// ─────────────────────────────────────────────────────────────────
+function IconTrash({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
+    </svg>
+  );
+}
+
+function IconCopy({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+      />
+    </svg>
+  );
+}
+
+function IconCheck({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function IconExternalLink({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+      />
+    </svg>
+  );
+}
+
+function IconEdit({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+      />
+    </svg>
+  );
+}
+
+function IconSearch({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      />
+    </svg>
+  );
+}
+
+function IconLinkChain({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+      />
+    </svg>
+  );
+}
+
 export interface FirebaseRecordsModalProps {
   open: boolean;
   onClose: () => void;
@@ -58,12 +147,9 @@ export function FirebaseRecordsModal({
   // Multi-field filtered records
   const filteredRecords = useMemo(() => {
     return savedRecords.filter((record) => {
-      // 1. Chamber filter
       if (selectedChamber !== "ALL" && (record.chamberName || "").trim() !== selectedChamber) {
         return false;
       }
-
-      // 2. Search query across all major fields
       if (!searchQuery.trim()) return true;
       const q = searchQuery.trim().toLowerCase();
 
@@ -91,7 +177,7 @@ export function FirebaseRecordsModal({
     });
   }, [savedRecords, selectedChamber, searchQuery]);
 
-  // Format date helper
+  // Format date cleanly
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "";
     try {
@@ -100,7 +186,6 @@ export function FirebaseRecordsModal({
       return d.toLocaleDateString(lang === "ar" ? "ar-SA" : lang === "ur" ? "ur-PK" : "en-US", {
         month: "short",
         day: "numeric",
-        year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       });
@@ -109,7 +194,6 @@ export function FirebaseRecordsModal({
     }
   };
 
-  // Sample record trigger wrapper
   const handleTriggerSample = async () => {
     if (!onCreateSampleRecord) return;
     setIsCreatingSample(true);
@@ -120,7 +204,6 @@ export function FirebaseRecordsModal({
     }
   };
 
-  // Delete confirm handler
   const handleConfirmDelete = async () => {
     if (!recordToDelete) return;
     try {
@@ -134,72 +217,66 @@ export function FirebaseRecordsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100002] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100002] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-hidden animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
         dir={isRtl ? "rtl" : "ltr"}
-        className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-in zoom-in-95 duration-200"
+        className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* MODAL HEADER WITH MODERN GRADIENT & AMBIENT GLOW                */}
+        {/* 1. ULTRA-SLEEK MODERN HEADER (COMPACT, ATTRACTIVE, SINGLE ROW)  */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="relative bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white px-5 sm:px-7 py-5 shrink-0 shadow-lg border-b border-white/10 overflow-hidden">
-          {/* Subtle background glow orbs */}
-          <div className="absolute top-0 right-1/4 w-72 h-36 bg-orange-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-8 left-1/3 w-64 h-32 bg-blue-500/15 rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
-            {/* Title & Brand */}
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 flex items-center justify-center text-2xl shadow-lg shadow-orange-500/30 shrink-0 border border-orange-300/40">
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white px-4 sm:px-6 py-3.5 sm:py-4 shrink-0 shadow-md border-b border-white/10">
+          <div className="flex items-center justify-between gap-2.5">
+            {/* Title Section */}
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 flex items-center justify-center text-lg sm:text-xl shadow-md shadow-orange-500/25 shrink-0 border border-orange-300/30">
                 🔥
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h3 className="font-black text-base sm:text-xl text-white tracking-tight">
-                    {t.firebase_records_title}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-extrabold text-sm sm:text-base text-white tracking-tight truncate">
+                    {t.firebase_records_title || "سجلات وروابط Firebase"}
                   </h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-orange-500/30 to-amber-500/30 text-amber-300 border border-orange-400/40 shadow-xs">
-                    {savedRecords.length} {lang === "en" ? "Certificates" : lang === "ur" ? "سرٹیفکیٹس" : "شهادات وروابط"}
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-black bg-orange-500/25 text-amber-300 border border-orange-400/40 shrink-0">
+                    {savedRecords.length} {lang === "en" ? "Links" : lang === "ur" ? "لنکس" : "روابط"}
                   </span>
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Firestore Live
                   </span>
                 </div>
-                <p className="text-xs text-indigo-200/90 font-medium mt-0.5 truncate max-w-xl">
+                <p className="text-[11px] text-indigo-200/80 font-medium truncate hidden sm:block">
                   {t.firebase_records_desc}
                 </p>
               </div>
             </div>
 
-            {/* Action buttons on header */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Add Sample Certificate Button */}
+            {/* Header Action Buttons */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {onCreateSampleRecord && (
                 <button
                   type="button"
                   onClick={handleTriggerSample}
                   disabled={isCreatingSample || loadingRecords}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 border border-blue-400/30"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-blue-600/90 hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 border border-blue-400/30"
                   title={lang === "en" ? "Add Sample Certificate" : lang === "ur" ? "نمونہ سرٹیفکیٹ شامل کریں" : "إضافة شهادة تجريبية"}
                 >
-                  <span>{isCreatingSample ? "⏳" : "➕"}</span>
-                  <span className="hidden md:inline">
-                    {lang === "en" ? "Add Sample" : lang === "ur" ? "نمونہ سرٹیفکیٹ" : "إضافة شهادة"}
+                  <span className="text-sm leading-none">{isCreatingSample ? "⏳" : "+"}</span>
+                  <span className="hidden sm:inline">
+                    {lang === "en" ? "Sample" : lang === "ur" ? "نمونہ" : "شهادة تجريبية"}
                   </span>
                 </button>
               )}
 
-              {/* Refresh Button */}
               <button
                 type="button"
                 onClick={onRefresh}
                 disabled={loadingRecords}
-                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 border border-white/10 active:scale-95"
-                title={lang === "en" ? "Refresh records" : lang === "ur" ? "تازہ کریں" : "تحديث القائمة من السيرفر"}
+                className="w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 border border-white/10 active:scale-95"
+                title={lang === "en" ? "Refresh records" : lang === "ur" ? "تازہ کریں" : "تحديث القائمة"}
               >
                 <svg
                   className={`w-3.5 h-3.5 ${loadingRecords ? "animate-spin text-orange-400" : ""}`}
@@ -214,16 +291,15 @@ export function FirebaseRecordsModal({
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-                <span className="hidden sm:inline">
+                <span className="hidden md:inline">
                   {lang === "en" ? "Refresh" : lang === "ur" ? "ریفریش" : "تحديث"}
                 </span>
               </button>
 
-              {/* Close Button */}
               <button
                 type="button"
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white flex items-center justify-center font-bold text-sm cursor-pointer transition-all border border-white/10 hover:rotate-90 active:scale-95"
+                className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center font-bold text-xs sm:text-sm cursor-pointer transition-all border border-white/10 hover:rotate-90 active:scale-95"
                 title={lang === "en" ? "Close" : lang === "ur" ? "بند کریں" : "إغلاق"}
               >
                 ✕
@@ -233,27 +309,34 @@ export function FirebaseRecordsModal({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* INTERACTIVE SEARCH & CHAMBER FILTER TOOLBAR                     */}
+        {/* 2. SEARCH & CHAMBER FILTER TOOLBAR                              */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="p-3.5 sm:p-4 bg-slate-50 border-b border-slate-200/90 shrink-0 space-y-2.5">
-          {/* Main search bar */}
-          <div className="flex items-center gap-2.5">
+        <div className="p-3 sm:p-4 bg-slate-50/90 border-b border-slate-200/80 shrink-0 space-y-2.5">
+          {/* Search Row */}
+          <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <span className="absolute inset-y-0 start-3.5 flex items-center text-slate-400 pointer-events-none text-sm">
-                🔍
+              <span className="absolute inset-y-0 start-3 flex items-center text-slate-400 pointer-events-none">
+                <IconSearch className="w-4 h-4 text-slate-400" />
               </span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t.search_records_placeholder}
-                className="w-full ps-10 pe-10 py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:outline-none transition-all placeholder:text-slate-400 shadow-2xs"
+                placeholder={
+                  t.search_records_placeholder ||
+                  (lang === "en"
+                    ? "Search serial, unified number, facility, chamber..."
+                    : lang === "ur"
+                    ? "سیریل نمبر، یونیفائیڈ، یا منشأة سے تلاش کریں..."
+                    : "ابحث بالرقم التسلسلي، الرقم الموحد، أو اسم المنشأة...")
+                }
+                className="w-full ps-9 pe-8 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all placeholder:text-slate-400 shadow-2xs"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute inset-y-0 end-3 flex items-center text-slate-400 hover:text-slate-700 text-xs font-black cursor-pointer px-1"
+                  className="absolute inset-y-0 end-2.5 flex items-center text-slate-400 hover:text-slate-700 text-xs font-black cursor-pointer px-1"
                   title="مسح البحث"
                 >
                   ✕
@@ -261,25 +344,19 @@ export function FirebaseRecordsModal({
               )}
             </div>
 
-            {/* Results count pill */}
-            <div className="text-xs font-black text-slate-600 bg-white px-3 py-2.5 rounded-xl border border-slate-200 shrink-0 shadow-2xs">
-              <span className="text-blue-600 font-mono">{filteredRecords.length}</span> / {savedRecords.length}{" "}
-              <span className="hidden sm:inline">
-                {lang === "en" ? "shown" : lang === "ur" ? "ظاہر" : "معروض"}
-              </span>
+            {/* Match Counter Badge */}
+            <div className="text-[11px] sm:text-xs font-black text-slate-600 bg-white px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl border border-slate-200 shrink-0 shadow-2xs font-mono">
+              <span className="text-blue-600">{filteredRecords.length}</span> / {savedRecords.length}
             </div>
           </div>
 
           {/* Chamber Quick Filter Chips */}
           {chamberStats.length > 1 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs font-bold text-slate-600 pt-0.5">
-              <span className="text-[11px] text-slate-400 font-bold shrink-0 ps-0.5">
-                {lang === "en" ? "Filter by Chamber:" : lang === "ur" ? "غرفة کے لحاظ سے:" : "تصفية حسب الغرفة:"}
-              </span>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold text-slate-600 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
               <button
                 type="button"
                 onClick={() => setSelectedChamber("ALL")}
-                className={`px-3 py-1 rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1 rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1.5 text-xs ${
                   selectedChamber === "ALL"
                     ? "bg-slate-900 text-white shadow-xs font-black"
                     : "bg-white hover:bg-slate-100 text-slate-600 border border-slate-200"
@@ -300,7 +377,7 @@ export function FirebaseRecordsModal({
                   key={item.name}
                   type="button"
                   onClick={() => setSelectedChamber(item.name)}
-                  className={`px-3 py-1 rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1.5 text-xs ${
                     selectedChamber === item.name
                       ? "bg-blue-600 text-white shadow-xs font-black"
                       : "bg-white hover:bg-slate-100 text-slate-600 border border-slate-200"
@@ -321,68 +398,61 @@ export function FirebaseRecordsModal({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* SCROLLABLE RECORDS BODY (SMOOTH SCROLL, DIVERSE DATA DISPLAY)    */}
+        {/* 3. SCROLLABLE CARDS GRID (CLEAN, POLISHED, CLEAR ACTIONS)       */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/70 custom-scrollbar overscroll-contain">
-          {/* Loading state */}
+        <div className="p-3.5 sm:p-5 overflow-y-auto flex-1 bg-slate-50/60 custom-scrollbar overscroll-contain">
+          {/* Loading State */}
           {loadingRecords && savedRecords.length === 0 ? (
             <div className="py-20 text-center text-slate-400">
-              <div className="w-10 h-10 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3.5" />
-              <p className="text-sm font-bold text-slate-700">
+              <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs sm:text-sm font-bold text-slate-700">
                 {lang === "en" ? "Fetching records from Firebase..." : "جاري جلب السجلات من قاعدة بيانات Firebase..."}
               </p>
-              <p className="text-xs text-slate-400 mt-1 font-medium">يرجى الانتظار بضع ثوانٍ</p>
             </div>
           ) : filteredRecords.length === 0 ? (
-            /* Empty state */
-            <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300 p-8 shadow-2xs max-w-lg mx-auto">
-              <span className="text-5xl block mb-3">📭</span>
-              <p className="text-base font-black text-slate-800 mb-1.5">
+            /* Empty State */
+            <div className="py-14 text-center bg-white rounded-2xl border border-dashed border-slate-300 p-6 shadow-2xs max-w-md mx-auto">
+              <span className="text-4xl block mb-2.5">📭</span>
+              <p className="text-sm font-black text-slate-800 mb-1">
                 {t.no_records_found}
               </p>
-              <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto mb-5">
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto mb-4">
                 {searchQuery || selectedChamber !== "ALL"
                   ? lang === "en"
-                    ? "No certificates match your search query. Try clearing filters."
-                    : lang === "ur"
-                    ? "تلاش کے نتائج میں کوئی سرٹیفکیٹ نہیں ملا۔ فلٹر صاف کر کے دوبارہ چیک کریں۔"
-                    : "لم يتم العثور على شهادات مطابقة للبحث. جرب مسح حقل البحث أو تصفية الغرف."
+                    ? "No certificates match your search query."
+                    : "لم يتم العثور على شهادات مطابقة للبحث."
                   : lang === "en"
-                  ? "To create a public link, enter a Serial Number in Document Details and click 'Save Changes'. It will appear here automatically."
-                  : lang === "ur"
-                  ? "نیا شیئر لنک بنانے کیلئے دستاویز کی تفصیلات میں سیریل نمبر درج کر کے محفوظ کریں، وہ یہاں نظر آئے گا۔"
-                  : "لإنشاء رابط جديد، أدخل الرقم التسلسلي في تفاصيل الوثيقة واضغط حفظ التعديلات ليظهر الرابط هنا تلقائياً."}
+                  ? "Enter a Serial Number in Document Details and click 'Save Changes' to create a link."
+                  : "أدخل الرقم التسلسلي في تفاصيل الوثيقة واضغط حفظ التعديلات ليظهر الرابط هنا."}
               </p>
-
-              <div className="flex items-center justify-center gap-2 flex-wrap">
-                {searchQuery || selectedChamber !== "ALL" ? (
+              <div className="flex items-center justify-center gap-2">
+                {(searchQuery || selectedChamber !== "ALL") && (
                   <button
                     type="button"
                     onClick={() => {
                       setSearchQuery("");
                       setSelectedChamber("ALL");
                     }}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                   >
-                    {lang === "en" ? "Clear Filter" : lang === "ur" ? "فلٹر صاف کریں" : "مسح التصفية والبحث"}
+                    {lang === "en" ? "Clear Filters" : "مسح التصفية"}
                   </button>
-                ) : null}
-
+                )}
                 {onCreateSampleRecord && (
                   <button
                     type="button"
                     onClick={handleTriggerSample}
                     disabled={isCreatingSample}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                    className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
                   >
-                    {isCreatingSample ? "⏳ جاري الإضافة..." : "➕ إضافة شهادة نموذجية للتجربة"}
+                    {isCreatingSample ? "⏳ جاري الإضافة..." : "➕ إضافة شهادة نموذجية"}
                   </button>
                 )}
               </div>
             </div>
           ) : (
             /* Multi-Record Responsive Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {filteredRecords.map((record) => {
                 const cleanSerial = (record.serialNumber || "").trim();
                 const cleanUnified = (record.unifiedNumber || "").trim();
@@ -397,41 +467,41 @@ export function FirebaseRecordsModal({
                 return (
                   <div
                     key={record.id}
-                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-lg transition-all p-4.5 sm:p-5 flex flex-col justify-between shadow-2xs gap-3 group relative overflow-hidden"
+                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all p-4 flex flex-col justify-between shadow-2xs gap-3 group relative overflow-hidden"
                   >
-                    {/* Top Decorative accent bar */}
+                    {/* Top Accent Line */}
                     <div
-                      className="absolute top-0 inset-x-0 h-1 transition-colors"
+                      className="absolute top-0 inset-x-0 h-1"
                       style={{ backgroundColor: record.statusColor || "#32c5cb" }}
                     />
 
                     <div>
-                      {/* Top Badges: Serial, Unified, Status, Timestamp */}
-                      <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 flex-wrap">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {/* Serial Badge */}
+                      {/* Top Badges Row: Serial, Unified, Status, Date */}
+                      <div className="flex items-center justify-between gap-1.5 pb-2.5 mb-2.5 border-b border-slate-100">
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          {/* Serial Pill */}
                           <span
-                            className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 font-mono font-black text-xs border border-blue-200/80 shadow-2xs"
+                            className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-mono font-black text-[11px] border border-blue-200/80"
                             title="الرقم التسلسلي"
                           >
                             #{cleanSerial}
                           </span>
 
-                          {/* Unified Number Badge */}
+                          {/* Unified Pill */}
                           {cleanUnified && (
                             <span
-                              className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 font-mono font-black text-xs border border-purple-200/80 shadow-2xs"
+                              className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-mono font-bold text-[11px] border border-purple-200/80"
                               title="الرقم الموحد"
                             >
                               700: {cleanUnified}
                             </span>
                           )}
 
-                          {/* Status Badge */}
+                          {/* Status Pill */}
                           <span
-                            className="font-black px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1.5 border"
+                            className="font-bold px-2 py-0.5 rounded-md text-[10px] flex items-center gap-1 border shrink-0"
                             style={{
-                              backgroundColor: `${record.statusColor || "#32c5cb"}12`,
+                              backgroundColor: `${record.statusColor || "#32c5cb"}15`,
                               color: record.statusColor || "#32c5cb",
                               borderColor: `${record.statusColor || "#32c5cb"}30`,
                             }}
@@ -444,129 +514,161 @@ export function FirebaseRecordsModal({
                           </span>
                         </div>
 
-                        {/* Timestamp */}
-                        <span className="text-[10px] text-slate-400 font-semibold shrink-0">
+                        {/* Date */}
+                        <span className="text-[10px] text-slate-400 font-medium shrink-0">
                           {formatDate(record.createdAt)}
                         </span>
                       </div>
 
-                      {/* Facility Name & Chamber Information */}
-                      <div className="space-y-1 mb-3">
+                      {/* Facility & Chamber Details */}
+                      <div className="space-y-0.5 mb-2.5">
                         <h4
-                          className="font-black text-sm sm:text-base text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors"
+                          className="font-black text-xs sm:text-sm text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors"
                           title={record.facilityName}
                         >
                           {record.facilityName || "بدون اسم منشأة"}
                         </h4>
 
-                        <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          <span className="font-bold text-slate-700">
-                            🏛️ {record.chamberName || "الغرفة التجارية"}
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-slate-700 shrink-0">
+                            🏛️ {record.chamberName || "الغرفة"}
                           </span>
                           {record.facilitySubName && (
-                            <span className="text-slate-400 truncate max-w-[200px]">
+                            <span className="text-slate-400 truncate">
                               • {record.facilitySubName}
                             </span>
                           )}
                         </div>
 
-                        {/* Extra Details Row: Request #, Type, Commercial Reg */}
-                        <div className="text-[11px] text-slate-500 pt-1 flex flex-wrap items-center justify-between gap-1">
-                          <span className="font-medium">
+                        {/* Request & Commercial Reg Info (BiDi Isolated) */}
+                        <div className="text-[10px] text-slate-500 pt-0.5 flex items-center justify-between gap-1 flex-wrap">
+                          <span className="font-medium truncate">
                             📄 #{record.requestNumber} ({record.requestType || "توثيق"})
                           </span>
                           {record.commercialRegNo && (
-                            <span className="text-slate-400 font-mono text-[10px]">
-                              س.ت: {record.commercialRegNo}
+                            <span className="text-slate-400 font-mono" dir="ltr">
+                              CR: {record.commercialRegNo}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Shareable Public Link Box with Click-to-Copy */}
+                      {/* Interactive Public URL Strip (1-Click Copy with Feedback) */}
                       <div
                         onClick={() => onCopyRecordLink(record)}
-                        className={`p-2.5 rounded-xl border font-mono text-[11px] flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                        className={`p-2 rounded-xl border font-mono text-[11px] flex items-center justify-between gap-2 cursor-pointer transition-all ${
                           isCopied
                             ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs"
-                            : "bg-slate-50/90 hover:bg-blue-50/60 border-slate-200/90 hover:border-blue-300 text-slate-700"
+                            : "bg-slate-50/90 hover:bg-blue-50/70 border-slate-200/90 hover:border-blue-300 text-slate-700"
                         }`}
                         title="انقر لنسخ الرابط المباشر"
                       >
-                        <div className="flex items-center gap-2 truncate min-w-0">
+                        <div className="flex items-center gap-1.5 truncate min-w-0">
                           <span className="text-xs shrink-0">
-                            {isCopied ? "✅" : "🔗"}
+                            {isCopied ? (
+                              <IconCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <IconLinkChain className="w-3.5 h-3.5 text-blue-600" />
+                            )}
                           </span>
                           <span className="truncate text-blue-700 font-bold" dir="ltr">
                             {fullUrl}
                           </span>
                         </div>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 transition-colors ${
+                          className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 transition-colors flex items-center gap-1 ${
                             isCopied
                               ? "bg-emerald-600 text-white"
-                              : "bg-white text-slate-500 border border-slate-200 group-hover:text-blue-600"
+                              : "bg-white text-slate-600 border border-slate-200 group-hover:text-blue-600"
                           }`}
                         >
-                          {isCopied ? "تم النسخ! ✓" : "نسخ 📋"}
+                          {isCopied ? (
+                            <>
+                              <IconCheck className="w-3 h-3" />
+                              <span>{lang === "en" ? "Copied! ✓" : lang === "ur" ? "کاپی ہو گیا! ✓" : "تم النسخ! ✓"}</span>
+                            </>
+                          ) : (
+                            <>
+                              <IconCopy className="w-3 h-3" />
+                              <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
+                            </>
+                          )}
                         </span>
                       </div>
                     </div>
 
-                    {/* Action Buttons Row */}
-                    <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 text-xs">
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Action Buttons Toolbar */}
+                    <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1.5">
                         {/* 1. Copy Link Button */}
                         <button
                           type="button"
                           onClick={() => onCopyRecordLink(record)}
-                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs text-xs ${
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs text-xs ${
                             isCopied
                               ? "bg-emerald-600 text-white shadow-emerald-500/20"
                               : "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/80"
                           }`}
                         >
-                          <span>{isCopied ? "✅" : "📋"}</span>
-                          <span>{isCopied ? t.link_copied : t.copy_link_btn}</span>
+                          {isCopied ? (
+                            <IconCheck className="w-3.5 h-3.5 text-white" />
+                          ) : (
+                            <IconCopy className="w-3.5 h-3.5 text-blue-600" />
+                          )}
+                          <span>
+                            {isCopied
+                              ? lang === "en"
+                                ? "Copied"
+                                : lang === "ur"
+                                ? "کاپی ہو گیا"
+                                : "تم النسخ"
+                              : lang === "en"
+                              ? "Copy Link"
+                              : lang === "ur"
+                              ? "لنک کاپی"
+                              : "نسخ الرابط"}
+                          </span>
                         </button>
 
-                        {/* 2. Open Page Button */}
+                        {/* 2. Open Public Link Button */}
                         <Link
                           href={path}
                           target="_blank"
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all flex items-center gap-1 no-underline active:scale-95 text-xs"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all flex items-center gap-1 no-underline active:scale-95 text-xs border border-slate-200/60"
                           title={t.open_link_btn}
                         >
-                          <span>↗️</span>
-                          <span className="hidden sm:inline">{t.open_link_btn}</span>
+                          <IconExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                          <span className="hidden sm:inline">{t.open_link_btn || "فتح"}</span>
                         </Link>
 
-                        {/* 3. Load in Editor Button */}
+                        {/* 3. Load into Editor Button */}
                         <button
                           type="button"
                           onClick={() => onLoadRecordIntoEditor(record)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 text-xs"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 text-xs border border-slate-200/60"
                           title={t.edit_in_editor}
                         >
-                          <span>✏️</span>
-                          <span className="hidden sm:inline">{t.edit_in_editor}</span>
+                          <IconEdit className="w-3.5 h-3.5 text-slate-600" />
+                          <span className="hidden sm:inline">{t.edit_in_editor || "تعديل"}</span>
                         </button>
                       </div>
 
-                      {/* 4. Delete Record from Firebase */}
+                      {/* 4. 🌟 CRYSTAL-CLEAR VIBRANT DELETE BUTTON 🌟 */}
                       <button
                         type="button"
                         disabled={isDeleting}
                         onClick={() => setRecordToDelete(record)}
-                        className="px-2.5 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 hover:border-rose-300 font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 active:scale-95 text-xs"
-                        title={t.delete_record_btn}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 font-extrabold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 text-xs shadow-xs group/del"
+                        title={lang === "en" ? "Delete permanently from Firebase" : lang === "ur" ? "Firebase سے مستقل ڈیلیٹ کریں" : "حذف السجل نهائياً من Firebase"}
                       >
                         {isDeleting ? (
-                          <div className="w-3.5 h-3.5 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <span>🗑️</span>
+                          <IconTrash className="w-4 h-4 text-rose-600 group-hover/del:text-white transition-colors shrink-0" />
                         )}
-                        <span className="hidden sm:inline">{t.delete_record_btn}</span>
+                        <span className="text-[11px] group-hover/del:text-white transition-colors">
+                          {lang === "en" ? "Delete" : lang === "ur" ? "ڈیلیٹ" : "حذف"}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -577,66 +679,82 @@ export function FirebaseRecordsModal({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* DELETE CONFIRMATION DIALOG OVERLAY                              */}
+        {/* 4. DEDICATED DELETE CONFIRMATION DIALOG (CLEAR & SAFE)          */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         {recordToDelete && (
-          <div className="fixed inset-0 z-[100005] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100005] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
             <div
               dir={isRtl ? "rtl" : "ltr"}
-              className="bg-white rounded-2xl shadow-2xl border border-rose-200 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-150"
+              className="bg-white rounded-3xl shadow-2xl border border-rose-200 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-150"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Alert Header */}
               <div className="flex items-center gap-3 text-rose-600">
-                <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-xl shrink-0">
-                  ⚠️
+                <div className="w-11 h-11 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0 border border-rose-200 text-rose-600">
+                  <IconTrash className="w-6 h-6 text-rose-600" />
                 </div>
                 <div>
-                  <h4 className="font-black text-base text-slate-900">
-                    {lang === "en" ? "Delete Record Permanently?" : lang === "ur" ? "ریکارڈ مستقل ڈیلیٹ کریں؟" : "تأكيد حذف الوثيقة نهائياً"}
+                  <h4 className="font-extrabold text-base text-slate-900">
+                    {lang === "en"
+                      ? "Delete Record Permanently?"
+                      : lang === "ur"
+                      ? "کیا آپ یہ ریکارڈ مستقل ڈیلیٹ کرنا چاہتے ہیں؟"
+                      : "تأكيد حذف الوثيقة نهائياً من Firebase"}
                   </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {lang === "en" ? "This will be removed from Firebase Cloud Firestore." : "سيتم حذف هذا السجل نهائياً من Firebase وقاعدة البيانات"}
+                  <p className="text-xs text-rose-600 font-semibold mt-0.5">
+                    {lang === "en"
+                      ? "This will be deleted directly from Cloud Firestore."
+                      : "سيتم حذف هذا السجل نهائياً ومباشرة من قاعدة بيانات Firebase."}
                   </p>
                 </div>
               </div>
 
               {/* Record Summary Box */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1 font-semibold text-slate-700">
-                <p className="font-bold text-slate-900 truncate">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5 font-semibold text-slate-700">
+                <p className="font-extrabold text-slate-900 text-sm truncate">
                   🏢 {recordToDelete.facilityName}
                 </p>
-                <div className="flex items-center gap-2 font-mono text-[11px] text-slate-600">
-                  <span>#{recordToDelete.serialNumber}</span>
-                  {recordToDelete.unifiedNumber && <span>• 700: {recordToDelete.unifiedNumber}</span>}
+                <div className="flex items-center gap-2 font-mono text-[11px] text-slate-600 flex-wrap">
+                  <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded font-bold">
+                    #{recordToDelete.serialNumber}
+                  </span>
+                  {recordToDelete.unifiedNumber && (
+                    <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded font-bold">
+                      700: {recordToDelete.unifiedNumber}
+                    </span>
+                  )}
                   <span>• 🏛️ {recordToDelete.chamberName}</span>
                 </div>
               </div>
 
-              {/* Confirmation Action Buttons */}
-              <div className="flex items-center gap-2.5 pt-2">
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 pt-1">
                 <button
                   type="button"
                   disabled={Boolean(deletingRecordId)}
                   onClick={() => setRecordToDelete(null)}
-                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 text-center"
                 >
                   {lang === "en" ? "Cancel" : lang === "ur" ? "منسوخ" : "إلغاء"}
                 </button>
+
                 <button
                   type="button"
                   disabled={Boolean(deletingRecordId)}
                   onClick={handleConfirmDelete}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-md shadow-rose-600/25 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs transition-all shadow-md shadow-rose-600/25 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {deletingRecordId === recordToDelete.id ? (
                     <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       <span>{lang === "en" ? "Deleting..." : "جاري الحذف..."}</span>
                     </>
                   ) : (
                     <>
-                      <span>🗑️</span>
-                      <span>{lang === "en" ? "Confirm Delete" : lang === "ur" ? "ہاں، ڈیلیٹ کریں" : "نعم، حذف نهائي"}</span>
+                      <IconTrash className="w-4 h-4 text-white" />
+                      <span>
+                        {lang === "en" ? "Yes, Delete" : lang === "ur" ? "ہاں، ڈیلیٹ کریں" : "نعم، حذف نهائي"}
+                      </span>
                     </>
                   )}
                 </button>
@@ -646,24 +764,24 @@ export function FirebaseRecordsModal({
         )}
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* MODAL FOOTER                                                   */}
+        {/* 5. MODAL FOOTER (CLEAN ALIGNMENT)                               */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0 flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-slate-500 font-medium">
-            <span className="text-orange-500 font-bold">🔥</span>
-            <span>
-              Firebase Cloud Firestore • collection: <code className="text-blue-700 font-bold font-mono">portal_records</code>
+        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0 gap-2">
+          <div className="flex items-center gap-1.5 text-slate-500 font-medium truncate min-w-0">
+            <span className="text-orange-500 font-bold shrink-0">🔥</span>
+            <span className="truncate text-[11px] sm:text-xs">
+              Firebase Firestore • <code className="text-blue-700 font-bold font-mono">portal_records</code>
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-slate-400 text-[11px] font-bold hidden sm:inline">
-              {filteredRecords.length} {lang === "en" ? "active records" : lang === "ur" ? "فعال ریکارڈز" : "سجلات فعالة"}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-slate-400 text-[11px] font-bold font-mono hidden sm:inline">
+              {filteredRecords.length} / {savedRecords.length}
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold cursor-pointer transition-colors"
+              className="px-4 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold cursor-pointer transition-colors text-xs"
             >
               {lang === "en" ? "Close" : lang === "ur" ? "بند کریں" : "إغلاق"}
             </button>
