@@ -114,13 +114,34 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingBtn, setUploadingBtn] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info"; link?: string; linkLabel?: string } | null>(null);
   
   // Language for admin panel only (persisted in localStorage)
   const [lang, setLang] = useState<AdminLanguage>("ar");
   const [activeTab, setActiveTab] = useState<"buttons" | "document" | "preview" | "footer" | "settings">("buttons");
   const [isDragOverBtn, setIsDragOverBtn] = useState<string | null>(null);
   const [quickPreviewOpen, setQuickPreviewOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // ─── GOOGLE DRIVE FILE PICKER STATE ───
+  const [drivePickerTarget, setDrivePickerTarget] = useState<"backButton" | "verifyAgainButton" | "downloadButton" | null>(null);
+  const [driveFiles, setDriveFiles] = useState<Array<{ id: string; name: string; mimeType: string; size?: string; downloadUrl: string; webViewLink?: string; createdTime?: string }>>([]);
+  const [loadingDriveFiles, setLoadingDriveFiles] = useState(false);
+
+  const fetchDriveFiles = useCallback(async () => {
+    setLoadingDriveFiles(true);
+    try {
+      const res = await fetch("/api/drive");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.files)) {
+        setDriveFiles(data.files);
+      }
+    } catch (err) {
+      console.error("Error loading drive files:", err);
+    } finally {
+      setLoadingDriveFiles(false);
+    }
+  }, []);
 
   const fileInputBackRef = useRef<HTMLInputElement>(null);
   const fileInputVerifyRef = useRef<HTMLInputElement>(null);
@@ -173,13 +194,21 @@ export default function AdminDashboard() {
     }
   };
 
-  const showToast = useCallback((message: string, type: "success" | "error" | "info" = "success") => {
-    setToast({ message, type });
-    const timer = setTimeout(() => {
-      setToast(null);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, []);
+  const showToast = useCallback(
+    (
+      message: string,
+      type: "success" | "error" | "info" = "success",
+      link?: string,
+      linkLabel?: string
+    ) => {
+      setToast({ message, type, link, linkLabel });
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, link ? 8000 : 4000);
+      return () => clearTimeout(timer);
+    },
+    []
+  );
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -221,6 +250,10 @@ export default function AdminDashboard() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         handleSave();
+      }
+      if (e.key === "Escape") {
+        setDrawerOpen(false);
+        setQuickPreviewOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -303,11 +336,13 @@ export default function AdminDashboard() {
         }));
         showToast(
           lang === "en"
-            ? `File "${data.fileName}" uploaded! Click Save to apply.`
+            ? `File "${data.fileName}" linked! Click notification to open Google Drive folder.`
             : lang === "ur"
-            ? `فائل "${data.fileName}" اپلوڈ ہو گئی۔ تبدیلیاں محفوظ کرنا نہ بھولیں!`
-            : `تم رفع الملف "${data.fileName}" بنجاح! اضغط حفظ للاعتماد.`,
-          "success"
+            ? `فائل "${data.fileName}" لنک ہو گئی۔ گوگل ڈرائیو پر دیکھنے کیلئے یہاں کلک کریں!`
+            : `تم ربط الملف "${data.fileName}" بنجاح! انقر هنا لفتح مجلد Google Drive.`,
+          "success",
+          "https://drive.google.com/drive/folders/1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl",
+          lang === "en" ? "Open Drive ↗" : lang === "ur" ? "گوگل ڈرائیو کھولیں ↗" : "فتح Google Drive ↗"
         );
       } else {
         showToast(data.error || "Upload failed", "error");
@@ -360,11 +395,18 @@ export default function AdminDashboard() {
       dir={isRtl ? "rtl" : "ltr"}
       className="min-h-screen bg-[#f3f6fa] text-slate-800 font-sans pb-32 selection:bg-blue-500 selection:text-white"
     >
-      {/* ═══════════════ TOAST NOTIFICATION ═══════════════ */}
+      {/* ═══════════════ TOAST NOTIFICATION WITH GOOGLE DRIVE LINK ═══════════════ */}
       {toast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[99999] shadow-2xl transition-all duration-300">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[999999] shadow-2xl transition-all duration-300 max-w-xl w-full px-4">
           <div
-            className={`px-6 py-3.5 rounded-2xl flex items-center gap-3 border text-sm font-bold shadow-xl backdrop-blur-md ${
+            onClick={() => {
+              if (toast.link) {
+                window.open(toast.link, "_blank");
+              }
+            }}
+            className={`px-5 py-3.5 rounded-2xl flex items-center justify-between gap-3 border text-xs sm:text-sm font-bold shadow-xl backdrop-blur-md transition-all ${
+              toast.link ? "cursor-pointer hover:scale-[1.01]" : ""
+            } ${
               toast.type === "success"
                 ? "bg-emerald-600/95 text-white border-emerald-400"
                 : toast.type === "error"
@@ -372,10 +414,25 @@ export default function AdminDashboard() {
                 : "bg-blue-600/95 text-white border-blue-400"
             }`}
           >
-            <span className="text-base">
-              {toast.type === "success" ? "✓" : toast.type === "error" ? "✕" : "ℹ"}
-            </span>
-            <span>{toast.message}</span>
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <span className="text-base shrink-0">
+                {toast.type === "success" ? "✓" : toast.type === "error" ? "✕" : "ℹ"}
+              </span>
+              <span className="truncate">{toast.message}</span>
+            </div>
+
+            {toast.link && (
+              <a
+                href={toast.link}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 bg-white text-slate-900 hover:bg-slate-100 px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md no-underline transition-all"
+              >
+                <span>☁️</span>
+                <span>{toast.linkLabel || (lang === "en" ? "Open Drive ↗" : lang === "ur" ? "گوگل ڈرائیو کھولیں ↗" : "فتح Google Drive ↗")}</span>
+              </a>
+            )}
           </div>
         </div>
       )}
@@ -477,16 +534,728 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* ═══════════════ GOOGLE DRIVE FILE PICKER MODAL ═══════════════ */}
+      {drivePickerTarget && (
+        <div
+          className="fixed inset-0 z-[99999] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setDrivePickerTarget(null)}
+        >
+          <div
+            dir={isRtl ? "rtl" : "ltr"}
+            className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/30 border border-blue-400/40 flex items-center justify-center text-xl shrink-0">
+                  📁
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg">
+                    {lang === "en" ? "Google Drive Cloud Files" : lang === "ur" ? "گوگل ڈرائیو فائلز" : "ملفات Google Drive السحابية"}
+                  </h3>
+                  <p className="text-xs text-blue-200/80">
+                    {lang === "en"
+                      ? "Folder: website file • Select any file to link directly"
+                      : lang === "ur"
+                      ? "فولڈر: website file • ڈاؤن لوڈ کیلئے براہ راست لنک کریں"
+                      : "المجلد المتصل: website file • اختر أي ملف للربط والتحميل المباشر"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchDriveFiles}
+                  disabled={loadingDriveFiles}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="تحديث قائمة الملفات"
+                >
+                  <span className={loadingDriveFiles ? "animate-spin inline-block" : ""}>🔄</span>
+                  <span>{lang === "en" ? "Refresh" : lang === "ur" ? "ریفریش" : "تحديث"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrivePickerTarget(null)}
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-bold flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 font-sans">
+              {loadingDriveFiles ? (
+                <div className="py-12 text-center text-slate-500">
+                  <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-xs font-bold">
+                    {lang === "en" ? "Fetching files from Google Drive..." : lang === "ur" ? "گوگل ڈرائیو سے فائلیں لائی جا رہی ہیں..." : "جاري استرداد الملفات من Google Drive..."}
+                  </p>
+                </div>
+              ) : driveFiles.length === 0 ? (
+                <div className="py-12 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 text-3xl flex items-center justify-center mx-auto shadow-inner">
+                    📂
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">
+                      {lang === "en"
+                        ? "No files found in Google Drive folder 'website file'"
+                        : lang === "ur"
+                        ? "گوگل ڈرائیو فولڈر 'website file' میں کوئی فائل نہیں ملی"
+                        : "لم يتم العثور على ملفات داخل مجلد website file في Google Drive"}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                      {lang === "en"
+                        ? "You can upload files directly here or drag files into your Google Drive 'website file' folder."
+                        : lang === "ur"
+                        ? "آپ یہاں سے فائل اپلوڈ کر سکتے ہیں یا اپنے گوگل ڈرائیو میں فائل شامل کر کے ریفریش کریں۔"
+                        : "يمكنك رفع ملف مباشرة من هنا، أو وضع الملفات داخل مجلد website file في Google Drive ثم النقر على تحديث."}
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (drivePickerTarget === "backButton") fileInputBackRef.current?.click();
+                        else if (drivePickerTarget === "verifyAgainButton") fileInputVerifyRef.current?.click();
+                        else if (drivePickerTarget === "downloadButton") fileInputDownloadRef.current?.click();
+                        setDrivePickerTarget(null);
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
+                    >
+                      <span>⬆️</span>
+                      <span>
+                        {lang === "en" ? "Upload File Now" : lang === "ur" ? "فائل ابھی اپلوڈ کریں" : "رفع ملف جديد الآن"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  <div className="text-xs font-bold text-slate-500 mb-2">
+                    {lang === "en"
+                      ? `Found ${driveFiles.length} file(s) in Google Drive:`
+                      : lang === "ur"
+                      ? `گوگل ڈرائیو میں ${driveFiles.length} فائلیں موجود ہیں:`
+                      : `تم العثور على ${driveFiles.length} ملف في Google Drive:`}
+                  </div>
+                  {driveFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      className="p-3.5 rounded-2xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 transition-all flex items-center justify-between gap-3 bg-white"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <span className="text-2xl">
+                          {file.mimeType.includes("pdf") ? "📄" : file.mimeType.includes("image") ? "🖼️" : "📁"}
+                        </span>
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-slate-900 truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {file.size ? formatFileSize(parseInt(file.size)) : "Google Drive"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {file.webViewLink && (
+                          <a
+                            href={file.webViewLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] text-slate-500 hover:text-blue-600 font-bold px-2 py-1 rounded-lg hover:bg-slate-100"
+                            title="معاينة في Drive"
+                          >
+                            معاينة ↗
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (drivePickerTarget) {
+                              setConfig((prev) => ({
+                                ...prev,
+                                [drivePickerTarget]: {
+                                  ...prev[drivePickerTarget],
+                                  actionType: "file",
+                                  fileUrl: file.downloadUrl,
+                                  fileName: file.name,
+                                  fileSize: file.size ? parseInt(file.size) : undefined,
+                                },
+                              }));
+                              setDrivePickerTarget(null);
+                              showToast(
+                                lang === "en"
+                                  ? `Linked Google Drive file "${file.name}"! Click Save to apply.`
+                                  : lang === "ur"
+                                  ? `گوگل ڈرائیو فائل "${file.name}" منسلک کر دی گئی۔ سیو پر کلک کریں!`
+                                  : `تم ربط ملف Google Drive "${file.name}" بنجاح! اضغط حفظ للاعتماد.`,
+                                "success"
+                              );
+                            }
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-all"
+                        >
+                          {lang === "en" ? "Select File" : lang === "ur" ? "یہ فائل منتخب کریں" : "اختيار هذا الملف"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
+              <span className="text-slate-400 font-medium">
+                Google Drive Storage • Connected to Service Account
+              </span>
+              <button
+                type="button"
+                onClick={() => setDrivePickerTarget(null)}
+                className="px-4 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold cursor-pointer"
+              >
+                {lang === "en" ? "Cancel" : lang === "ur" ? "منسوخ" : "إلغاء"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════ SLIDE-OUT NAVIGATION DRAWER (SIDE LIST) ═══════════════ */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-[99999]">
+          {/* Backdrop overlay with blur */}
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity cursor-pointer drawer-backdrop-anim"
+            onClick={() => setDrawerOpen(false)}
+          />
+
+          {/* Drawer Panel: Slides in smoothly from right in RTL, or left in LTR */}
+          <div
+            dir={isRtl ? "rtl" : "ltr"}
+            className={`fixed inset-y-0 ${
+              isRtl ? "right-0 drawer-panel-rtl border-l" : "left-0 drawer-panel-ltr border-r"
+            } w-full max-w-[380px] sm:max-w-[430px] bg-white shadow-2xl flex flex-col z-[100000] border-slate-200`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 to-blue-950 text-white flex items-center justify-between shrink-0 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-300 font-bold text-lg shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 6h16M4 12h16M4 18h7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-white">
+                    {lang === "en" ? "Control Panel Menu" : lang === "ur" ? "کنٹرول پینل مینیو (دراز)" : "قائمة لوحة التحكم"}
+                  </h3>
+                  <p className="text-[11px] text-blue-200/80">
+                    {lang === "en"
+                      ? "Click any item to open that screen and edit"
+                      : lang === "ur"
+                      ? "کسی بھی سیکشن پر کلک کریں، اسکرین کھل جائے گی اور تبدیلی ہوگی"
+                      : "اختر أي قسم للانتقال المباشر وتعديل البيانات"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-bold transition-all cursor-pointer"
+                title={lang === "en" ? "Close" : lang === "ur" ? "بند کریں" : "إغلاق"}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Drawer Content List (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 font-sans">
+              {/* Category 1: Main Screens (الاقسام الرئيسية) */}
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-2">
+                  {lang === "en" ? "Main Sections" : lang === "ur" ? "بنیادی سیکشنز" : "الأقسام والشاشات الرئيسية"}
+                </span>
+                <div className="space-y-1.5">
+                  {/* Item 1: Buttons & Files */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("buttons");
+                      setDrawerOpen(false);
+                    }}
+                    className={`w-full text-right p-3 rounded-2xl transition-all flex items-center justify-between cursor-pointer border ${
+                      activeTab === "buttons"
+                        ? "bg-blue-50 border-blue-300 text-blue-900 font-black shadow-xs ring-1 ring-blue-400"
+                        : "bg-white hover:bg-slate-50 border-slate-200/80 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                        <IconButtons className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black">{t.tab_buttons}</div>
+                        <div className="text-[11px] text-slate-400 font-normal mt-0.5">
+                          {lang === "en"
+                            ? "Back, Verify Again, and Download buttons & files"
+                            : lang === "ur"
+                            ? "واپسی، دوبارہ تصدیق اور ڈاؤن لوڈ بٹن اور فائلیں"
+                            : "أزرار العودة، التحقق، وزر التحميل وربط الملفات"}
+                        </div>
+                      </div>
+                    </div>
+                    {activeTab === "buttons" && (
+                      <span className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full shrink-0">
+                        {lang === "en" ? "Active" : lang === "ur" ? "کھلا ہوا ہے" : "نشط"}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Item 2: Document Details */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("document");
+                      setDrawerOpen(false);
+                    }}
+                    className={`w-full text-right p-3 rounded-2xl transition-all flex items-center justify-between cursor-pointer border ${
+                      activeTab === "document"
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-black shadow-xs ring-1 ring-emerald-400"
+                        : "bg-white hover:bg-slate-50 border-slate-200/80 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <IconDocument className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black">{t.tab_document}</div>
+                        <div className="text-[11px] text-slate-400 font-normal mt-0.5">
+                          {lang === "en"
+                            ? "Chamber, facility, request #, dates, status"
+                            : lang === "ur"
+                            ? "کمرہ، ادارہ، درخواست نمبر، تاریخیں اور حالت"
+                            : "اسم الغرفة، المنشأة، الأرقام، التواريخ، والحالة"}
+                        </div>
+                      </div>
+                    </div>
+                    {activeTab === "document" && (
+                      <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full shrink-0">
+                        {lang === "en" ? "Active" : lang === "ur" ? "کھلا ہوا ہے" : "نشط"}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Item 3: Live Preview */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("preview");
+                      setDrawerOpen(false);
+                    }}
+                    className={`w-full text-right p-3 rounded-2xl transition-all flex items-center justify-between cursor-pointer border ${
+                      activeTab === "preview"
+                        ? "bg-purple-50 border-purple-300 text-purple-900 font-black shadow-xs ring-1 ring-purple-400"
+                        : "bg-white hover:bg-slate-50 border-slate-200/80 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                        <IconPreview className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black">{t.tab_preview}</div>
+                        <div className="text-[11px] text-slate-400 font-normal mt-0.5">
+                          {lang === "en"
+                            ? "Interactive live portal preview screen"
+                            : lang === "ur"
+                            ? "پورٹل کی براہ راست انٹرایکٹو اسکرین"
+                            : "معاينة شكل البوابة الحية بشكل تفاعلي ومباشر"}
+                        </div>
+                      </div>
+                    </div>
+                    {activeTab === "preview" && (
+                      <span className="text-[10px] bg-purple-600 text-white font-bold px-2 py-0.5 rounded-full shrink-0">
+                        {lang === "en" ? "Active" : lang === "ur" ? "کھلا ہوا ہے" : "نشط"}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Item 4: Footer & Support */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("footer");
+                      setDrawerOpen(false);
+                    }}
+                    className={`w-full text-right p-3 rounded-2xl transition-all flex items-center justify-between cursor-pointer border ${
+                      activeTab === "footer"
+                        ? "bg-amber-50 border-amber-300 text-amber-900 font-black shadow-xs ring-1 ring-amber-400"
+                        : "bg-white hover:bg-slate-50 border-slate-200/80 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                        <IconSupport className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black">{t.tab_footer}</div>
+                        <div className="text-[11px] text-slate-400 font-normal mt-0.5">
+                          {lang === "en"
+                            ? "Company name, phone number, social links"
+                            : lang === "ur"
+                            ? "کمپنی کا نام، فون نمبر اور سوشل لنکس"
+                            : "اسم الشركة، رقم الهاتف، وروابط التواصل"}
+                        </div>
+                      </div>
+                    </div>
+                    {activeTab === "footer" && (
+                      <span className="text-[10px] bg-amber-600 text-white font-bold px-2 py-0.5 rounded-full shrink-0">
+                        {lang === "en" ? "Active" : lang === "ur" ? "کھلا ہوا ہے" : "نشط"}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Item 5: Settings & Timers */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("settings");
+                      setDrawerOpen(false);
+                    }}
+                    className={`w-full text-right p-3 rounded-2xl transition-all flex items-center justify-between cursor-pointer border ${
+                      activeTab === "settings"
+                        ? "bg-indigo-50 border-indigo-300 text-indigo-900 font-black shadow-xs ring-1 ring-indigo-400"
+                        : "bg-white hover:bg-slate-50 border-slate-200/80 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                        <IconSettings className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black">{t.tab_settings}</div>
+                        <div className="text-[11px] text-slate-400 font-normal mt-0.5">
+                          {lang === "en"
+                            ? "GIF loaders, animation durations, timers"
+                            : lang === "ur"
+                            ? "لوڈر اینیمیشن، انتظار کا وقت اور ترتیبات"
+                            : "شاشات التحميل المتحركة، فترات الانتظار، والإعدادات"}
+                        </div>
+                      </div>
+                    </div>
+                    {activeTab === "settings" && (
+                      <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full shrink-0">
+                        {lang === "en" ? "Active" : lang === "ur" ? "کھلا ہوا ہے" : "نشط"}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Category 2: Direct Sub-Section Jumps (انتقال سريع ومباشر للحقول) */}
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-2">
+                  {lang === "en" ? "Quick Field Jump" : lang === "ur" ? "فیلڈز تک فوری رسائی" : "الانتقال السريع للحقول"}
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("document");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>🏛️</span>
+                    <span className="truncate">
+                      {lang === "en" ? "Chamber & Facility" : lang === "ur" ? "کمرہ اور ادارہ" : "اسم الغرفة والمنشأة"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("document");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>🔢</span>
+                    <span className="truncate">
+                      {lang === "en" ? "Request & Unified #" : lang === "ur" ? "درخواست اور موحد نمبر" : "أرقام الطلب والموحد"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("document");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>📅</span>
+                    <span className="truncate">
+                      {lang === "en" ? "Dates & Times" : lang === "ur" ? "تاریخ اور اوقات" : "التواريخ والأوقات"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("document");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>🟢</span>
+                    <span className="truncate">
+                      {lang === "en" ? "Status & Color" : lang === "ur" ? "حالت اور رنگ" : "حالة الطلب والألوان"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("document");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>➕</span>
+                    <span className="truncate">
+                      {lang === "en" ? "Custom Fields" : lang === "ur" ? "اضافی فیلڈز" : "الحقول المخصصة"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("buttons");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>📁</span>
+                    <span className="truncate">
+                      {lang === "en" ? "Upload PDF File" : lang === "ur" ? "پی ڈی ایف فائل اپلوڈ" : "رفع ملف PDF للأزرار"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("footer");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>📞</span>
+                    <span className="truncate">
+                      {lang === "en" ? "Support Phone" : lang === "ur" ? "ڈعم فون نمبر" : "هاتف الدعم الفني"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("settings");
+                      setDrawerOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 font-bold transition-all text-right flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>🎬</span>
+                    <span className="truncate">
+                      {lang === "en" ? "GIF Loaders" : lang === "ur" ? "GIF اینیمیشن" : "شاشات GIF للتحميل"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Category 3: Quick Controls inside Drawer */}
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-2">
+                  {lang === "en" ? "Quick Controls" : lang === "ur" ? "فوری کنٹرولز" : "الإجراءات السريعة"}
+                </span>
+
+                <div className="space-y-2">
+                  {/* Save button inside drawer */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSave();
+                      setDrawerOpen(false);
+                    }}
+                    disabled={saving}
+                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{t.save_btn}</span>
+                  </button>
+
+                  {/* Open live site in new tab */}
+                  <Link
+                    href="/"
+                    target="_blank"
+                    className="w-full py-2.5 px-4 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 flex items-center justify-center gap-2 no-underline"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    <span>{t.preview_btn} ( / )</span>
+                  </Link>
+
+                  {/* Reset defaults inside drawer */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleReset();
+                      setDrawerOpen(false);
+                    }}
+                    className="w-full py-2 px-3 rounded-xl text-rose-600 hover:text-rose-800 hover:bg-rose-50 text-xs font-bold border border-rose-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🔄</span>
+                    <span>{t.reset_btn}</span>
+                  </button>
+
+                  {/* Language switch inside drawer */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <span className="font-bold text-slate-600">
+                      {lang === "en" ? "Language" : lang === "ur" ? "زبان منتخب کریں" : "لغة اللوحة"}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleLanguageChange("ar")}
+                        className={`px-2 py-1 rounded text-xs font-bold cursor-pointer ${
+                          lang === "ar" ? "bg-blue-600 text-white" : "bg-white text-slate-700"
+                        }`}
+                      >
+                        🇸🇦 عربية
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleLanguageChange("en")}
+                        className={`px-2 py-1 rounded text-xs font-bold cursor-pointer ${
+                          lang === "en" ? "bg-blue-600 text-white" : "bg-white text-slate-700"
+                        }`}
+                      >
+                        🇬🇧 En
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleLanguageChange("ur")}
+                        className={`px-2 py-1 rounded text-xs font-bold cursor-pointer ${
+                          lang === "ur" ? "bg-blue-600 text-white" : "bg-white text-slate-700"
+                        }`}
+                      >
+                        🇵🇰 اردو
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
+              <div className="text-slate-500 text-[11px] font-bold">
+                بوابة خدمات الغرفة • Admin v2.0
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold cursor-pointer"
+              >
+                {lang === "en" ? "Close Drawer" : lang === "ur" ? "بند کریں" : "إغلاق القائمة"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 🌟 ULTRA-CLEAN, MODERN, PROFESSIONAL HEADER (NO DUPLICATES) */}
+      {/* 🌟 ULTRA-CLEAN, MODERN, PROFESSIONAL HEADER (WITH DRAWER) */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-lg border-b border-slate-200/80 shadow-xs">
         {/* Tier 1: Main Control Bar */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
           {/* Brand & System Status */}
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            {/* ─── PROMINENT MAIN DRAWER TOGGLE BUTTON ─── */}
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 shadow-md shadow-blue-500/25 transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-95"
+              title={lang === "en" ? "Open Navigation Drawer" : lang === "ur" ? "مینیو دراز کھولیں" : "فتح القائمة الجانبية (دراز)"}
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span>
+                {lang === "en" ? "Menu (Drawer)" : lang === "ur" ? "القائمة (دراز)" : "القائمة (دراز)"}
+              </span>
+            </button>
+
+            {/* Active Screen Indicator (Clickable to open Drawer) */}
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 hover:border-blue-300 border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer transition-all"
+              title={lang === "en" ? "Current screen - Click to change via drawer" : lang === "ur" ? "موجودہ اسکرین - دراز کھولنے کے لئے کلک کریں" : "القسم المعروض حالياً - انقر للفتح من القائمة"}
+            >
+              <span className="text-slate-400 font-medium">
+                {lang === "en" ? "Screen:" : lang === "ur" ? "سیکشن:" : "القسم:"}
+              </span>
+              <span className="font-black text-blue-700 flex items-center gap-1.5">
+                {activeTab === "buttons" && (
+                  <>
+                    <IconButtons className="w-4 h-4 text-blue-600" />
+                    <span>{t.tab_buttons}</span>
+                  </>
+                )}
+                {activeTab === "document" && (
+                  <>
+                    <IconDocument className="w-4 h-4 text-emerald-600" />
+                    <span>{t.tab_document}</span>
+                  </>
+                )}
+                {activeTab === "preview" && (
+                  <>
+                    <IconPreview className="w-4 h-4 text-purple-600" />
+                    <span>{t.tab_preview}</span>
+                  </>
+                )}
+                {activeTab === "footer" && (
+                  <>
+                    <IconSupport className="w-4 h-4 text-amber-600" />
+                    <span>{t.tab_footer}</span>
+                  </>
+                )}
+                {activeTab === "settings" && (
+                  <>
+                    <IconSettings className="w-4 h-4 text-indigo-600" />
+                    <span>{t.tab_settings}</span>
+                  </>
+                )}
+              </span>
+              <span className="text-[10px] text-blue-600 bg-white px-1.5 py-0.5 rounded-md border border-blue-200 shadow-2xs font-black">
+                {isRtl ? "تغيير ☰" : "Change ☰"}
+              </span>
+            </button>
+
             {/* Logo Badge */}
-            <div className="relative group">
+            <div className="relative group hidden sm:block">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 font-black text-lg shrink-0 transition-transform group-hover:scale-105">
                 ⚡
               </div>
@@ -637,93 +1406,6 @@ export default function AdminDashboard() {
                 </>
               )}
             </button>
-          </div>
-        </div>
-
-        {/* Tier 2: Clean Seamless Tabs Bar (CLEAN, NO DUPLICATE ICONS) */}
-        <div className="border-t border-slate-100 bg-slate-50/70 px-4 sm:px-6 py-2">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-1.5">
-              {/* Tab 1: Buttons & Files */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("buttons")}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === "buttons"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                    : "bg-white text-slate-600 hover:bg-slate-200/80 border border-slate-200/80"
-                }`}
-              >
-                <IconButtons className="w-4 h-4" />
-                <span>{t.tab_buttons}</span>
-              </button>
-
-              {/* Tab 2: Document Details */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("document")}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === "document"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                    : "bg-white text-slate-600 hover:bg-slate-200/80 border border-slate-200/80"
-                }`}
-              >
-                <IconDocument className="w-4 h-4" />
-                <span>{t.tab_document}</span>
-              </button>
-
-              {/* Tab 3: Live Preview */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("preview")}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === "preview"
-                    ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
-                    : "bg-white text-slate-600 hover:bg-slate-200/80 border border-slate-200/80"
-                }`}
-              >
-                <IconPreview className="w-4 h-4" />
-                <span>{t.tab_preview}</span>
-              </button>
-
-              {/* Tab 4: Footer & Support */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("footer")}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === "footer"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                    : "bg-white text-slate-600 hover:bg-slate-200/80 border border-slate-200/80"
-                }`}
-              >
-                <IconSupport className="w-4 h-4" />
-                <span>{t.tab_footer}</span>
-              </button>
-
-              {/* Tab 5: Settings & Timers */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("settings")}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === "settings"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                    : "bg-white text-slate-600 hover:bg-slate-200/80 border border-slate-200/80"
-                }`}
-              >
-                <IconSettings className="w-4 h-4" />
-                <span>{t.tab_settings}</span>
-              </button>
-            </div>
-
-            <div className="shrink-0">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="text-[11px] text-rose-600 hover:text-rose-800 font-bold px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-              >
-                {t.reset_btn}
-              </button>
-            </div>
           </div>
         </div>
       </header>
@@ -943,6 +1625,12 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-2.5 overflow-hidden">
                                 <span className="text-xl">📄</span>
                                 <div className="truncate">
+                                  {config.backButton.fileUrl.includes("drive") && (
+                                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md inline-flex items-center gap-1 mb-1">
+                                      <span>☁️</span>
+                                      <span>Google Drive</span>
+                                    </span>
+                                  )}
                                   <p className="text-xs font-bold text-blue-950 truncate">
                                     {config.backButton.fileName || "document.pdf"}
                                   </p>
@@ -968,45 +1656,71 @@ export default function AdminDashboard() {
                               >
                                 {t.test_preview_file}
                               </a>
-                              <button
-                                type="button"
-                                onClick={() => fileInputBackRef.current?.click()}
-                                className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer"
-                              >
-                                {t.replace_file}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDrivePickerTarget("backButton");
+                                    fetchDriveFiles();
+                                  }}
+                                  className="text-[11px] text-blue-700 font-bold hover:underline cursor-pointer"
+                                >
+                                  📁 من Google Drive
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputBackRef.current?.click()}
+                                  className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer"
+                                >
+                                  {t.replace_file}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          <div
-                            onClick={() => fileInputBackRef.current?.click()}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setIsDragOverBtn("back");
-                            }}
-                            onDragLeave={() => setIsDragOverBtn(null)}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              setIsDragOverBtn(null);
-                              if (e.dataTransfer.files?.[0]) {
-                                handleFileUpload("backButton", e.dataTransfer.files[0]);
-                              }
-                            }}
-                            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
-                              isDragOverBtn === "back"
-                                ? "border-blue-500 bg-blue-50"
-                                : "border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40"
-                            }`}
-                          >
-                            <IconCloudUpload className="w-8 h-8 mx-auto text-blue-500 mb-1.5" />
-                            <span className="text-xs font-bold text-slate-800 block">
-                              {uploadingBtn === "backButton"
-                                ? "جاري الرفع..."
-                                : t.file_upload_title}
-                            </span>
-                            <span className="text-[11px] text-slate-400 mt-0.5 block">
-                              {t.file_upload_sub}
-                            </span>
+                          <div className="space-y-2">
+                            <div
+                              onClick={() => fileInputBackRef.current?.click()}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setIsDragOverBtn("back");
+                              }}
+                              onDragLeave={() => setIsDragOverBtn(null)}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setIsDragOverBtn(null);
+                                if (e.dataTransfer.files?.[0]) {
+                                  handleFileUpload("backButton", e.dataTransfer.files[0]);
+                                }
+                              }}
+                              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                                isDragOverBtn === "back"
+                                  ? "border-blue-500 bg-blue-50"
+                                  : "border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40"
+                              }`}
+                            >
+                              <IconCloudUpload className="w-8 h-8 mx-auto text-blue-500 mb-1.5" />
+                              <span className="text-xs font-bold text-slate-800 block">
+                                {uploadingBtn === "backButton"
+                                  ? "جاري الرفع إلى Google Drive..."
+                                  : t.file_upload_title}
+                              </span>
+                              <span className="text-[11px] text-slate-400 mt-0.5 block">
+                                {t.file_upload_sub}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDrivePickerTarget("backButton");
+                                fetchDriveFiles();
+                              }}
+                              className="w-full py-2 px-3 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <span>☁️</span>
+                              <span>{lang === "en" ? "Choose from Google Drive" : lang === "ur" ? "گوگل ڈرائیو سے فائل منتخب کریں" : "اختيار ملف من Google Drive"}</span>
+                            </button>
                           </div>
                         )}
                         <input
@@ -1193,6 +1907,12 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-2.5 overflow-hidden">
                                 <span className="text-xl">📄</span>
                                 <div className="truncate">
+                                  {config.verifyAgainButton.fileUrl.includes("drive") && (
+                                    <span className="text-[10px] font-black text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded-md inline-flex items-center gap-1 mb-1">
+                                      <span>☁️</span>
+                                      <span>Google Drive</span>
+                                    </span>
+                                  )}
                                   <p className="text-xs font-bold text-indigo-950 truncate">
                                     {config.verifyAgainButton.fileName || "document.pdf"}
                                   </p>
@@ -1218,29 +1938,55 @@ export default function AdminDashboard() {
                               >
                                 {t.test_preview_file}
                               </a>
-                              <button
-                                type="button"
-                                onClick={() => fileInputVerifyRef.current?.click()}
-                                className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer"
-                              >
-                                {t.replace_file}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDrivePickerTarget("verifyAgainButton");
+                                    fetchDriveFiles();
+                                  }}
+                                  className="text-[11px] text-indigo-700 font-bold hover:underline cursor-pointer"
+                                >
+                                  📁 من Google Drive
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputVerifyRef.current?.click()}
+                                  className="text-[11px] text-slate-600 font-bold hover:underline cursor-pointer"
+                                >
+                                  {t.replace_file}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          <div
-                            onClick={() => fileInputVerifyRef.current?.click()}
-                            className="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/60 hover:bg-indigo-50/40"
-                          >
-                            <IconCloudUpload className="w-8 h-8 mx-auto text-indigo-500 mb-1.5" />
-                            <span className="text-xs font-bold text-slate-800 block">
-                              {uploadingBtn === "verifyAgainButton"
-                                ? "جاري الرفع..."
-                                : t.file_upload_title}
-                            </span>
-                            <span className="text-[11px] text-slate-400 mt-0.5 block">
-                              {t.file_upload_sub}
-                            </span>
+                          <div className="space-y-2">
+                            <div
+                              onClick={() => fileInputVerifyRef.current?.click()}
+                              className="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/60 hover:bg-indigo-50/40"
+                            >
+                              <IconCloudUpload className="w-8 h-8 mx-auto text-indigo-500 mb-1.5" />
+                              <span className="text-xs font-bold text-slate-800 block">
+                                {uploadingBtn === "verifyAgainButton"
+                                  ? "جاري الرفع إلى Google Drive..."
+                                  : t.file_upload_title}
+                              </span>
+                              <span className="text-[11px] text-slate-400 mt-0.5 block">
+                                {t.file_upload_sub}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDrivePickerTarget("verifyAgainButton");
+                                fetchDriveFiles();
+                              }}
+                              className="w-full py-2 px-3 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <span>☁️</span>
+                              <span>{lang === "en" ? "Choose from Google Drive" : lang === "ur" ? "گوگل ڈرائیو سے فائل منتخب کریں" : "اختيار ملف من Google Drive"}</span>
+                            </button>
                           </div>
                         )}
                         <input
@@ -1401,6 +2147,12 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-3 overflow-hidden">
                                 <span className="text-2xl">📑</span>
                                 <div className="truncate">
+                                  {config.downloadButton.fileUrl.includes("drive") && (
+                                    <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1 mb-1 border border-emerald-200">
+                                      <span>☁️</span>
+                                      <span>Google Drive</span>
+                                    </span>
+                                  )}
                                   <p className="text-xs font-black text-emerald-950 truncate">
                                     {config.downloadButton.fileName || "certificate.pdf"}
                                   </p>
@@ -1427,45 +2179,71 @@ export default function AdminDashboard() {
                                 <IconDownload className="w-3.5 h-3.5" />
                                 <span>{t.test_download_file}</span>
                               </a>
-                              <button
-                                type="button"
-                                onClick={() => fileInputDownloadRef.current?.click()}
-                                className="text-xs text-blue-600 font-bold hover:underline cursor-pointer"
-                              >
-                                {t.replace_file}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDrivePickerTarget("downloadButton");
+                                    fetchDriveFiles();
+                                  }}
+                                  className="text-xs text-emerald-800 font-bold hover:underline cursor-pointer"
+                                >
+                                  📁 من Google Drive
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputDownloadRef.current?.click()}
+                                  className="text-xs text-blue-600 font-bold hover:underline cursor-pointer"
+                                >
+                                  {t.replace_file}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          <div
-                            onClick={() => fileInputDownloadRef.current?.click()}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setIsDragOverBtn("download");
-                            }}
-                            onDragLeave={() => setIsDragOverBtn(null)}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              setIsDragOverBtn(null);
-                              if (e.dataTransfer.files?.[0]) {
-                                handleFileUpload("downloadButton", e.dataTransfer.files[0]);
-                              }
-                            }}
-                            className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all ${
-                              isDragOverBtn === "download"
-                                ? "border-emerald-600 bg-emerald-100"
-                                : "border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50"
-                            }`}
-                          >
-                            <IconCloudUpload className="w-9 h-9 mx-auto text-emerald-600 mb-2" />
-                            <span className="text-xs font-black text-emerald-950 block">
-                              {uploadingBtn === "downloadButton"
-                                ? "جاري الرفع..."
-                                : t.file_upload_title}
-                            </span>
-                            <span className="text-[11px] text-emerald-800 mt-1 block">
-                              {t.file_download_hint}
-                            </span>
+                          <div className="space-y-2">
+                            <div
+                              onClick={() => fileInputDownloadRef.current?.click()}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setIsDragOverBtn("download");
+                              }}
+                              onDragLeave={() => setIsDragOverBtn(null)}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setIsDragOverBtn(null);
+                                if (e.dataTransfer.files?.[0]) {
+                                  handleFileUpload("downloadButton", e.dataTransfer.files[0]);
+                                }
+                              }}
+                              className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all ${
+                                isDragOverBtn === "download"
+                                  ? "border-emerald-600 bg-emerald-100"
+                                  : "border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50"
+                              }`}
+                            >
+                              <IconCloudUpload className="w-9 h-9 mx-auto text-emerald-600 mb-2" />
+                              <span className="text-xs font-black text-emerald-950 block">
+                                {uploadingBtn === "downloadButton"
+                                  ? "جاري الرفع إلى Google Drive..."
+                                  : t.file_upload_title}
+                              </span>
+                              <span className="text-[11px] text-emerald-800 mt-1 block">
+                                {t.file_download_hint}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDrivePickerTarget("downloadButton");
+                                fetchDriveFiles();
+                              }}
+                              className="w-full py-2.5 px-3 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <span>☁️</span>
+                              <span>{lang === "en" ? "Choose from Google Drive" : lang === "ur" ? "گوگل ڈرائیو سے فائل منتخب کریں" : "اختيار ملف من Google Drive"}</span>
+                            </button>
                           </div>
                         )}
                         <input

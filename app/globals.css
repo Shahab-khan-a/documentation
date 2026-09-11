@@ -22,3 +22,45 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ═════════════════════════════════════════════════════════════ */
+/* 🌟 SMOOTH SIDE DRAWER SLIDE ANIMATIONS (RTL & LTR)         */
+/* ═════════════════════════════════════════════════════════════ */
+@keyframes drawerSlideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerSlideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.drawer-backdrop-anim {
+  animation: drawerBackdropFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.drawer-panel-rtl {
+  animation: drawerSlideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.drawer-panel-ltr {
+  animation: drawerSlideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
