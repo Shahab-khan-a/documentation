@@ -120,6 +120,9 @@ export interface TranslationStrings {
   // Document Fields
   doc_title: string;
   doc_desc: string;
+  serial_number: string;
+  serial_number_hint: string;
+  serial_number_required_error: string;
   chamber_name: string;
   facility_name: string;
   facility_sub_name: string;
@@ -286,6 +289,9 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
 
     doc_title: "تعديل تفاصيل وبيانات الوثيقة",
     doc_desc: "يمكنك تغيير كافة معلومات المنشأة وأرقام التسجيل والتواريخ والمبالغ",
+    serial_number: "الرقم التسلسلي (يظهر في رابط الصفحة مع الرقم الموحد)",
+    serial_number_hint: "الرقم التسلسلي والرقم الموحد يشكلان معاً رابط الصفحة العلوي (مثال: example.com/12345/7032840279) ويبقى الرقم التسلسلي مخفياً من متن الشهادة. يلزم إدخاله لحفظ أي تعديلات.",
+    serial_number_required_error: "يرجى إدخال الرقم التسلسلي في تفاصيل الوثيقة قبل حفظ التعديلات!",
     chamber_name: "اسم الغرفة",
     facility_name: "اسم المنشأة الرئيسي",
     facility_sub_name: "الاسم الفرعي للمنشأة",
@@ -447,6 +453,9 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
 
     doc_title: "Edit Document & Certificate Data",
     doc_desc: "All values are displayed in Arabic on the main portal for visitors",
+    serial_number: "Serial Number (Appears in URL with Unified Number)",
+    serial_number_hint: "The serial number and unified number together form the public page URL (e.g. example.com/12345/7032840279). Serial number remains hidden from the certificate card body. Required to save changes.",
+    serial_number_required_error: "Please enter the Serial Number in Document Details before saving changes!",
     chamber_name: "Chamber Name (اسم الغرفة)",
     facility_name: "Facility Main Name (اسم المنشأة)",
     facility_sub_name: "Facility Sub-Name (الاسم الفرعي)",
@@ -608,6 +617,9 @@ export const ADMIN_TRANSLATIONS: Record<AdminLanguage, TranslationStrings> = {
 
     doc_title: "دستاویز اور سرٹیفکیٹ کی تفصیلات",
     doc_desc: "یہ تمام تفصیلات مین پیج پر عربی زبان میں وزٹرز کو دکھائی دیں گی",
+    serial_number: "سیریل نمبر (قومی نمبر کے ساتھ لنک میں شامل ہوگا)",
+    serial_number_hint: "سیریل نمبر اور 700 کا قومی نمبر دونوں مل کر مین پیج کا مکمل لنک بناتے ہیں (مثال: example.com/12345/7032840279)۔ سیریل نمبر دستاویز کی تحریر میں نظر نہیں آئے گا۔ تبدیلیاں محفوظ کرنے کیلئے یہ درج کرنا لازمی ہے۔",
+    serial_number_required_error: "تبدیلیاں محفوظ کرنے سے پہلے دستاویز کی تفصیلات میں سیریل نمبر درج کریں!",
     chamber_name: "چیمبر کا نام (اسم الغرفة)",
     facility_name: "ادارے کا نام (اسم المنشأة)",
     facility_sub_name: "ادارے کا ذیلی نام (الاسم الفرعي)",

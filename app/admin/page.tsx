@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
 import { PortalConfig } from "@/lib/portal-types";
 import { ADMIN_TRANSLATIONS, AdminLanguage } from "@/lib/admin-translations";
+import { saveConfigToFirebase } from "@/lib/firebase";
 
 // ─────────────────────────────────────────────────────────
 //  CRISP MODERN SVG ICONS
@@ -194,6 +195,7 @@ export default function AdminDashboard() {
   const [quickPreviewOpen, setQuickPreviewOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState("");
+  const [serialError, setSerialError] = useState(false);
 
   // ─── GOOGLE DRIVE FILE PICKER STATE (FOR BUTTONS) ───
   const [drivePickerTarget, setDrivePickerTarget] = useState<"backButton" | "verifyAgainButton" | "downloadButton" | null>(null);
@@ -361,13 +363,51 @@ export default function AdminDashboard() {
     []
   );
 
+  // Helper to compute public URL with dynamic serial and unified numbers
+  const getPublicLink = useCallback((conf: PortalConfig) => {
+    const s = conf.serialNumber?.trim();
+    const u = conf.unifiedNumber?.trim();
+    if (s && u) return `/${encodeURIComponent(s)}/${encodeURIComponent(u)}`;
+    if (s) return `/${encodeURIComponent(s)}`;
+    return "/";
+  }, []);
+
   const handleSave = useCallback(async () => {
+    const cleanSerial = (config.serialNumber || "").trim();
+    if (!cleanSerial) {
+      setSerialError(true);
+      setActiveTab("document");
+      showToast(t.serial_number_required_error, "error");
+      setTimeout(() => {
+        const el = document.getElementById("serial-number-input");
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return;
+    }
+
+    setSerialError(false);
     setSaving(true);
     try {
+      const payload: PortalConfig = {
+        ...config,
+        serialNumber: cleanSerial,
+      };
+
+      // 1. Direct Firebase Cloud Firestore save from client
+      try {
+        await saveConfigToFirebase(payload);
+      } catch (fbErr) {
+        console.warn("Direct Firebase client save notice:", fbErr);
+      }
+
+      // 2. Server API route save (also syncs Firebase, disk & memory)
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const result = await res.json();
@@ -821,7 +861,7 @@ export default function AdminDashboard() {
 
             <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-between text-xs">
               <Link
-                href="/"
+                href={getPublicLink(config)}
                 target="_blank"
                 className="text-blue-600 hover:text-blue-800 font-bold underline flex items-center gap-1"
               >
@@ -1532,6 +1572,49 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
 
+                  {/* Jump 0: Serial & Unified Number (Public Link) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("document");
+                      setDrawerOpen(false);
+                      setDrawerSearch("");
+                      setTimeout(() => {
+                        const el = document.getElementById("serial-number-input");
+                        if (el) {
+                          el.focus();
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }
+                      }, 100);
+                    }}
+                    className="p-3 rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/70 hover:border-blue-400 hover:bg-blue-100/60 text-slate-700 transition-all text-right cursor-pointer flex flex-col justify-between group shadow-2xs active:scale-95 col-span-2"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold font-mono shadow-xs">
+                          🔢
+                        </span>
+                        <span className="font-black text-xs text-blue-950 group-hover:text-blue-700 truncate">
+                          {lang === "en"
+                            ? "Serial & Unified Number (Link)"
+                            : lang === "ur"
+                            ? "سیریل اور یونیفائیڈ نمبر (لنک)"
+                            : "الرقم التسلسلي والموحد (رابط البوابة)"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-blue-800 bg-blue-100/80 px-2 py-0.5 rounded-md" dir="ltr">
+                        /{config.serialNumber?.trim() || "..."}/{config.unifiedNumber?.trim() || "..."}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 truncate block text-right font-sans">
+                      {lang === "en"
+                        ? `Serial: ${config.serialNumber || "—"} | Unified: ${config.unifiedNumber || "—"}`
+                        : lang === "ur"
+                        ? `سیریل: ${config.serialNumber || "—"} | قومی نمبر: ${config.unifiedNumber || "—"}`
+                        : `التسلسلي: ${config.serialNumber || "—"} | الموحد: ${config.unifiedNumber || "—"}`}
+                    </span>
+                  </button>
+
                   {/* Jump 1: Chamber */}
                   <button
                     type="button"
@@ -1712,7 +1795,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 gap-2">
                     {/* Open live site in new tab */}
                     <Link
-                      href="/"
+                      href={getPublicLink(config)}
                       target="_blank"
                       className="py-2.5 px-3 rounded-xl bg-blue-50 hover:bg-blue-100/80 text-blue-700 font-bold text-xs border border-blue-200 flex items-center justify-center gap-1.5 no-underline transition-colors shadow-2xs"
                     >
@@ -1944,7 +2027,7 @@ export default function AdminDashboard() {
                 <IconPreview className="w-3.5 h-3.5" />
               </button>
               <Link
-                href="/"
+                href={getPublicLink(config)}
                 target="_blank"
                 className="h-7 sm:h-8 w-7 sm:w-8 rounded-xl text-slate-600 hover:text-blue-700 hover:bg-white transition-all cursor-pointer flex items-center justify-center active:scale-95 hover:shadow-xs group"
                 title={t.preview_btn}
@@ -2894,6 +2977,96 @@ export default function AdminDashboard() {
                 <IconCheck className="w-4 h-4" />
                 <span>{saving ? t.saving_btn : t.save_btn}</span>
               </button>
+            </div>
+
+            {/* 🌟 Dedicated Option Card: الرقم التسلسلي (Serial Number) */}
+            <div
+              className={`rounded-3xl border p-6 sm:p-7 shadow-sm transition-all ${
+                serialError
+                  ? "bg-rose-50/60 border-rose-400 ring-2 ring-rose-300"
+                  : "bg-white border-slate-200/90 hover:border-blue-300"
+              }`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                    🔢
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                      <span>{t.serial_number}</span>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">
+                        {lang === "en" ? "Required to Save" : lang === "ur" ? "سیو کیلئے لازمی" : "إجباري للحفظ"}
+                      </span>
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                {t.serial_number_hint}
+              </p>
+
+              <div className="space-y-3">
+                <div className="relative">
+                  <span className="absolute inset-y-0 start-3.5 flex items-center text-slate-400 font-mono text-sm pointer-events-none">
+                    /
+                  </span>
+                  <input
+                    id="serial-number-input"
+                    type="text"
+                    dir="ltr"
+                    value={config.serialNumber || ""}
+                    onChange={(e) => {
+                      setSerialError(false);
+                      setConfig({ ...config, serialNumber: e.target.value });
+                    }}
+                    placeholder={
+                      lang === "en"
+                        ? "Enter Serial Number (e.g. 7032840279 or 13255887)"
+                        : lang === "ur"
+                        ? "سیریل نمبر درج کریں (مثال: 7032840279 یا 13255887)"
+                        : "أدخل الرقم التسلسلي هنا (مثال: 7032840279 أو 13255887)"
+                    }
+                    className={`w-full ps-8 pe-4 py-3 rounded-2xl border text-sm font-mono font-bold transition-all focus:outline-none ${
+                      serialError
+                        ? "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-400 focus:ring-rose-500"
+                        : "border-slate-200 bg-slate-50/60 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                    }`}
+                  />
+                </div>
+
+                {serialError && (
+                  <p className="text-xs font-bold text-rose-600 flex items-center gap-1.5 animate-bounce">
+                    <span>⚠️</span>
+                    <span>{t.serial_number_required_error}</span>
+                  </p>
+                )}
+
+                {/* Dynamic Live URL Output Preview: /{serialNumber}/{unifiedNumber} */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-blue-50/80 border border-blue-200/90 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-2xs">
+                  <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                    <span className="text-blue-600 font-bold text-sm shrink-0">🔗</span>
+                    <span className="font-bold text-slate-700 shrink-0">
+                      {lang === "en" ? "Public Link:" : lang === "ur" ? "پبلک لنک:" : "رابط البوابة الرئيسي:"}
+                    </span>
+                    <span className="font-mono font-black text-blue-800 truncate" dir="ltr">
+                      /{config.serialNumber?.trim() || (lang === "en" ? "[serial]" : lang === "ur" ? "[سیریل]" : "[الرقم-التسلسلي]")}
+                      /{config.unifiedNumber?.trim() || (lang === "en" ? "[unified]" : lang === "ur" ? "[یونیفائیڈ]" : "[الرقم-الموحد]")}
+                    </span>
+                  </div>
+
+                  {config.serialNumber?.trim() && (
+                    <Link
+                      href={getPublicLink(config)}
+                      target="_blank"
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] no-underline shadow-xs transition-all flex items-center gap-1 shrink-0 active:scale-95"
+                    >
+                      <span>{lang === "en" ? "Test Link ↗" : lang === "ur" ? "لنک چیک کریں ↗" : "تجربة الرابط ↗"}</span>
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Sub-Card 1: معلومات الغرفة والمنشأة */}

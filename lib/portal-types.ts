@@ -28,6 +28,7 @@ export interface PortalConfig {
   pageTitle: string;
   
   // Document standard fields
+  serialNumber?: string;
   chamberName: string;
   facilityName: string;
   facilitySubName?: string;

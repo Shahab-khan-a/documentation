@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
 import { PortalConfig } from "@/lib/portal-types";
 
@@ -117,231 +117,6 @@ function LoaderScreen({
 }
 
 // ─────────────────────────────────────────────────────────
-//  QUICK EDIT MODAL ON MAIN PAGE
-// ─────────────────────────────────────────────────────────
-function QuickEditModal({
-  config,
-  isOpen,
-  onClose,
-  onSave,
-}: {
-  config: PortalConfig;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (newConfig: PortalConfig) => Promise<void>;
-}) {
-  const [prevConfig, setPrevConfig] = useState(config);
-  const [formData, setFormData] = useState<PortalConfig>(config);
-  const [saving, setSaving] = useState(false);
-
-  if (config !== prevConfig) {
-    setPrevConfig(config);
-    setFormData(config);
-  }
-
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    await onSave(formData);
-    setSaving(false);
-    onClose();
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-99999 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
-      dir="rtl"
-    >
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">✏️</span>
-            <div>
-              <h3 className="font-bold text-base">تعديل بيانات الصفحة السريع</h3>
-              <p className="text-xs text-slate-400">
-                يمكنك أيضاً الدخول للوحة التحكم الكاملة عبر كتابة /admin في الرابط
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-white text-lg font-bold p-1 cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">اسم الغرفة</label>
-              <input
-                type="text"
-                value={formData.chamberName}
-                onChange={(e) => setFormData({ ...formData, chamberName: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">اسم المنشأة</label>
-              <input
-                type="text"
-                value={formData.facilityName}
-                onChange={(e) => setFormData({ ...formData, facilityName: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">الاسم الفرعي</label>
-              <input
-                type="text"
-                value={formData.facilitySubName || ""}
-                onChange={(e) => setFormData({ ...formData, facilitySubName: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">الرقم الموحد (700)</label>
-              <input
-                type="text"
-                dir="ltr"
-                value={formData.unifiedNumber}
-                onChange={(e) => setFormData({ ...formData, unifiedNumber: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">رقم الطلب</label>
-              <input
-                type="text"
-                dir="ltr"
-                value={formData.requestNumber}
-                onChange={(e) => setFormData({ ...formData, requestNumber: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">نوع الطلب</label>
-              <input
-                type="text"
-                value={formData.requestType}
-                onChange={(e) => setFormData({ ...formData, requestType: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">اسم مقدم الطلب</label>
-              <input
-                type="text"
-                value={formData.applicantName}
-                onChange={(e) => setFormData({ ...formData, applicantName: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">مبلغ الطلب</label>
-              <input
-                type="text"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">تاريخ الإنشاء</label>
-              <input
-                type="text"
-                dir="ltr"
-                value={formData.creationDate}
-                onChange={(e) => setFormData({ ...formData, creationDate: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">وقت الإنشاء</label>
-              <input
-                type="text"
-                dir="ltr"
-                value={formData.creationTime}
-                onChange={(e) => setFormData({ ...formData, creationTime: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">تاريخ الصلاحية</label>
-              <input
-                type="text"
-                dir="ltr"
-                value={formData.expiryDate}
-                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">وقت الصلاحية</label>
-              <input
-                type="text"
-                dir="ltr"
-                value={formData.expiryTime}
-                onChange={(e) => setFormData({ ...formData, expiryTime: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">حالة الطلب</label>
-              <input
-                type="text"
-                value={formData.requestStatus}
-                onChange={(e) => setFormData({ ...formData, requestStatus: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">رقم السجل التجاري</label>
-              <input
-                type="text"
-                dir="ltr"
-                value={formData.commercialRegNo}
-                onChange={(e) => setFormData({ ...formData, commercialRegNo: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-            <Link
-              href="/admin"
-              className="text-blue-600 hover:text-blue-800 text-xs font-bold underline"
-            >
-              الانتقال إلى لوحة التحكم المتقدمة /admin ↗
-            </Link>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 cursor-pointer"
-              >
-                إلغاء
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────
 //  VERIFICATION RESULTS PAGE
 // ─────────────────────────────────────────────────────────
 function ResultsPage({
@@ -350,14 +125,12 @@ function ResultsPage({
   onDownload,
   onVerifyAgain,
   onBack,
-  onOpenQuickEdit,
 }: {
   config: PortalConfig;
   revealed: boolean;
   onDownload: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onVerifyAgain: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onBack: (e: React.MouseEvent<HTMLAnchorElement>) => void;
-  onOpenQuickEdit: () => void;
 }) {
   const d = config;
 
@@ -373,16 +146,7 @@ function ResultsPage({
         transition: "opacity 0.25s ease",
       }}
     >
-      {/* Hidden floating edit button for admin convenience (Ctrl+E or hover) */}
-      <button
-        type="button"
-        onClick={onOpenQuickEdit}
-        title="تعديل الصفحة (Ctrl+E)"
-        className="fixed bottom-6 right-6 z-40 bg-slate-900/70 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center gap-1.5 transition-all opacity-20 hover:opacity-100 cursor-pointer"
-      >
-        <span>✏️</span>
-        <span className="hidden sm:inline">تعديل</span>
-      </button>
+
 
       {/* ══════════════════ HEADER ══════════════════ */}
       <header className="w-full bg-white relative overflow-hidden">
@@ -789,13 +553,14 @@ function ResultsPage({
         </div>
       </div>
 
-      {/* Floating badge on bottom left as in screenshot */}
-      <div
-        className="fixed bottom-3 left-3 z-30 w-7 h-7 rounded-full bg-[#18181b] text-white flex items-center justify-center text-[11px] font-bold shadow-lg select-none"
-        title="Next"
+      {/* Floating admin shortcut badge on bottom left */}
+      <Link
+        href="/admin"
+        className="fixed bottom-3 left-3 z-30 w-7 h-7 rounded-full bg-[#18181b] hover:bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold shadow-lg select-none transition-all active:scale-95 no-underline"
+        title="لوحة التحكم / Admin Panel"
       >
         N
-      </div>
+      </Link>
     </div>
   );
 }
@@ -805,11 +570,11 @@ function ResultsPage({
 // ─────────────────────────────────────────────────────────
 export default function DocumentVerificationPage() {
   const router = useRouter();
+  const params = useParams();
   const [config, setConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
   const [loaded, setLoaded] = useState(true);
   const [buttonLoaderKey, setButtonLoaderKey] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  const [quickEditOpen, setQuickEditOpen] = useState(false);
 
   // Hidden download trigger helper
   const triggerDownload = (fileUrl: string, fileName?: string) => {
@@ -892,7 +657,16 @@ export default function DocumentVerificationPage() {
       }
 
       try {
-        const res = await fetch(`/api/config?_t=${Date.now()}`, { cache: "no-store" });
+        const query = new URLSearchParams();
+        if (params?.serial && typeof params.serial === "string") {
+          query.set("serial", params.serial);
+        }
+        if (params?.unified && typeof params.unified === "string") {
+          query.set("unified", params.unified);
+        }
+        query.set("_t", Date.now().toString());
+
+        const res = await fetch(`/api/config?${query.toString()}`, { cache: "no-store" });
         if (res.ok) {
           const data: PortalConfig = await res.json();
           setConfig(data);
@@ -926,19 +700,33 @@ export default function DocumentVerificationPage() {
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [params]);
 
-  // Handle keyboard shortcut (Ctrl+E or Cmd+E) to toggle quick edit
+  // Synchronize browser URL bar to display '/[serialNumber]/[unifiedNumber]'
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
-        e.preventDefault();
-        setQuickEditOpen((prev) => !prev);
+    const cleanSerial = config.serialNumber?.trim();
+    const cleanUnified = config.unifiedNumber?.trim();
+    if (!cleanSerial) return;
+
+    const targetPath = cleanUnified
+      ? `/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
+      : `/${encodeURIComponent(cleanSerial)}`;
+
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname;
+      // Do not rewrite if inside admin or api
+      if (currentPath.startsWith("/admin") || currentPath.startsWith("/api")) {
+        return;
       }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+      try {
+        if (decodeURIComponent(currentPath) !== decodeURIComponent(targetPath)) {
+          window.history.replaceState(null, "", targetPath);
+        }
+      } catch {
+        window.history.replaceState(null, "", targetPath);
+      }
+    }
+  }, [config.serialNumber, config.unifiedNumber]);
 
   const handleLoaderDone = useCallback(() => {
     setLoaded(true);
@@ -1003,34 +791,8 @@ export default function DocumentVerificationPage() {
     }
   };
 
-  // Save changes from Quick Edit modal
-  const handleQuickSave = async (updated: PortalConfig) => {
-    try {
-      const res = await fetch("/api/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      });
-      if (res.ok) {
-        const result = await res.json();
-        setConfig(result.data);
-        localStorage.setItem("portal_config_cache", JSON.stringify(result.data));
-      }
-    } catch (err) {
-      console.error("Save error:", err);
-    }
-  };
-
   return (
     <>
-      {/* Quick In-Page Edit Modal */}
-      <QuickEditModal
-        config={config}
-        isOpen={quickEditOpen}
-        onClose={() => setQuickEditOpen(false)}
-        onSave={handleQuickSave}
-      />
-
       {/* Results page */}
       <ResultsPage
         config={config}
@@ -1038,7 +800,6 @@ export default function DocumentVerificationPage() {
         onDownload={handleDownloadClick}
         onVerifyAgain={handleVerifyAgainClick}
         onBack={handleBackClick}
-        onOpenQuickEdit={() => setQuickEditOpen(true)}
       />
 
       {/* Initial page loader if enabled */}

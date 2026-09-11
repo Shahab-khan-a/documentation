@@ -4,6 +4,7 @@ import path from "path";
 import os from "os";
 import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
 import { PortalConfig } from "@/lib/portal-types";
+import { saveConfigToFirebase, getConfigFromFirebase } from "@/lib/firebase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const CONFIG_FILE = path.join(DATA_DIR, "portal-config.json");
@@ -73,8 +74,28 @@ function ensureConfigFile(): PortalConfig {
   return DEFAULT_PORTAL_CONFIG;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const serial = searchParams.get("serial") || undefined;
+    const unified = searchParams.get("unified") || undefined;
+
+    // 1. Try to fetch latest config from Firebase Firestore
+    try {
+      const fbConfig = await getConfigFromFirebase(serial, unified);
+      if (fbConfig) {
+        globalThis.__portal_config_memory__ = fbConfig;
+        return NextResponse.json(fbConfig, {
+          headers: {
+            "Cache-Control": "no-store, max-age=0",
+          },
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Fall back to local disk / memory cache
     const config = ensureConfigFile();
     return NextResponse.json(config, {
       headers: {
@@ -104,7 +125,14 @@ export async function POST(req: Request) {
     // Update memory cache first
     globalThis.__portal_config_memory__ = updated;
 
-    // Try saving to project data/ directory
+    // 1. Persist to Firebase Cloud Firestore
+    try {
+      await saveConfigToFirebase(updated);
+    } catch (fbErr) {
+      console.warn("Could not save to Firebase Firestore in API route:", fbErr);
+    }
+
+    // 2. Try saving to project data/ directory
     let saved = false;
     try {
       if (!fs.existsSync(DATA_DIR)) {
@@ -116,7 +144,7 @@ export async function POST(req: Request) {
       // Project root is read-only (e.g. Vercel)
     }
 
-    // If project root was read-only, save to writable /tmp
+    // 3. If project root was read-only, save to writable /tmp
     if (!saved) {
       try {
         fs.writeFileSync(TMP_CONFIG_FILE, JSON.stringify(updated, null, 2), "utf-8");
