@@ -38,26 +38,26 @@ export function DocumentDetailsCard({
         {/* Left: Button العودة */}
         <a
           href={
-            d.backButton.fileUrl && d.backButton.fileUrl.trim() !== ""
+            d?.backButton?.fileUrl && d.backButton.fileUrl.trim() !== ""
               ? d.backButton.fileUrl
-              : d.backButton.url && d.backButton.url !== "#"
+              : d?.backButton?.url && d.backButton.url !== "#"
               ? d.backButton.url
               : "#"
           }
           download={
-            d.backButton.fileUrl && d.backButton.fileUrl.trim() !== ""
+            d?.backButton?.fileUrl && d.backButton.fileUrl.trim() !== ""
               ? d.backButton.fileName || "document.pdf"
               : undefined
           }
-          target={d.backButton.openInNewTab ? "_blank" : undefined}
-          rel={d.backButton.openInNewTab ? "noreferrer" : undefined}
+          target={d?.backButton?.openInNewTab ? "_blank" : undefined}
+          rel={d?.backButton?.openInNewTab ? "noreferrer" : undefined}
           onClick={onBack}
           className="inline-flex items-center justify-center text-white font-bold text-[13px] rounded-md px-4 py-1.5 no-underline hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
           style={{
             backgroundColor: "#5c9df6",
           }}
         >
-          {d.backButton.label || "العودة"}
+          {d?.backButton?.label || "العودة"}
         </a>
       </div>
 
@@ -200,7 +200,7 @@ export function DocumentDetailsCard({
               <span>جاري التحميل...</span>
             </span>
           ) : (
-            d.downloadButton.label || "تحميل"
+            d?.downloadButton?.label || "تحميل"
           )}
         </button>
 
@@ -213,7 +213,7 @@ export function DocumentDetailsCard({
             backgroundColor: "#5c9df6",
           }}
         >
-          {d.verifyAgainButton.label || "التحقق مرة آخرى"}
+          {d?.verifyAgainButton?.label || "التحقق مرة آخرى"}
         </button>
       </div>
 

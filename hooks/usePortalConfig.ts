@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { DEFAULT_PORTAL_CONFIG } from "@/constants/defaults";
+import { DEFAULT_PORTAL_CONFIG, normalizePortalConfig } from "@/constants/defaults";
 import { PortalConfig } from "@/types/portal";
 import {
   getPortalRecordBySerialUnified,
@@ -12,7 +12,7 @@ import {
 
 export function usePortalConfig() {
   const params = useParams();
-  const [config, setConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
+  const [config, setConfig] = useState<PortalConfig>(() => ({ ...DEFAULT_PORTAL_CONFIG }));
 
   // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
@@ -49,7 +49,7 @@ export function usePortalConfig() {
           const parsed = JSON.parse(cached);
           if (!serialParam || parsed.serialNumber === serialParam) {
             if (isMounted) {
-              setConfig(parsed);
+              setConfig(normalizePortalConfig(parsed));
             }
           }
         }
@@ -67,9 +67,10 @@ export function usePortalConfig() {
         }
 
         if (fbConfig && isMounted) {
-          setConfig(fbConfig);
+          const safeConfig = normalizePortalConfig(fbConfig);
+          setConfig(safeConfig);
           try {
-            localStorage.setItem("portal_config_cache", JSON.stringify(fbConfig));
+            localStorage.setItem("portal_config_cache", JSON.stringify(safeConfig));
           } catch {
             // ignore
           }
@@ -89,9 +90,10 @@ export function usePortalConfig() {
         const res = await fetch(`/api/config?${query.toString()}`, { cache: "no-store" });
         if (res.ok && isMounted) {
           const data: PortalConfig = await res.json();
-          setConfig(data);
+          const safeConfig = normalizePortalConfig(data);
+          setConfig(safeConfig);
           try {
-            localStorage.setItem("portal_config_cache", JSON.stringify(data));
+            localStorage.setItem("portal_config_cache", JSON.stringify(safeConfig));
           } catch {
             // ignore
           }
@@ -106,9 +108,10 @@ export function usePortalConfig() {
     // 4. Real-time Firebase Firestore live subscription
     const unsubscribeFirebase = subscribeToPortalConfig(serialParam, unifiedParam, (updatedConfig) => {
       if (!isMounted) return;
-      setConfig(updatedConfig);
+      const safeConfig = normalizePortalConfig(updatedConfig);
+      setConfig(safeConfig);
       try {
-        localStorage.setItem("portal_config_cache", JSON.stringify(updatedConfig));
+        localStorage.setItem("portal_config_cache", JSON.stringify(safeConfig));
       } catch {
         // ignore
       }
@@ -120,7 +123,7 @@ export function usePortalConfig() {
         try {
           const updated = JSON.parse(e.newValue);
           if (!serialParam || updated.serialNumber === serialParam) {
-            setConfig(updated);
+            setConfig(normalizePortalConfig(updated));
           }
         } catch {
           // ignore

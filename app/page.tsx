@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PortalConfig } from "@/types/portal";
+import { DEFAULT_PORTAL_CONFIG } from "@/constants/defaults";
 import { usePortalConfig } from "@/hooks/usePortalConfig";
 import { useFileDownload } from "@/hooks/useFileDownload";
 import { LoaderScreen } from "@/components/portal/LoaderScreen";
@@ -94,9 +95,14 @@ export default function DocumentVerificationPage() {
       fileUrl?: string;
       fileName?: string;
       openInNewTab?: boolean;
-    },
+    } | undefined,
     defaultFallback: () => void
   ) => {
+    if (!btn) {
+      defaultFallback();
+      return;
+    }
+
     // 1. If file attached (actionType === "file" OR fileUrl exists) -> DOWNLOAD FILE
     if (btn.fileUrl && btn.fileUrl.trim() !== "") {
       downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
@@ -130,9 +136,9 @@ export default function DocumentVerificationPage() {
   const handleBackClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     if (isDownloading) return;
-    const btn = config.backButton;
+    const btn = config?.backButton || DEFAULT_PORTAL_CONFIG.backButton;
     // Direct download with animation if a file is attached
-    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+    if (btn?.fileUrl && btn.fileUrl.trim() !== "") {
       downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
       return;
     }
@@ -149,10 +155,10 @@ export default function DocumentVerificationPage() {
   const handleVerifyAgainClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (isDownloading) return;
-    const btn = config.verifyAgainButton;
+    const btn = config?.verifyAgainButton || DEFAULT_PORTAL_CONFIG.verifyAgainButton;
 
     // Direct download with animation if a file is attached
-    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+    if (btn?.fileUrl && btn.fileUrl.trim() !== "") {
       downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
       return;
     }
@@ -163,7 +169,7 @@ export default function DocumentVerificationPage() {
       });
     };
 
-    if (btn.showLoader) {
+    if (btn?.showLoader) {
       setPendingAction(() => action);
       setButtonLoaderKey(Date.now());
     } else {
@@ -175,10 +181,10 @@ export default function DocumentVerificationPage() {
   const handleDownloadClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (isDownloading) return;
-    const btn = config.downloadButton;
+    const btn = config?.downloadButton || DEFAULT_PORTAL_CONFIG.downloadButton;
 
     // Direct download from Google Drive with active animation until download finishes
-    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+    if (btn?.fileUrl && btn.fileUrl.trim() !== "") {
       downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
       return;
     }
