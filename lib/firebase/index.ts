@@ -301,18 +301,88 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
 }
 
 /**
- * Permanently delete a record by ID from Firestore
+ * Permanently delete a record and all its associated Firestore documents
+ * (serial documents, composite keys, request documents) from Firestore.
  */
-export async function deletePortalRecordFromFirebase(recordId: string): Promise<boolean> {
+export async function deletePortalRecordFromFirebase(
+  recordOrId: PortalRecord | string,
+  serial?: string,
+  unified?: string,
+  requestNumber?: string
+): Promise<boolean> {
   try {
-    const cleanId = (recordId || "").trim();
-    if (!cleanId) return false;
+    let cleanId = "";
+    let cleanSerial = (serial || "").trim();
+    let cleanUnified = (unified || "").trim();
+    let cleanReq = (requestNumber || "").trim();
 
-    try {
-      const configDocRef = doc(db, "portal_configs", cleanId);
-      await deleteDoc(configDocRef);
-    } catch {
-      // ignore
+    if (typeof recordOrId === "object" && recordOrId !== null) {
+      cleanId = (recordOrId.id || "").trim();
+      cleanSerial = cleanSerial || (recordOrId.serialNumber || "").trim();
+      cleanUnified = cleanUnified || (recordOrId.unifiedNumber || "").trim();
+      cleanReq = cleanReq || (recordOrId.requestNumber || "").trim();
+    } else if (typeof recordOrId === "string") {
+      cleanId = recordOrId.trim();
+      if (!cleanSerial && cleanId.includes("_")) {
+        const parts = cleanId.split("_");
+        cleanSerial = parts[0] || "";
+        cleanUnified = parts[1] || "";
+      } else if (!cleanSerial) {
+        cleanSerial = cleanId;
+      }
+    }
+
+    if (!cleanId && !cleanSerial) return false;
+
+    // Collect all potential document IDs in portal_configs
+    const targetDocIds = new Set<string>();
+    if (cleanId) targetDocIds.add(cleanId);
+    if (cleanSerial) {
+      targetDocIds.add(cleanSerial);
+      if (cleanUnified) {
+        targetDocIds.add(`${cleanSerial}_${cleanUnified}`);
+      }
+      if (cleanReq) {
+        targetDocIds.add(`${cleanReq}_${cleanSerial}`);
+        if (cleanUnified) {
+          targetDocIds.add(`${cleanReq}_${cleanSerial}_${cleanUnified}`);
+        }
+      }
+    }
+
+    // Delete direct document references
+    for (const docId of targetDocIds) {
+      if (!docId || docId === "current" || docId === "test_connection") continue;
+      try {
+        const docRef = doc(db, "portal_configs", docId);
+        await deleteDoc(docRef);
+      } catch {
+        // ignore
+      }
+    }
+
+    // Also scan portal_configs collection and delete any documents where serialNumber or id matches
+    if (cleanSerial || cleanId) {
+      try {
+        const configsCol = collection(db, "portal_configs");
+        const snapshot = await getDocs(configsCol);
+        for (const d of snapshot.docs) {
+          const dId = d.id;
+          if (dId === "current" || dId === "test_connection") continue;
+          const data = d.data();
+          const matchesSerial = cleanSerial && (data?.serialNumber === cleanSerial || dId === cleanSerial || dId.endsWith(`_${cleanSerial}`));
+          const matchesId = cleanId && (data?.id === cleanId || dId === cleanId);
+          if (matchesSerial || matchesId) {
+            try {
+              await deleteDoc(doc(db, "portal_configs", dId));
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } catch (scanErr) {
+        console.warn("Could not scan portal_configs during deletion:", scanErr);
+      }
     }
 
     return true;

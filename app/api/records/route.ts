@@ -207,31 +207,41 @@ export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const serial = searchParams.get("serial");
+    const unified = searchParams.get("unified");
+    const reqNum = searchParams.get("req");
 
-    if (!id || !id.trim()) {
+    const cleanId = (id || "").trim();
+    const cleanSerial = (serial || "").trim();
+    const cleanUnified = (unified || "").trim();
+    const cleanReq = (reqNum || "").trim();
+
+    if (!cleanId && !cleanSerial) {
       return NextResponse.json(
-        { success: false, error: "Record ID is required" },
+        { success: false, error: "Record ID or serial is required" },
         { status: 400 }
       );
     }
 
-    const cleanId = id.trim();
-
-    // 1. Delete from Firebase Firestore
+    // 1. Delete from Firebase Firestore (all copies)
     try {
-      await deletePortalRecordFromFirebase(cleanId);
+      await deletePortalRecordFromFirebase(cleanId, cleanSerial, cleanUnified, cleanReq);
     } catch (fbErr) {
       console.warn("Could not delete portal record from Firebase:", fbErr);
     }
 
-    // 2. Delete from local storage
+    // 2. Delete from local storage (filter by both ID and serialNumber)
     const current = readLocalRecords();
-    const filtered = current.filter((r) => r.id !== cleanId);
+    const filtered = current.filter((r) => {
+      if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
+      if (cleanSerial && r.serialNumber === cleanSerial) return false;
+      return true;
+    });
     saveLocalRecords(filtered);
 
     return NextResponse.json({
       success: true,
-      deletedId: cleanId,
+      deletedId: cleanId || cleanSerial,
       remainingCount: filtered.length,
     });
   } catch (error) {

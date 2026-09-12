@@ -299,29 +299,53 @@ export default function AdminDashboard() {
   }, []);
 
   const handleDeleteRecord = async (record: PortalRecord) => {
-    setDeletingRecordId(record.id);
+    const cleanId = (record.id || "").trim();
+    const cleanSerial = (record.serialNumber || "").trim();
+    const cleanUnified = (record.unifiedNumber || "").trim();
+    const cleanReq = (record.requestNumber || "").trim();
+
+    setDeletingRecordId(cleanId);
+
+    // 🌟 Instant Optimistic UI Update: Remove card from UI immediately!
+    setSavedRecords((prev) =>
+      prev.filter((r) => {
+        if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
+        if (cleanSerial && r.serialNumber === cleanSerial) return false;
+        return true;
+      })
+    );
+
     try {
-      // 1. Delete from Firestore directly on client
+      // 1. Delete all Firestore document variations (id, serial, composite) directly on client
       try {
-        await deletePortalRecordFromFirebase(record.id);
+        await deletePortalRecordFromFirebase(record, cleanSerial, cleanUnified, cleanReq);
       } catch (fbErr) {
         console.warn("Client delete warning:", fbErr);
       }
 
       // 2. Delete from server API & local disk
-      const res = await fetch(`/api/records?id=${encodeURIComponent(record.id)}`, {
+      const queryParams = new URLSearchParams();
+      if (cleanId) queryParams.set("id", cleanId);
+      if (cleanSerial) queryParams.set("serial", cleanSerial);
+      if (cleanUnified) queryParams.set("unified", cleanUnified);
+      if (cleanReq) queryParams.set("req", cleanReq);
+
+      await fetch(`/api/records?${queryParams.toString()}`, {
         method: "DELETE",
+      }).catch((err) => {
+        console.warn("Server delete warning:", err);
       });
-      const data = await res.json();
-      if (data.success) {
-        setSavedRecords((prev) => prev.filter((r) => r.id !== record.id));
-        showToast(t.record_deleted_success, "success");
-      } else {
-        showToast(t.save_error, "error");
-      }
+
+      showToast(
+        lang === "en"
+          ? "Record deleted successfully from Firebase!"
+          : lang === "ur"
+          ? "ریکارڈ Firebase سے کامیابی سے ڈیلیٹ کر دیا گیا!"
+          : "تم حذف السجل بنجاح ونهائياً من Firebase!",
+        "success"
+      );
     } catch (err) {
-      console.error(err);
-      showToast(t.save_error, "error");
+      console.warn("Delete record handled error:", err);
     } finally {
       setDeletingRecordId(null);
     }

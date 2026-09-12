@@ -654,11 +654,14 @@ export function FirebaseRecordsModal({
                         </button>
                       </div>
 
-                      {/* 4. 🌟 CRYSTAL-CLEAR VIBRANT DELETE BUTTON 🌟 */}
+                      {/* 4. 🌟 CRYSTAL-CLEAR VIBRANT DIRECT DELETE BUTTON 🌟 */}
                       <button
                         type="button"
                         disabled={isDeleting}
-                        onClick={() => setRecordToDelete(record)}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await onDeleteRecord(record);
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 font-extrabold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 text-xs shadow-xs group/del"
                         title={lang === "en" ? "Delete permanently from Firebase" : lang === "ur" ? "Firebase سے مستقل ڈیلیٹ کریں" : "حذف السجل نهائياً من Firebase"}
                       >
@@ -668,7 +671,9 @@ export function FirebaseRecordsModal({
                           <IconTrash className="w-4 h-4 text-rose-600 group-hover/del:text-white transition-colors shrink-0" />
                         )}
                         <span className="text-[11px] group-hover/del:text-white transition-colors">
-                          {lang === "en" ? "Delete" : lang === "ur" ? "ڈیلیٹ" : "حذف"}
+                          {isDeleting
+                            ? (lang === "en" ? "Deleting..." : lang === "ur" ? "ڈیلیٹ ہو رہا ہے..." : "جاري الحذف...")
+                            : (lang === "en" ? "Delete" : lang === "ur" ? "ڈیلیٹ" : "حذف")}
                         </span>
                       </button>
                     </div>

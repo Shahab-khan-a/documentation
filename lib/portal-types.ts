@@ -66,11 +66,13 @@ export interface PortalConfig {
   loaderDurationMs: number;
   buttonLoaderDurationMs: number;
   enableInitialLoader: boolean;
+  currentRecordId?: string;
 }
 
 export interface PortalRecord extends PortalConfig {
   id: string; // [serialNumber]_[unifiedNumber] or unique ID
   createdAt: string;
   updatedAt?: string;
+  currentRecordId?: string;
 }
 
