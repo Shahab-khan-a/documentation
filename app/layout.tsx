@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import FirebaseAnalytics from "@/components/FirebaseAnalytics";
+import DevIndicatorRemover from "@/components/DevIndicatorRemover";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -28,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning className={`${cairo.variable} h-full antialiased`}>
       <body suppressHydrationWarning className="min-h-full flex flex-col font-sans bg-[#fbfbfb] text-slate-800">
+        <DevIndicatorRemover />
         <FirebaseAnalytics />
         {children}
       </body>

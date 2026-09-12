@@ -91,3 +91,31 @@ html, body {
   background-color: #94a3b8;
 }
 
+/* ═════════════════════════════════════════════════════════════ */
+/* 🚫 HIDE NEXT.JS DEV INDICATOR BADGE ("N" LOGO)              */
+/* ═════════════════════════════════════════════════════════════ */
+nextjs-portal,
+script[data-nextjs-dev-overlay],
+[data-nextjs-toast],
+[data-nextjs-dev-overlay],
+[data-nextjs-dialog-overlay],
+[data-nextjs-scrollable-content],
+.dev-tools-indicator,
+.dev-tools-indicator-menu {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  top: -99999px !important;
+  left: -99999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  z-index: -999999 !important;
+}
+
