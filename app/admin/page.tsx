@@ -60,7 +60,10 @@ export default function AdminDashboard() {
   const [lang, setLang] = useState<AdminLanguage>("ar");
   const [activeTab, setActiveTab] = useState<
     "buttons" | "document" | "preview" | "footer" | "settings"
-  >("buttons");
+  >("document");
+  const [lastUploadedButton, setLastUploadedButton] = useState<
+    "backButton" | "verifyAgainButton" | "downloadButton"
+  >("downloadButton");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [isDragOverBtn, setIsDragOverBtn] = useState<string | null>(null);
   const [quickPreviewOpen, setQuickPreviewOpen] = useState(false);
@@ -642,6 +645,7 @@ export default function AdminDashboard() {
     btnKey: "backButton" | "verifyAgainButton" | "downloadButton",
     file: DriveItem
   ) => {
+    setLastUploadedButton(btnKey);
     const updatedBtn = {
       ...config[btnKey],
       actionType: "file" as const,
@@ -731,7 +735,9 @@ export default function AdminDashboard() {
 
     const isButtonsTab = activeTab === "buttons";
     const attachedButtonKey: ("downloadButton" | "verifyAgainButton" | "backButton") | null =
-      config.downloadButton?.actionType === "file" && config.downloadButton?.fileName
+      config[lastUploadedButton]?.actionType === "file" && config[lastUploadedButton]?.fileName
+        ? lastUploadedButton
+        : config.downloadButton?.actionType === "file" && config.downloadButton?.fileName
         ? "downloadButton"
         : config.verifyAgainButton?.actionType === "file" && config.verifyAgainButton?.fileName
         ? "verifyAgainButton"
@@ -820,6 +826,7 @@ export default function AdminDashboard() {
         // WORKFLOW TRANSITION 1: If saving from Document Detail, switch directly to Buttons & Files
         if (activeTab === "document") {
           setActiveTab("buttons");
+          setDrawerOpen(false);
         }
 
         // WORKFLOW TRANSITION 2: If saving from Buttons & Files with file, show celebration success modal!
@@ -844,9 +851,6 @@ export default function AdminDashboard() {
             setUploadProgressModalOpen(false);
             setUploadSuccessModalOpen(true);
           }, 600);
-        } else if (activeTab === "buttons") {
-          setDriveModalOpen(true);
-          fetchDriveFiles();
         }
       } else {
         const errJson = await res.json().catch(() => ({}));
@@ -870,7 +874,7 @@ export default function AdminDashboard() {
     getPublicLink,
     lang,
     activeTab,
-    fetchDriveFiles,
+    lastUploadedButton,
     getButtonDisplayTitle,
   ]);
 
@@ -962,6 +966,7 @@ export default function AdminDashboard() {
     file?: File | null
   ) => {
     if (!file) return;
+    setLastUploadedButton(buttonKey);
     setUploadingBtn(buttonKey);
 
     const btnTitle = getButtonDisplayTitle(buttonKey);
@@ -1220,6 +1225,7 @@ export default function AdminDashboard() {
         onUploadDirect={handleUploadDirectToDrive}
         onUpdateFile={handleUpdateDriveFile}
         onSelectForTarget={async (target, file) => {
+          setLastUploadedButton(target);
           const updatedBtn = {
             ...config[target],
             actionType: "file" as const,
