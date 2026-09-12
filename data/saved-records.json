@@ -15,7 +15,7 @@
     "supportPhone": "00966112641362",
     "createdAt": "2026-09-11T17:49:55.709Z",
     "facilitySubName": "فرع المنطقة الغربية",
-    "currentRecordId": "998822768645_7025562547",
+    "currentRecordId": "998822768676_7025562547",
     "applicantName": "عبدالرحمن الشمري",
     "verifyAgainButton": {
       "url": "#",
@@ -26,7 +26,7 @@
     },
     "facilityName": "مؤسسة الرياض للتجارة",
     "requestType": "تصديق تفويض إلكتروني",
-    "updatedAt": "2026-09-12T20:46:15.481Z",
+    "updatedAt": "2026-09-12T20:49:14.909Z",
     "requestNumber": "11223355",
     "customFields": [],
     "expiryTime": "11:15ص",
@@ -53,8 +53,8 @@
       "fileSize": 3188507,
       "actionType": "file",
       "showLoader": true,
-      "fileUrl": "",
-      "fileName": "",
+      "fileUrl": "/api/drive/download?fileId=18n9xaeEIdRNXHIIm9aLMb1Xj-Uf5krSF&name=Updated%20TImetable%20Fall2026.pdf",
+      "fileName": "Updated TImetable Fall2026.pdf",
       "openInNewTab": false
     },
     "socialLinks": {
