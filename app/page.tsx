@@ -157,12 +157,14 @@ function LoaderScreen({
 function ResultsPage({
   config,
   revealed,
+  isDownloading = false,
   onDownload,
   onVerifyAgain,
   onBack,
 }: {
   config: PortalConfig;
   revealed: boolean;
+  isDownloading?: boolean;
   onDownload: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onVerifyAgain: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onBack: (e: React.MouseEvent<HTMLAnchorElement>) => void;
@@ -368,13 +370,21 @@ function ResultsPage({
           {/* Right button in RTL: تحميل */}
           <button
             type="button"
+            disabled={isDownloading}
             onClick={onDownload}
-            className="inline-flex items-center justify-center text-white font-bold text-[13px] rounded-md px-7 py-2 cursor-pointer hover:opacity-90 active:scale-95 transition-all shadow-xs"
+            className="inline-flex items-center justify-center text-white font-bold text-[13px] rounded-md px-7 py-2 cursor-pointer hover:opacity-90 active:scale-95 transition-all shadow-xs disabled:opacity-75 min-w-[90px]"
             style={{
               backgroundColor: "#5c9df6",
             }}
           >
-            {d.downloadButton.label || "تحميل"}
+            {isDownloading ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>جاري التحميل...</span>
+              </span>
+            ) : (
+              d.downloadButton.label || "تحميل"
+            )}
           </button>
 
           {/* Left button in RTL: التحقق مرة آخرى */}
@@ -611,6 +621,8 @@ export default function DocumentVerificationPage() {
   const [initialLoaderDone, setInitialLoaderDone] = useState(false);
   const [buttonLoaderKey, setButtonLoaderKey] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadLoaderActive, setDownloadLoaderActive] = useState(false);
 
   const handleLoaderDone = useCallback(() => {
     setInitialLoaderDone(true);
@@ -634,6 +646,55 @@ export default function DocumentVerificationPage() {
         // ignore
       }
     }, 1000);
+  };
+
+  // Download directly with active animation that runs UNTIL Google Drive download completes
+  const downloadFileWithAnimation = async (fileUrl: string, fileName?: string) => {
+    if (!fileUrl) return;
+    setIsDownloading(true);
+    setDownloadLoaderActive(true);
+    const startTime = Date.now();
+
+    try {
+      // 1. Fetch the file data stream from Google Drive endpoint
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`Download HTTP error ${response.status}`);
+      }
+
+      // 2. Await full blob transfer from Google Drive
+      const blob = await response.blob();
+
+      // Ensure at least 1500ms for a smooth animation
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 1500) {
+        await new Promise((resolve) => setTimeout(resolve, 1500 - elapsed));
+      }
+
+      // 3. Trigger immediate file save to user's computer
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName || "document.pdf";
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        try {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(blobUrl);
+        } catch {
+          // ignore
+        }
+      }, 2000);
+    } catch (err) {
+      console.warn("Direct stream download notice, falling back to triggerDownload:", err);
+      triggerDownload(fileUrl, fileName);
+    } finally {
+      // 4. File download completed! Stop animation
+      setIsDownloading(false);
+      setDownloadLoaderActive(false);
+    }
   };
 
   // Helper to normalize URLs (adds https:// if protocol is missing)
@@ -801,16 +862,13 @@ export default function DocumentVerificationPage() {
     };
   }, [params]);
 
-  // Synchronize browser URL bar to display '/DocumentVerify/[requestNumber]/mem/[serialNumber]/[unifiedNumber]'
+  // Synchronize browser URL bar to display '/DocumentVerify/[requestNumber]/mem/[serialNumber]' (without unified number)
   useEffect(() => {
     const cleanSerial = config.serialNumber?.trim();
-    const cleanUnified = config.unifiedNumber?.trim();
     const cleanReq = config.requestNumber?.trim();
     if (!cleanSerial) return;
 
-    const targetPath = cleanUnified
-      ? `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
-      : `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}`;
+    const targetPath = `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}`;
 
     if (typeof window !== "undefined") {
       const currentPath = window.location.pathname;
@@ -826,7 +884,8 @@ export default function DocumentVerificationPage() {
         window.history.replaceState(null, "", targetPath);
       }
     }
-  }, [config.serialNumber, config.unifiedNumber, config.requestNumber]);
+  }, [config.serialNumber, config.requestNumber]);
+
 
 
   const handleButtonLoaderDone = useCallback(() => {
@@ -840,7 +899,13 @@ export default function DocumentVerificationPage() {
   // Action: Button 1 (العودة / Back)
   const handleBackClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
+    if (isDownloading) return;
     const btn = config.backButton;
+    // Direct download with animation if a file is attached
+    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
     executeButtonAction(btn, () => {
       if (window.history.length > 1) {
         window.history.back();
@@ -853,7 +918,14 @@ export default function DocumentVerificationPage() {
   // Action: Button 2 (التحقق مرة آخرى / Verify Again)
   const handleVerifyAgainClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    if (isDownloading) return;
     const btn = config.verifyAgainButton;
+
+    // Direct download with animation if a file is attached
+    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
 
     const action = () => {
       executeButtonAction(btn, () => {
@@ -872,7 +944,14 @@ export default function DocumentVerificationPage() {
   // Action: Button 3 (تحميل / Download)
   const handleDownloadClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    if (isDownloading) return;
     const btn = config.downloadButton;
+
+    // Direct download from Google Drive with active animation until download finishes
+    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
 
     const action = () => {
       executeButtonAction(btn, () => {
@@ -894,6 +973,7 @@ export default function DocumentVerificationPage() {
       <ResultsPage
         config={config}
         revealed={initialLoaderDone}
+        isDownloading={isDownloading}
         onDownload={handleDownloadClick}
         onVerifyAgain={handleVerifyAgainClick}
         onBack={handleBackClick}
@@ -908,7 +988,7 @@ export default function DocumentVerificationPage() {
         />
       )}
 
-      {/* Button click loader animation */}
+      {/* 2. Button click loader animation */}
       {buttonLoaderKey !== null && (
         <LoaderScreen
           key={buttonLoaderKey}
@@ -917,6 +997,48 @@ export default function DocumentVerificationPage() {
           onDone={handleButtonLoaderDone}
           durationMs={config.buttonLoaderDurationMs || 4000}
         />
+      )}
+
+      {/* 3. Google Drive Download In-Progress Animation (Active until file finishes downloading) */}
+      {downloadLoaderActive && (
+        <div
+          dir="rtl"
+          className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center font-sans animate-in fade-in duration-200 select-none"
+        >
+          {config.buttonLoaderGifUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`${config.buttonLoaderGifUrl}?t=${Date.now()}`}
+              alt="جاري التحميل..."
+              className="w-full h-screen object-contain"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-6 text-center max-w-sm">
+              <div className="w-24 h-24 mb-4 relative flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-10 h-10" viewBox="0 0 87.3 78" fill="currentColor">
+                    <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.9 2.5 3.2 3.3l16.3-28.2H0C0 50.7 1.3 52.8 2.6 55l4 6.85z" fill="#0066DA" />
+                    <path d="M43.65 25L27.35 53.2h32.7l16.3-28.2h-32.7z" fill="#00AC47" />
+                    <path d="M73.55 76.8c1.3-.8 2.4-1.9 3.2-3.3l7.9-13.7c1.3-2.2 2.6-4.3 2.6-6.4H57.25l16.3 23.4z" fill="#EA4335" />
+                    <path d="M43.65 25L59.95 0H27.35l-7.9 13.7c-1.3 2.2-2.6 4.3-2.6 6.4h32.7l-5.9 4.9z" fill="#00832D" />
+                    <path d="M59.95 0h-32.6l16.3 28.2 16.3-28.2z" fill="#2684FC" />
+                    <path d="M84.65 59.8L70.95 36.1 57.25 53.2 73.55 76.8c1.3-.8 2.4-1.9 3.2-3.3l7.9-13.7z" fill="#FFBA00" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-1">
+                جاري تنزيل الملف من Google Drive...
+              </h3>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-xs">
+                يرجى الانتظار حتى يكتمل تنزيل الوثيقة الرسمية من Google Drive بنجاح...
+              </p>
+              <div className="w-52 h-2.5 bg-slate-100 rounded-full overflow-hidden mt-4 border border-slate-200 shadow-inner">
+                <div className="h-full bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 rounded-full animate-pulse w-full" />
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </>
   );

@@ -116,6 +116,7 @@ export async function GET(req: Request) {
             const targetId = unified ? `${serial}_${unified}` : serial;
             const found = list.find(
               (r) =>
+                (requestNumber && serial && r.requestNumber === requestNumber && r.serialNumber === serial) ||
                 r.id === targetId ||
                 (r.serialNumber === serial && (!unified || r.unifiedNumber === unified))
             );
@@ -131,7 +132,7 @@ export async function GET(req: Request) {
 
     // 2. Fetch active 'current' config from Firebase Firestore
     try {
-      const fbConfig = await getConfigFromFirebase(serial, unified);
+      const fbConfig = await getConfigFromFirebase(serial, unified, requestNumber);
       if (fbConfig) {
         globalThis.__portal_config_memory__ = fbConfig;
         return NextResponse.json(fbConfig, { headers: responseHeaders });

@@ -25,6 +25,8 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
+    const replaceFileId = (formData.get("replaceFileId") as string | null)?.trim() || null;
+
     if (!file) {
       return NextResponse.json(
         { success: false, error: "No file provided" },
@@ -49,11 +51,9 @@ export async function POST(req: Request) {
       fs.writeFileSync(filePath, buffer);
     } catch (fsErr) {
       console.warn("Local uploads dir is read-only or unavailable (serverless environment):", fsErr);
-      // In serverless environments (e.g. Vercel /var/task), the filesystem is read-only.
-      // Google Drive handles the persistent cloud upload, so local write failure is non-critical.
     }
 
-    // ─── 1. GOOGLE APPS SCRIPT DIRECT DRIVE UPLOAD (Personal Folder Storage) ───
+    // ─── 1. GOOGLE APPS SCRIPT DIRECT DRIVE UPLOAD (Primary for Personal Drive Folders) ───
     if (APPS_SCRIPT_URL) {
       try {
         const gasRes = await fetch(APPS_SCRIPT_URL, {
@@ -92,62 +92,96 @@ export async function POST(req: Request) {
           });
         }
       } catch (gasErr) {
-        console.warn("Apps Script upload note:", gasErr);
+        console.warn("Apps Script upload fallback notice:", gasErr);
       }
     }
 
-    // ─── 2. GOOGLE DRIVE SERVICE ACCOUNT UPLOAD (Fallback) ───
+    // ─── 2. GOOGLE DRIVE SERVICE ACCOUNT UPLOAD / UPDATE (Fallback) ───
     if (fs.existsSync(KEY_FILE_PATH) || process.env.GOOGLE_CREDENTIALS) {
       try {
         const bufferStream = new Readable();
-      bufferStream.push(buffer);
-      bufferStream.push(null);
+        bufferStream.push(buffer);
+        bufferStream.push(null);
 
-      const driveRes = await drive.files.create({
-        supportsAllDrives: true,
-        requestBody: {
-          name: originalName,
-          parents: [FOLDER_ID],
-        },
-        media: {
-          mimeType: file.type || "application/pdf",
-          body: bufferStream,
-        },
-        fields: "id, name, mimeType, webViewLink, webContentLink, size",
-      });
+        let driveResId: string | null = null;
+        let driveViewLink: string | null = null;
 
-      if (driveRes.data.id) {
-        try {
-          await drive.permissions.create({
-            fileId: driveRes.data.id,
-            supportsAllDrives: true,
-            requestBody: {
-              role: "reader",
-              type: "anyone",
-            },
-          });
-        } catch {
-          // ignore
+        // If updating an existing file in-place
+        if (replaceFileId) {
+          try {
+            const updateRes = await drive.files.update({
+              fileId: replaceFileId,
+              supportsAllDrives: true,
+              requestBody: {
+                name: originalName,
+              },
+              media: {
+                mimeType: file.type || "application/pdf",
+                body: bufferStream,
+              },
+              fields: "id, name, mimeType, webViewLink, webContentLink, size",
+            });
+            driveResId = updateRes.data.id || replaceFileId;
+            driveViewLink = updateRes.data.webViewLink || null;
+          } catch {
+            // fallback to create
+          }
         }
 
-        const driveDownloadUrl = `/api/drive/download?fileId=${driveRes.data.id}&name=${encodeURIComponent(originalName)}`;
+        // If not updating or in-place update failed, create file in Drive
+        if (!driveResId) {
+          const freshBufferStream = new Readable();
+          freshBufferStream.push(buffer);
+          freshBufferStream.push(null);
 
-        return NextResponse.json({
-          success: true,
-          source: "google_drive",
-          fileUrl: driveDownloadUrl,
-          driveFileId: driveRes.data.id,
-          driveViewLink:
-            driveRes.data.webViewLink ||
-            `https://drive.google.com/file/d/${driveRes.data.id}/view`,
-          fileName: originalName,
-          fileSize: file.size,
-        });
+          const driveRes = await drive.files.create({
+            supportsAllDrives: true,
+            requestBody: {
+              name: originalName,
+              parents: [FOLDER_ID],
+            },
+            media: {
+              mimeType: file.type || "application/pdf",
+              body: freshBufferStream,
+            },
+            fields: "id, name, mimeType, webViewLink, webContentLink, size",
+          });
+          driveResId = driveRes.data.id || null;
+          driveViewLink = driveRes.data.webViewLink || null;
+        }
+
+        if (driveResId) {
+          try {
+            await drive.permissions.create({
+              fileId: driveResId,
+              supportsAllDrives: true,
+              requestBody: {
+                role: "reader",
+                type: "anyone",
+              },
+            });
+          } catch {
+            // ignore
+          }
+
+          const driveDownloadUrl = `/api/drive/download?fileId=${driveResId}&name=${encodeURIComponent(originalName)}`;
+
+          return NextResponse.json({
+            success: true,
+            source: "google_drive",
+            fileUrl: driveDownloadUrl,
+            driveFileId: driveResId,
+            driveViewLink:
+              driveViewLink ||
+              `https://drive.google.com/file/d/${driveResId}/view`,
+            fileName: originalName,
+            fileSize: file.size,
+          });
+        }
+      } catch (driveErr) {
+        console.warn("Google Drive service account upload note:", driveErr);
       }
-    } catch (driveErr) {
-      console.warn("Google Drive direct upload note:", driveErr);
     }
-  }
 
     // ─── 3. LOCAL BACKUP ───
     return NextResponse.json({

@@ -10,8 +10,11 @@ import {
   savePortalRecordToFirebase,
   deletePortalRecordFromFirebase,
   getAllPortalRecordsFromFirebase,
+  sanitizeFirestoreData,
 } from "@/lib/firebase";
 import { FirebaseRecordsModal } from "@/components/FirebaseRecordsModal";
+import { UploadProgressModal } from "@/components/UploadProgressModal";
+import { UploadSuccessModal } from "@/components/UploadSuccessModal";
 
 // ─────────────────────────────────────────────────────────
 //  CRISP MODERN SVG ICONS
@@ -228,12 +231,30 @@ export default function AdminDashboard() {
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const [copiedRecordId, setCopiedRecordId] = useState<string | null>(null);
 
-  // ─── GOOGLE DRIVE FILE PICKER STATE (FOR BUTTONS) ───
+  // ─── GOOGLE DRIVE FILE PICKER & CLOUD MANAGER STATE ───
   const [drivePickerTarget, setDrivePickerTarget] = useState<"backButton" | "verifyAgainButton" | "downloadButton" | null>(null);
+  const [driveModalOpen, setDriveModalOpen] = useState(false);
   const [driveFiles, setDriveFiles] = useState<DriveItem[]>([]);
   const [loadingDriveFiles, setLoadingDriveFiles] = useState(false);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [fileToDelete, setFileToDelete] = useState<DriveItem | null>(null);
+  const [updatingFileId, setUpdatingFileId] = useState<string | null>(null);
+
+  // ─── UPLOAD PROGRESS & CELEBRATION SUCCESS POPUP MODALS STATE ───
+  const [uploadProgressModalOpen, setUploadProgressModalOpen] = useState(false);
+  const [uploadPercentage, setUploadPercentage] = useState(0);
+  const [uploadProgressFileName, setUploadProgressFileName] = useState("");
+  const [uploadProgressFileSize, setUploadProgressFileSize] = useState<number | undefined>(undefined);
+  const [uploadProgressButtonTitle, setUploadProgressButtonTitle] = useState("");
+  const [uploadProgressStatus, setUploadProgressStatus] = useState<string | undefined>(undefined);
+  const [uploadSuccessModalOpen, setUploadSuccessModalOpen] = useState(false);
+  const [savedSuccessDetails, setSavedSuccessDetails] = useState<{
+    fileName: string;
+    fileSize?: number;
+    fileUrl?: string;
+    driveViewLink?: string;
+    buttonTitle?: string;
+  } | null>(null);
 
   const fetchDriveFiles = useCallback(async () => {
     setLoadingDriveFiles(true);
@@ -310,10 +331,9 @@ export default function AdminDashboard() {
     if (typeof window === "undefined") return;
     const req = (record.requestNumber || "").trim() || "13255887";
     const s = (record.serialNumber || "").trim();
-    const u = (record.unifiedNumber || "").trim();
-    const path = u
-      ? `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}/${encodeURIComponent(u)}`
-      : `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`;
+    const path = s
+      ? `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`
+      : `/DocumentVerify/${encodeURIComponent(req)}/mem`;
     const fullUrl = `${window.location.origin}${path}`;
     navigator.clipboard.writeText(fullUrl);
     setCopiedRecordId(record.id);
@@ -413,13 +433,12 @@ export default function AdminDashboard() {
           for (const k of keys) {
             if (updated[k]?.fileName === file.name || updated[k]?.fileUrl?.includes(file.id)) {
               hasChange = true;
-              updated[k] = {
-                ...updated[k],
-                actionType: "link",
-                fileUrl: undefined,
-                fileName: undefined,
-                fileSize: undefined,
-              };
+              const updatedBtn = { ...updated[k] };
+              delete updatedBtn.fileUrl;
+              delete updatedBtn.fileName;
+              delete updatedBtn.fileSize;
+              updatedBtn.actionType = "link";
+              updated[k] = updatedBtn;
             }
           }
           return hasChange ? updated : prev;
@@ -451,6 +470,201 @@ export default function AdminDashboard() {
     } finally {
       setDeletingFileId(null);
     }
+  };
+
+  // ─── UPDATE / REPLACE FILE IN GOOGLE DRIVE ───
+  const handleUpdateDriveFile = async (fileToUpdate: DriveItem, newFile: File) => {
+    setUpdatingFileId(fileToUpdate.id);
+    const formData = new FormData();
+    formData.append("file", newFile);
+    formData.append("replaceFileId", fileToUpdate.id);
+
+    showToast(
+      lang === "en"
+        ? `Updating "${fileToUpdate.name}" in Google Drive...`
+        : lang === "ur"
+        ? `گوگل ڈرائیو میں "${fileToUpdate.name}" اپ ڈیٹ ہو رہی ہے...`
+        : `جاري تحديث "${fileToUpdate.name}" في Google Drive...`,
+      "info"
+    );
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // If any button was using this file, update it
+        setConfig((prev) => {
+          let hasChange = false;
+          const updated = { ...prev };
+          const keys: ("backButton" | "verifyAgainButton" | "downloadButton")[] = [
+            "backButton",
+            "verifyAgainButton",
+            "downloadButton",
+          ];
+          for (const k of keys) {
+            if (updated[k]?.fileUrl?.includes(fileToUpdate.id) || updated[k]?.fileName === fileToUpdate.name) {
+              hasChange = true;
+              updated[k] = {
+                ...updated[k],
+                fileUrl: data.fileUrl,
+                fileName: data.fileName,
+                fileSize: data.fileSize,
+              };
+            }
+          }
+          if (hasChange) {
+            autoSaveConfig(updated);
+            return updated;
+          }
+          return prev;
+        });
+
+        showToast(
+          lang === "en"
+            ? `File "${data.fileName}" updated successfully in Google Drive!`
+            : lang === "ur"
+            ? `فائل "${data.fileName}" گوگل ڈرائیو میں کامیابی سے اپ ڈیٹ ہو گئی!`
+            : `تم تحديث الملف "${data.fileName}" بنجاح في Google Drive!`,
+          "success"
+        );
+        fetchDriveFiles();
+      } else {
+        showToast(data.error || "Update failed", "error");
+      }
+    } catch (err) {
+      console.error("Update drive file error:", err);
+      showToast(lang === "en" ? "Failed to update file in Google Drive" : "فائل اپ ڈیٹ کرنے میں ناکامی", "error");
+    } finally {
+      setUpdatingFileId(null);
+    }
+  };
+
+  const getButtonDisplayTitle = useCallback(
+    (key: "backButton" | "verifyAgainButton" | "downloadButton") => {
+      if (key === "downloadButton") {
+        return lang === "en" ? "Button #3 - Download" : lang === "ur" ? "بٹن #3 - ڈاؤن لوڈ" : "زر التحميل (الزر 3)";
+      }
+      if (key === "verifyAgainButton") {
+        return lang === "en" ? "Button #2 - Verify Again" : lang === "ur" ? "بٹن #2 - دوبارہ تصدیق" : "زر إعادة التحقق (الزر 2)";
+      }
+      return lang === "en" ? "Button #1 - Back" : lang === "ur" ? "بٹن #1 - رجوع" : "زر العودة (الزر 1)";
+    },
+    [lang]
+  );
+
+  // ─── DIRECT UPLOAD TO GOOGLE DRIVE FROM MODAL ───
+  const handleUploadDirectToDrive = async (file: File) => {
+    const btnTitle =
+      lang === "en"
+        ? "Google Drive Cloud (website file)"
+        : lang === "ur"
+        ? "گوگل ڈرائیو کلاؤڈ (website file)"
+        : "سحابة Google Drive (website file)";
+
+    setUploadProgressFileName(file.name);
+    setUploadProgressFileSize(file.size);
+    setUploadProgressButtonTitle(btnTitle);
+    setUploadProgressStatus(undefined);
+    setUploadPercentage(5);
+    setUploadProgressModalOpen(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        const percent = Math.round((event.loaded / event.total) * 75) + 10;
+        setUploadPercentage(Math.min(percent, 85));
+      }
+    };
+
+    xhr.onload = async () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setUploadPercentage(95);
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            setUploadPercentage(100);
+            fetchDriveFiles();
+            setSavedSuccessDetails({
+              fileName: data.fileName || file.name,
+              fileSize: data.fileSize || file.size,
+              fileUrl: data.fileUrl,
+              driveViewLink:
+                data.driveViewLink ||
+                (data.driveFileId
+                  ? `https://drive.google.com/file/d/${data.driveFileId}/view`
+                  : "https://drive.google.com/drive/folders/1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl"),
+              buttonTitle: btnTitle,
+            });
+
+            setTimeout(() => {
+              setUploadProgressModalOpen(false);
+              setUploadSuccessModalOpen(true);
+            }, 600);
+          } else {
+            setUploadProgressModalOpen(false);
+            showToast(data.error || "Upload failed", "error");
+          }
+        } catch {
+          setUploadProgressModalOpen(false);
+          showToast("Upload response parse error", "error");
+        }
+      } else {
+        setUploadProgressModalOpen(false);
+        showToast("Upload failed with status " + xhr.status, "error");
+      }
+    };
+
+    xhr.onerror = () => {
+      setUploadProgressModalOpen(false);
+      showToast("Network error uploading file", "error");
+    };
+
+    xhr.open("POST", "/api/upload", true);
+    xhr.send(formData);
+  };
+
+  // ─── ASSIGN ANY DRIVE FILE TO A SPECIFIC BUTTON ───
+  const handleAssignFileToButton = async (
+    btnKey: "backButton" | "verifyAgainButton" | "downloadButton",
+    file: DriveItem
+  ) => {
+    const updatedBtn = {
+      ...config[btnKey],
+      actionType: "file" as const,
+      fileUrl: file.downloadUrl,
+      fileName: file.name,
+    };
+    if (file.size && parseInt(file.size) > 0) {
+      updatedBtn.fileSize = parseInt(file.size);
+    } else {
+      delete updatedBtn.fileSize;
+    }
+    const updated: PortalConfig = {
+      ...config,
+      [btnKey]: updatedBtn,
+    };
+    await autoSaveConfig(updated);
+    const btnLabel =
+      btnKey === "downloadButton"
+        ? (lang === "en" ? "Download Button" : lang === "ur" ? "ڈاؤن لوڈ بٹن" : "زر التحميل")
+        : btnKey === "verifyAgainButton"
+        ? (lang === "en" ? "Verify Again Button" : lang === "ur" ? "التحقق مرة آخرى بٹن" : "زر التحقق مرة آخرى")
+        : (lang === "en" ? "Back Button" : lang === "ur" ? "العودة بٹن" : "زر العودة");
+
+    showToast(
+      lang === "en"
+        ? `Linked "${file.name}" to ${btnLabel}!`
+        : lang === "ur"
+        ? `فائل "${file.name}" کو ${btnLabel} سے منسلک کر دیا گیا!`
+        : `تم ربط "${file.name}" بـ ${btnLabel} بنجاح!`,
+      "success"
+    );
   };
 
   const fileInputBackRef = useRef<HTMLInputElement>(null);
@@ -528,14 +742,10 @@ export default function AdminDashboard() {
     }
   };
 
-  // Helper to compute public URL with dynamic requestNumber, serial, and unified numbers
+  // Helper to compute public URL with dynamic requestNumber and serial numbers (without unified number)
   const getPublicLink = useCallback((conf: PortalConfig) => {
     const req = conf.requestNumber?.trim() || "13255887";
     const s = conf.serialNumber?.trim();
-    const u = conf.unifiedNumber?.trim();
-    if (s && u) {
-      return `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}/${encodeURIComponent(u)}`;
-    }
     if (s) {
       return `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`;
     }
@@ -587,6 +797,26 @@ export default function AdminDashboard() {
     setUnifiedError(null);
     setSaving(true);
 
+    const isButtonsTab = activeTab === "buttons";
+    const attachedButtonKey: ("downloadButton" | "verifyAgainButton" | "backButton") | null =
+      config.downloadButton?.actionType === "file" && config.downloadButton?.fileName
+        ? "downloadButton"
+        : config.verifyAgainButton?.actionType === "file" && config.verifyAgainButton?.fileName
+        ? "verifyAgainButton"
+        : config.backButton?.actionType === "file" && config.backButton?.fileName
+        ? "backButton"
+        : null;
+
+    if (isButtonsTab && attachedButtonKey) {
+      const activeBtn = config[attachedButtonKey];
+      setUploadProgressFileName(activeBtn?.fileName || "document.pdf");
+      setUploadProgressFileSize(activeBtn?.fileSize);
+      setUploadProgressButtonTitle(getButtonDisplayTitle(attachedButtonKey));
+      setUploadProgressStatus(undefined);
+      setUploadPercentage(15);
+      setUploadProgressModalOpen(true);
+    }
+
     const effectiveRecordId =
       editingRecordId && initialConfig.serialNumber === cleanSerial
         ? editingRecordId
@@ -608,12 +838,21 @@ export default function AdminDashboard() {
         console.warn("Direct Firebase client save notice:", fbErr);
       }
 
+      if (isButtonsTab && attachedButtonKey) {
+        setUploadPercentage(55);
+      }
+
       // 2. Server API route save (also syncs Firebase, disk & memory)
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      if (isButtonsTab && attachedButtonKey) {
+        setUploadPercentage(85);
+      }
+
       if (res.ok) {
         const result = await res.json();
         setConfig(result.data);
@@ -641,17 +880,50 @@ export default function AdminDashboard() {
           fullLink,
           lang === "en" ? "View Live Form ↗" : lang === "ur" ? "لائیو فارم دیکھیں ↗" : "عرض النموذج ↗"
         );
+
+        // ─── WORKFLOW TRANSITION 1: If saving from Document Detail, switch directly to Buttons & Files ───
+        if (activeTab === "document") {
+          setActiveTab("buttons");
+        }
+
+        // ─── WORKFLOW TRANSITION 2: If saving from Buttons & Files with file, show celebration success modal! ───
+        if (isButtonsTab && attachedButtonKey) {
+          setUploadPercentage(100);
+          const activeBtn = result.data[attachedButtonKey] || config[attachedButtonKey];
+          const targetDriveUrl =
+            activeBtn?.fileUrl?.includes("fileId=")
+              ? `https://drive.google.com/file/d/${new URLSearchParams(activeBtn.fileUrl.split("?")[1] || "").get("fileId")}/view`
+              : "https://drive.google.com/drive/folders/1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl";
+
+          setSavedSuccessDetails({
+            fileName: activeBtn?.fileName || "certificate.pdf",
+            fileSize: activeBtn?.fileSize,
+            fileUrl: activeBtn?.fileUrl,
+            driveViewLink: targetDriveUrl,
+            buttonTitle: getButtonDisplayTitle(attachedButtonKey),
+          });
+
+          setTimeout(() => {
+            setUploadProgressModalOpen(false);
+            setUploadSuccessModalOpen(true);
+          }, 600);
+        } else if (activeTab === "buttons") {
+          setDriveModalOpen(true);
+          fetchDriveFiles();
+        }
       } else {
         const errJson = await res.json().catch(() => ({}));
+        setUploadProgressModalOpen(false);
         showToast(errJson.error || t.save_error, "error");
       }
     } catch (err) {
       console.error(err);
+      setUploadProgressModalOpen(false);
       showToast(t.save_error, "error");
     } finally {
       setSaving(false);
     }
-  }, [config, initialConfig, t, showToast, fetchSavedRecords, editingRecordId, getPublicLink, lang]);
+  }, [config, initialConfig, t, showToast, fetchSavedRecords, editingRecordId, getPublicLink, lang, activeTab, fetchDriveFiles, getButtonDisplayTitle]);
 
   const handleDiscardChanges = () => {
     setConfig(initialConfig);
@@ -673,6 +945,9 @@ export default function AdminDashboard() {
         setDrawerSearch("");
         setQuickPreviewOpen(false);
         setDrivePickerTarget(null);
+        setDriveModalOpen(false);
+        setUploadSuccessModalOpen(false);
+        setUploadProgressModalOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -730,82 +1005,116 @@ export default function AdminDashboard() {
     }));
   };
 
-  // Upload file handler for any button
+  // Upload file handler for any button with percentage progress popup & celebration modal
   const handleFileUpload = async (
     buttonKey: "backButton" | "verifyAgainButton" | "downloadButton",
     file?: File | null
   ) => {
     if (!file) return;
     setUploadingBtn(buttonKey);
+
+    const btnTitle = getButtonDisplayTitle(buttonKey);
+    setUploadProgressFileName(file.name);
+    setUploadProgressFileSize(file.size);
+    setUploadProgressButtonTitle(btnTitle);
+    setUploadProgressStatus(undefined);
+    setUploadPercentage(5);
+    setUploadProgressModalOpen(true);
+
     const formData = new FormData();
     formData.append("file", file);
 
-    showToast(
-      lang === "en"
-        ? `Uploading "${file.name}" to Google Drive...`
-        : lang === "ur"
-        ? `فائل "${file.name}" گوگل ڈرائیو پر اپلوڈ ہو رہی ہے...`
-        : `جاري رفع "${file.name}" إلى Google Drive...`,
-      "info"
-    );
+    const xhr = new XMLHttpRequest();
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        const updated: PortalConfig = {
-          ...config,
-          [buttonKey]: {
-            ...config[buttonKey],
-            actionType: "file",
-            fileUrl: data.fileUrl,
-            fileName: data.fileName,
-            fileSize: data.fileSize,
-          },
-        };
-        await autoSaveConfig(updated);
-
-        const targetDriveUrl =
-          data.driveViewLink ||
-          (data.driveFileId
-            ? `https://drive.google.com/file/d/${data.driveFileId}/view`
-            : "https://drive.google.com/drive/folders/1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl");
-
-        showToast(
-          lang === "en"
-            ? `File "${data.fileName}" uploaded & applied to main page! Click notification to view in Google Drive.`
-            : lang === "ur"
-            ? `فائل "${data.fileName}" اپلوڈ ہو گئی اور مین پیج پر لاگو ہو گئی! ڈرائیو کیلئے کلک کریں۔`
-            : `تم رفع "${data.fileName}" وتطبيقه على الصفحة الرئيسية! انقر للعرض في Google Drive.`,
-          "success",
-          targetDriveUrl,
-          lang === "en" ? "Open in Drive ↗" : lang === "ur" ? "گوگل ڈرائیو میں دیکھیں ↗" : "عرض في Drive ↗"
-        );
-        fetchDriveFiles();
-      } else {
-        showToast(data.error || "Upload failed", "error");
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        const percent = Math.round((event.loaded / event.total) * 75) + 10;
+        setUploadPercentage(Math.min(percent, 85));
       }
-    } catch (err) {
-      console.error("Upload error:", err);
-      showToast("Upload failed", "error");
-    } finally {
+    };
+
+    xhr.onload = async () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setUploadPercentage(95);
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            setUploadPercentage(100);
+
+            const updated: PortalConfig = {
+              ...config,
+              [buttonKey]: {
+                ...config[buttonKey],
+                actionType: "file",
+                fileUrl: data.fileUrl,
+                fileName: data.fileName || file.name,
+                fileSize: data.fileSize || file.size,
+              },
+            };
+            await autoSaveConfig(updated);
+            fetchDriveFiles();
+
+            const targetDriveUrl =
+              data.driveViewLink ||
+              (data.driveFileId
+                ? `https://drive.google.com/file/d/${data.driveFileId}/view`
+                : "https://drive.google.com/drive/folders/1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl");
+
+            setSavedSuccessDetails({
+              fileName: data.fileName || file.name,
+              fileSize: data.fileSize || file.size,
+              fileUrl: data.fileUrl,
+              driveViewLink: targetDriveUrl,
+              buttonTitle: btnTitle,
+            });
+
+            setTimeout(() => {
+              setUploadProgressModalOpen(false);
+              setUploadSuccessModalOpen(true);
+            }, 600);
+          } else {
+            setUploadProgressModalOpen(false);
+            showToast(data.error || "Upload failed", "error");
+          }
+        } catch {
+          setUploadProgressModalOpen(false);
+          showToast("Upload response parse error", "error");
+        }
+      } else {
+        setUploadProgressModalOpen(false);
+        showToast("Upload failed with status " + xhr.status, "error");
+      }
       setUploadingBtn(null);
-    }
+    };
+
+    xhr.onerror = () => {
+      setUploadProgressModalOpen(false);
+      setUploadingBtn(null);
+      showToast("Network error uploading file", "error");
+    };
+
+    xhr.open("POST", "/api/upload", true);
+    xhr.send(formData);
   };
 
-  // Helper to persist updated configuration immediately to server & disk
+  // Helper to persist updated configuration immediately to server & disk & Firebase
   const autoSaveConfig = useCallback(async (newConfig: PortalConfig) => {
-    setConfig(newConfig);
-    setInitialConfig(newConfig);
+    const sanitized = sanitizeFirestoreData(newConfig);
+    setConfig(sanitized);
+    setInitialConfig(sanitized);
+    const cleanSerial = (sanitized.serialNumber || "").trim();
+    const cleanUnified = (sanitized.unifiedNumber || "").trim();
+    const recId = cleanSerial && cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
     try {
-      localStorage.setItem("portal_config_cache", JSON.stringify(newConfig));
+      localStorage.setItem("portal_config_cache", JSON.stringify(sanitized));
+      if (cleanSerial) {
+        saveConfigToFirebase(sanitized).catch(() => {});
+        savePortalRecordToFirebase(sanitized, recId).catch(() => {});
+      }
       await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newConfig),
+        body: JSON.stringify(sanitized),
       });
     } catch (err) {
       console.error("autoSaveConfig failed:", err);
@@ -817,12 +1126,13 @@ export default function AdminDashboard() {
     buttonKey: "backButton" | "verifyAgainButton" | "downloadButton",
     actionType: "link" | "file" | "animation"
   ) => {
+    const updatedBtn = { ...config[buttonKey], actionType };
+    if (updatedBtn.fileSize === undefined) {
+      delete updatedBtn.fileSize;
+    }
     const updated: PortalConfig = {
       ...config,
-      [buttonKey]: {
-        ...config[buttonKey],
-        actionType,
-      },
+      [buttonKey]: updatedBtn,
     };
     await autoSaveConfig(updated);
   };
@@ -885,15 +1195,15 @@ export default function AdminDashboard() {
   };
 
   const removeFile = async (buttonKey: "backButton" | "verifyAgainButton" | "downloadButton") => {
+    const updatedBtn = { ...config[buttonKey] };
+    delete updatedBtn.fileSize;
+    updatedBtn.actionType = "link";
+    updatedBtn.fileUrl = "";
+    updatedBtn.fileName = "";
+
     const updated: PortalConfig = {
       ...config,
-      [buttonKey]: {
-        ...config[buttonKey],
-        actionType: "link",
-        fileUrl: "",
-        fileName: "",
-        fileSize: undefined,
-      },
+      [buttonKey]: updatedBtn,
     };
     await autoSaveConfig(updated);
     showToast(
@@ -1103,15 +1413,18 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ═══════════════ GOOGLE DRIVE FILE PICKER MODAL ═══════════════ */}
-      {drivePickerTarget && (
+      {/* ═══════════════ GOOGLE DRIVE FILE PICKER & MANAGER MODAL ═══════════════ */}
+      {(drivePickerTarget || driveModalOpen) && (
         <div
           className="fixed inset-0 z-[99999] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
-          onClick={() => setDrivePickerTarget(null)}
+          onClick={() => {
+            setDrivePickerTarget(null);
+            setDriveModalOpen(false);
+          }}
         >
           <div
             dir={isRtl ? "rtl" : "ltr"}
-            className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]"
+            className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1126,14 +1439,36 @@ export default function AdminDashboard() {
                   </h3>
                   <p className="text-xs text-blue-200/90 font-medium">
                     {lang === "en"
-                      ? "Folder: website file • Select any file to link directly"
+                      ? "Folder: website file • Linked directly with buttons & verification downloads"
                       : lang === "ur"
-                      ? "فولڈر: website file • ڈاؤن لوڈ کیلئے براہ راست لنک کریں"
-                      : "المجلد المتصل: website file • اختر أي ملف للربط والتحميل المباشر"}
+                      ? "فولڈر: website file • بٹنوں اور تصدیق کے لیے براہ راست ڈاؤن لوڈ"
+                      : "المجلد المتصل: website file • ربط مباشر بالأزرار والتحميل الفوري"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Direct Upload New File Input */}
+                <input
+                  type="file"
+                  id="direct-drive-upload-input"
+                  className="sr-only"
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      handleUploadDirectToDrive(e.target.files[0]);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <label
+                  htmlFor="direct-drive-upload-input"
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                  title="رفع ملف جديد إلى Google Drive"
+                >
+                  <span>⬆️</span>
+                  <span>{lang === "en" ? "Upload New" : lang === "ur" ? "نئی فائل اپلوڈ" : "رفع ملف جديد"}</span>
+                </label>
+
                 <button
                   type="button"
                   onClick={fetchDriveFiles}
@@ -1146,7 +1481,10 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDrivePickerTarget(null)}
+                  onClick={() => {
+                    setDrivePickerTarget(null);
+                    setDriveModalOpen(false);
+                  }}
                   className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold flex items-center justify-center cursor-pointer"
                 >
                   ✕
@@ -1182,22 +1520,15 @@ export default function AdminDashboard() {
                     </h4>
                     <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
                       {lang === "en"
-                        ? "You can upload files directly here or drag files into your Google Drive 'website file' folder."
+                        ? "Click 'Upload New' to upload files directly to your Google Drive."
                         : lang === "ur"
-                        ? "آپ یہاں سے فائل اپلوڈ کر سکتے ہیں یا اپنے گوگل ڈرائیو میں فائل شامل کر کے ریفریش کریں۔"
-                        : "يمكنك رفع ملف مباشرة من هنا، أو وضع الملفات داخل مجلد website file في Google Drive ثم النقر على تحديث."}
+                        ? "فائلیں براہ راست گوگل ڈرائیو پر اپلوڈ کرنے کیلئے 'نئی فائل اپلوڈ' پر کلک کریں۔"
+                        : "انقر على 'رفع ملف جديد' لحفظ الملفات مباشرة في Google Drive."}
                     </p>
                   </div>
                   <div className="pt-2">
                     <label
-                      htmlFor={
-                        drivePickerTarget === "backButton"
-                          ? "file-input-back"
-                          : drivePickerTarget === "verifyAgainButton"
-                          ? "file-input-verify"
-                          : "file-input-download"
-                      }
-                      onClick={() => setDrivePickerTarget(null)}
+                      htmlFor="direct-drive-upload-input"
                       className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer transition-all inline-flex items-center gap-2 select-none active:scale-95"
                     >
                       <span>⬆️</span>
@@ -1208,18 +1539,25 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  <div className="text-xs font-bold text-slate-500 mb-2">
-                    {lang === "en"
-                      ? `Found ${driveFiles.length} file(s) in Google Drive folder:`
-                      : lang === "ur"
-                      ? `گوگل ڈرائیو میں ${driveFiles.length} فائلیں موجود ہیں:`
-                      : `تم العثور على ${driveFiles.length} ملف في Google Drive:`}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
+                    <span>
+                      {lang === "en"
+                        ? `Found ${driveFiles.length} file(s) in Google Drive folder:`
+                        : lang === "ur"
+                        ? `گوگل ڈرائیو میں ${driveFiles.length} فائلیں موجود ہیں:`
+                        : `تم العثور على ${driveFiles.length} ملف في Google Drive:`}
+                    </span>
+                    <span className="text-[11px] text-blue-600">
+                      {drivePickerTarget
+                        ? (lang === "en" ? `Target: ${drivePickerTarget}` : `الهدف الحالي: ${drivePickerTarget}`)
+                        : (lang === "en" ? "Cloud File Management" : "إدارة الملفات السحابية")}
+                    </span>
                   </div>
                   {driveFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="p-3.5 rounded-2xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 transition-all flex items-center justify-between gap-3 bg-white shadow-2xs"
+                      className="p-4 rounded-2xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white shadow-2xs"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <span className="text-2xl shrink-0">
@@ -1229,13 +1567,19 @@ export default function AdminDashboard() {
                           <p className="text-xs font-bold text-slate-900 truncate" title={file.name}>
                             {file.name}
                           </p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            {file.size ? formatFileSize(parseInt(file.size)) : "Google Drive"}
-                          </p>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                            <span>{file.size ? formatFileSize(parseInt(file.size)) : "Google Drive"}</span>
+                            {updatingFileId === file.id && (
+                              <span className="text-amber-600 font-bold animate-pulse">
+                                {lang === "en" ? "Updating in Drive..." : "جاري التحديث في Drive..."}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0">
+                        {/* Preview in Google Drive */}
                         {file.webViewLink && (
                           <a
                             href={file.webViewLink}
@@ -1247,22 +1591,52 @@ export default function AdminDashboard() {
                             {lang === "en" ? "Preview ↗" : lang === "ur" ? "معائنہ ↗" : "معاينة ↗"}
                           </a>
                         )}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (drivePickerTarget) {
+
+                        {/* UPDATE / REPLACE FILE OPTION */}
+                        <input
+                          type="file"
+                          id={`update-drive-file-${file.id}`}
+                          className="sr-only"
+                          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              handleUpdateDriveFile(file, e.target.files[0]);
+                            }
+                            e.target.value = "";
+                          }}
+                        />
+                        <label
+                          htmlFor={`update-drive-file-${file.id}`}
+                          className="px-2.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50/80 hover:bg-amber-600 text-amber-700 hover:text-white text-xs font-bold shadow-2xs cursor-pointer transition-all flex items-center gap-1.5 active:scale-95 select-none"
+                          title={lang === "en" ? "Update / replace this file in Google Drive" : lang === "ur" ? "گوگل ڈرائیو میں فائل اپ ڈیٹ کریں" : "تحديث / استبدال هذا الملف في Google Drive"}
+                        >
+                          <span>🔄</span>
+                          <span>{lang === "en" ? "Update" : lang === "ur" ? "اپ ڈیٹ" : "تحديث"}</span>
+                        </label>
+
+                        {/* TARGET SELECTION: If opened for a specific button */}
+                        {drivePickerTarget ? (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const updatedBtn = {
+                                ...config[drivePickerTarget],
+                                actionType: "file" as const,
+                                fileUrl: file.downloadUrl,
+                                fileName: file.name,
+                              };
+                              if (file.size && parseInt(file.size) > 0) {
+                                updatedBtn.fileSize = parseInt(file.size);
+                              } else {
+                                delete updatedBtn.fileSize;
+                              }
                               const updated: PortalConfig = {
                                 ...config,
-                                [drivePickerTarget]: {
-                                  ...config[drivePickerTarget],
-                                  actionType: "file",
-                                  fileUrl: file.downloadUrl,
-                                  fileName: file.name,
-                                  fileSize: file.size ? parseInt(file.size) : undefined,
-                                },
+                                [drivePickerTarget]: updatedBtn,
                               };
                               await autoSaveConfig(updated);
                               setDrivePickerTarget(null);
+                              setDriveModalOpen(false);
                               const targetDriveUrl =
                                 file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
                               showToast(
@@ -1275,12 +1649,42 @@ export default function AdminDashboard() {
                                 targetDriveUrl,
                                 lang === "en" ? "Open in Drive ↗" : lang === "ur" ? "گوگل ڈرائیو میں دیکھیں ↗" : "عرض في Drive ↗"
                               );
-                            }
-                          }}
-                          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-all active:scale-95"
-                        >
-                          {lang === "en" ? "Select File" : lang === "ur" ? "منتخب کریں" : "اختيار هذا الملف"}
-                        </button>
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-all active:scale-95"
+                          >
+                            {lang === "en" ? "Select File" : lang === "ur" ? "منتخب کریں" : "اختيار هذا الملف"}
+                          </button>
+                        ) : (
+                          /* QUICK ASSIGN TO BUTTONS: If opened in standalone management mode */
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleAssignFileToButton("downloadButton", file)}
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer transition-all shadow-2xs active:scale-95"
+                              title="ربط بزر التحميل"
+                            >
+                              {lang === "en" ? "To Download" : lang === "ur" ? "ڈاؤن لوڈ بٹن" : "زر التحميل"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAssignFileToButton("verifyAgainButton", file)}
+                              className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 text-[11px] font-bold cursor-pointer transition-all"
+                              title="ربط بزر التحقق"
+                            >
+                              {lang === "en" ? "To Verify" : lang === "ur" ? "ویریفائی بٹن" : "زر التحقق"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAssignFileToButton("backButton", file)}
+                              className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 text-[11px] font-bold cursor-pointer transition-all"
+                              title="ربط بزر العودة"
+                            >
+                              {lang === "en" ? "To Back" : lang === "ur" ? "بیک بٹن" : "زر العودة"}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* DELETE FILE PERMANENTLY FROM GOOGLE DRIVE */}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1310,15 +1714,18 @@ export default function AdminDashboard() {
 
             {/* Modal Footer */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
-              <span className="text-slate-400 font-medium">
-                Google Drive Storage • Connected to Service Account
+              <span className="text-slate-500 font-medium">
+                Google Drive Cloud • {driveFiles.length} {lang === "en" ? "files in folder" : "ملف في مجلد website file"}
               </span>
               <button
                 type="button"
-                onClick={() => setDrivePickerTarget(null)}
+                onClick={() => {
+                  setDrivePickerTarget(null);
+                  setDriveModalOpen(false);
+                }}
                 className="px-4 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold cursor-pointer transition-colors"
               >
-                {lang === "en" ? "Cancel" : lang === "ur" ? "منسوخ" : "إلغاء"}
+                {lang === "en" ? "Close" : lang === "ur" ? "بند کریں" : "إغلاق"}
               </button>
             </div>
           </div>
@@ -1403,6 +1810,38 @@ export default function AdminDashboard() {
       )}
 
 
+
+      {/* ═══════════════ UPLOAD PERCENTAGE PROGRESS POPUP MODAL ═══════════════ */}
+      <UploadProgressModal
+        open={uploadProgressModalOpen}
+        percentage={uploadPercentage}
+        fileName={uploadProgressFileName}
+        fileSize={uploadProgressFileSize}
+        targetButtonTitle={uploadProgressButtonTitle}
+        lang={lang}
+        statusText={uploadProgressStatus}
+        onCancel={() => {
+          setUploadProgressModalOpen(false);
+          setUploadingBtn(null);
+        }}
+      />
+
+      {/* ═══════════════ UPLOAD CELEBRATION SUCCESS POPUP MODAL ═══════════════ */}
+      <UploadSuccessModal
+        open={uploadSuccessModalOpen}
+        onClose={() => setUploadSuccessModalOpen(false)}
+        fileName={savedSuccessDetails?.fileName || "certificate.pdf"}
+        fileSize={savedSuccessDetails?.fileSize}
+        fileUrl={savedSuccessDetails?.fileUrl}
+        driveViewLink={savedSuccessDetails?.driveViewLink}
+        targetButtonTitle={savedSuccessDetails?.buttonTitle}
+        lang={lang}
+        mainPageUrl={getPublicLink(config)}
+        onOpenDriveManager={() => {
+          setDriveModalOpen(true);
+          fetchDriveFiles();
+        }}
+      />
 
       {/* ═══════════════ FIREBASE RECORDS & GENERATED LINKS MODAL ═══════════════ */}
       <FirebaseRecordsModal
@@ -2377,6 +2816,38 @@ export default function AdminDashboard() {
         {/* ───────────────────────────────────────────────────────── */}
         {activeTab === "buttons" && (
           <div className="space-y-6">
+            {/* Top Bar for Buttons & Files: Google Drive Quick Access */}
+            <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-800/40">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
+                  <IconDrive className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-sm sm:text-base font-black">
+                    {lang === "en" ? "Google Drive Cloud File Storage" : lang === "ur" ? "گوگل ڈرائیو کلاؤڈ فائل اسٹوریج" : "تخزين الملفات السحابي عبر Google Drive"}
+                  </h4>
+                  <p className="text-xs text-blue-200/80 font-medium">
+                    {lang === "en"
+                      ? "Files attached to buttons are uploaded directly to Google Drive"
+                      : lang === "ur"
+                      ? "بٹنوں سے منسلک فائلیں براہ راست گوگل ڈرائیو پر محفوظ ہوتی ہیں"
+                      : "الملفات المرفقة بالأزرار يتم حفظها وتخزينها مباشرة في Google Drive"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDriveModalOpen(true);
+                  fetchDriveFiles();
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white hover:bg-blue-50 text-slate-900 text-xs font-black shadow-md cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
+              >
+                <IconDrive className="w-4 h-4 text-blue-600" />
+                <span>{lang === "en" ? "Manage Google Drive Files" : lang === "ur" ? "گوگل ڈرائیو فائلیں دیکھیں" : "عرض وإدارة ملفات Drive"}</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* BUTTON 1: رجوع (Back) */}
               <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all hover:shadow-md">

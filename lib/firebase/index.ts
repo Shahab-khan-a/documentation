@@ -56,6 +56,31 @@ export async function getFirebaseAnalytics(): Promise<Analytics | null> {
 }
 
 /**
+ * Recursively removes all undefined fields from an object or array.
+ * Firebase Firestore throws an error when any field is undefined.
+ */
+export function sanitizeFirestoreData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return null as unknown as T;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeFirestoreData(item)) as unknown as T;
+  }
+  if (typeof data === "object" && data !== null) {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeFirestoreData(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
+}
+
+/**
  * Save complete portal configuration to Firebase Cloud Firestore.
  * Saves under:
  *  1. `portal_configs/current` (active current default)
@@ -72,7 +97,7 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
 
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
 
-    const dataToSave: PortalRecord = {
+    const rawData: PortalRecord = {
       ...config,
       id: recordId,
       serialNumber: cleanSerial,
@@ -81,6 +106,8 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
       updatedAt: now,
       createdAt: (config as any).createdAt || now,
     };
+
+    const dataToSave = sanitizeFirestoreData(rawData);
 
     // 1. Save to the main active document 'current'
     const currentDocRef = doc(db, "portal_configs", "current");
@@ -97,7 +124,11 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
         await setDoc(compositeDocRef, dataToSave, { merge: true });
       }
 
-      // 4. Archive by `[requestNumber]_[serial]_[unified]` for DocumentVerify routes
+      // 4. Archive by `[requestNumber]_[serial]` & `[requestNumber]_[serial]_[unified]` for DocumentVerify routes
+      if (cleanReq) {
+        const reqSerialDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
+        await setDoc(reqSerialDocRef, dataToSave, { merge: true });
+      }
       if (cleanReq && cleanUnified) {
         const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
         await setDoc(reqDocRef, dataToSave, { merge: true });
@@ -125,7 +156,16 @@ export async function getConfigFromFirebase(
     const cleanUnified = (unifiedNumber || "").trim();
     const cleanReq = (requestNumber || "").trim();
 
-    // 1. Try DocumentVerify full composite key: [req]_[serial]_[unified]
+    // 1. Try DocumentVerify key: [req]_[serial]
+    if (cleanReq && cleanSerial) {
+      const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
+      const reqSnap = await getDoc(reqRef);
+      if (reqSnap.exists()) {
+        return reqSnap.data() as PortalConfig;
+      }
+    }
+
+    // 2. Try DocumentVerify full composite key: [req]_[serial]_[unified]
     if (cleanReq && cleanSerial && cleanUnified) {
       const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
       const reqSnap = await getDoc(reqDocRef);
@@ -180,7 +220,7 @@ export async function savePortalRecordToFirebase(
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
     const now = new Date().toISOString();
 
-    const recordData: PortalRecord = {
+    const rawRecord: PortalRecord = {
       ...config,
       id: recordId,
       serialNumber: cleanSerial,
@@ -189,6 +229,8 @@ export async function savePortalRecordToFirebase(
       createdAt: (config as any).createdAt || now,
       updatedAt: now,
     };
+
+    const recordData = sanitizeFirestoreData(rawRecord);
 
     // 1. Save to portal_configs with recordId
     const recordDocRef = doc(db, "portal_configs", recordId);
@@ -201,6 +243,10 @@ export async function savePortalRecordToFirebase(
     }
 
     // 3. Also archive by DocumentVerify composite key if requestNumber exists
+    if (cleanReq && cleanSerial) {
+      const reqSerialDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
+      await setDoc(reqSerialDocRef, recordData, { merge: true });
+    }
     if (cleanReq && cleanUnified) {
       const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
       await setDoc(reqDocRef, recordData, { merge: true });
@@ -289,7 +335,20 @@ export async function getPortalRecordBySerialUnified(
     const cleanUnified = (unified || "").trim();
     const cleanReq = (requestNumber || "").trim();
 
-    // 1. Try DocumentVerify key: [req]_[serial]_[unified]
+    // 1. Try DocumentVerify key: [req]_[serial]
+    if (cleanReq && cleanSerial) {
+      try {
+        const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
+        const reqSnap = await getDoc(reqRef);
+        if (reqSnap.exists()) {
+          return reqSnap.data() as PortalConfig;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Try DocumentVerify full composite key: [req]_[serial]_[unified]
     if (cleanReq && cleanSerial && cleanUnified) {
       try {
         const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
