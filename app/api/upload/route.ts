@@ -97,8 +97,9 @@ export async function POST(req: Request) {
     }
 
     // ─── 2. GOOGLE DRIVE SERVICE ACCOUNT UPLOAD (Fallback) ───
-    try {
-      const bufferStream = new Readable();
+    if (fs.existsSync(KEY_FILE_PATH) || process.env.GOOGLE_CREDENTIALS) {
+      try {
+        const bufferStream = new Readable();
       bufferStream.push(buffer);
       bufferStream.push(null);
 
@@ -146,6 +147,7 @@ export async function POST(req: Request) {
     } catch (driveErr) {
       console.warn("Google Drive direct upload note:", driveErr);
     }
+  }
 
     // ─── 3. LOCAL BACKUP ───
     return NextResponse.json({

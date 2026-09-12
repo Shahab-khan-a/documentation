@@ -17,6 +17,11 @@ const drive = google.drive({ version: "v3", auth });
 // 2. Drive se files fetch karne ke liye GET route
 export async function GET(req: Request) {
   try {
+    if (!fs.existsSync(KEY_FILE_PATH) && !process.env.GOOGLE_CREDENTIALS) {
+      // Return empty file list safely without crashing in serverless/Vercel environments
+      return NextResponse.json({ success: true, files: [] });
+    }
+
     const { searchParams } = new URL(req.url);
     const folderIdParam = searchParams.get("folderId");
     const FOLDER_ID = folderIdParam || process.env.GOOGLE_DRIVE_FOLDER_ID || "1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl";

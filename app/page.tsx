@@ -784,7 +784,7 @@ export default function DocumentVerificationPage() {
     const cleanReq = config.requestNumber?.trim();
     if (!cleanSerial) return;
 
-    let targetPath = cleanUnified
+    const targetPath = cleanUnified
       ? `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}/${encodeURIComponent(cleanUnified)}`
       : `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}`;
 

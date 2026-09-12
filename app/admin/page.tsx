@@ -193,6 +193,22 @@ export default function AdminDashboard() {
     linkLabel?: string;
   } | null>(null);
 
+  const showToast = useCallback(
+    (
+      message: string,
+      type: "success" | "error" | "info" = "success",
+      link?: string,
+      linkLabel?: string
+    ) => {
+      setToast({ message, type, link, linkLabel });
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, link ? 8000 : 4000);
+      return () => clearTimeout(timer);
+    },
+    []
+  );
+
   // Language for admin panel (persisted in localStorage)
   const [lang, setLang] = useState<AdminLanguage>("ar");
   const [activeTab, setActiveTab] = useState<"buttons" | "document" | "preview" | "footer" | "settings">("buttons");
@@ -324,7 +340,7 @@ export default function AdminDashboard() {
   };
 
   // Handler to quickly generate an authentic sample certificate to test multiple records
-  const handleCreateSampleRecord = async () => {
+  const handleCreateSampleRecord = useCallback(async () => {
     const sampleChambers = ["الرياض", "جدة", "ينبع", "الشرقية", "مكة المكرمة", "المدينة المنورة"];
     const randomChamber = sampleChambers[Math.floor(Math.random() * sampleChambers.length)];
     const randomSerial = String(Math.floor(100000 + Math.random() * 900000));
@@ -375,7 +391,7 @@ export default function AdminDashboard() {
     } finally {
       setLoadingRecords(false);
     }
-  };
+  }, [fetchSavedRecords, lang, showToast]);
 
   // ─── PERMANENT DELETE FROM GOOGLE DRIVE (TRIGGERED FROM NOTIFICATION) ───
   const confirmDeleteDriveFile = async (file: DriveItem) => {
@@ -512,22 +528,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const showToast = useCallback(
-    (
-      message: string,
-      type: "success" | "error" | "info" = "success",
-      link?: string,
-      linkLabel?: string
-    ) => {
-      setToast({ message, type, link, linkLabel });
-      const timer = setTimeout(() => {
-        setToast(null);
-      }, link ? 8000 : 4000);
-      return () => clearTimeout(timer);
-    },
-    []
-  );
-
   // Helper to compute public URL with dynamic requestNumber, serial, and unified numbers
   const getPublicLink = useCallback((conf: PortalConfig) => {
     const req = conf.requestNumber?.trim() || "13255887";
@@ -584,37 +584,27 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Must be changed from the previously loaded/initial unified number
-    if (initialUnified && cleanUnified === initialUnified) {
-      const errMsg = t.unified_number_change_required_error;
-      setUnifiedError(errMsg);
-      setActiveTab("document");
-      showToast(errMsg, "error");
-      setTimeout(() => {
-        const el = document.getElementById("unified-number-input");
-        if (el) {
-          el.focus();
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 100);
-      return;
-    }
-
     setUnifiedError(null);
     setSaving(true);
+
+    const effectiveRecordId =
+      editingRecordId && initialConfig.serialNumber === cleanSerial
+        ? editingRecordId
+        : `${cleanSerial}_${cleanUnified}`;
+
     try {
       const payload: PortalConfig & { currentRecordId?: string } = {
         ...config,
         serialNumber: cleanSerial,
         unifiedNumber: cleanUnified,
-        currentRecordId: editingRecordId || `${cleanSerial}_${cleanUnified}`,
+        currentRecordId: effectiveRecordId,
       };
 
       // 1. Direct Firebase Cloud Firestore save from client
       try {
         await saveConfigToFirebase(payload);
-        await savePortalRecordToFirebase(payload, editingRecordId || `${cleanSerial}_${cleanUnified}`);
-      } catch (fbErr: any) {
+        await savePortalRecordToFirebase(payload, effectiveRecordId);
+      } catch (fbErr: unknown) {
         console.warn("Direct Firebase client save notice:", fbErr);
       }
 
@@ -628,22 +618,29 @@ export default function AdminDashboard() {
         const result = await res.json();
         setConfig(result.data);
         setInitialConfig(result.data);
-        setEditingRecordId(result.data.id || `${cleanSerial}_${cleanUnified}`);
+        setEditingRecordId(result.data.id || effectiveRecordId);
         try {
           localStorage.setItem("portal_config_cache", JSON.stringify(result.data));
         } catch {
           // ignore
         }
-        showToast(t.saved_success, "success");
+
         // Refresh saved records list
         fetchSavedRecords();
 
-        // Direct navigation to the public link where the document is shown
         const targetPath = getPublicLink(result.data);
+        const fullLink = typeof window !== "undefined" ? `${window.location.origin}${targetPath}` : targetPath;
 
-        setTimeout(() => {
-          window.location.href = targetPath;
-        }, 500);
+        showToast(
+          lang === "en"
+            ? `Form #${cleanSerial} saved successfully!`
+            : lang === "ur"
+            ? `فارم #${cleanSerial} کامیابی سے محفوظ ہو گیا!`
+            : `تم حفظ النموذج #${cleanSerial} بنجاح!`,
+          "success",
+          fullLink,
+          lang === "en" ? "View Live Form ↗" : lang === "ur" ? "لائیو فارم دیکھیں ↗" : "عرض النموذج ↗"
+        );
       } else {
         const errJson = await res.json().catch(() => ({}));
         showToast(errJson.error || t.save_error, "error");
@@ -654,7 +651,7 @@ export default function AdminDashboard() {
     } finally {
       setSaving(false);
     }
-  }, [config, initialConfig, t, showToast, fetchSavedRecords, editingRecordId]);
+  }, [config, initialConfig, t, showToast, fetchSavedRecords, editingRecordId, getPublicLink, lang]);
 
   const handleDiscardChanges = () => {
     setConfig(initialConfig);

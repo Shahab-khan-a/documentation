@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import path from "path";
+import fs from "fs";
 import { NextResponse } from "next/server";
 import { Readable } from "stream";
 
@@ -23,6 +24,13 @@ export async function GET(req: Request) {
       return NextResponse.json(
         { success: false, error: "File ID is required" },
         { status: 400 }
+      );
+    }
+
+    if (!fs.existsSync(KEY_FILE_PATH) && !process.env.GOOGLE_CREDENTIALS) {
+      return NextResponse.json(
+        { success: false, error: "Google Drive credentials not configured" },
+        { status: 404 }
       );
     }
 
