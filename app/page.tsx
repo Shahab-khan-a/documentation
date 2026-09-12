@@ -55,17 +55,28 @@ const SOCIAL_ICONS = [
 // ─────────────────────────────────────────────────────────
 function LoaderScreen({
   onDone,
-  durationMs,
+  durationMs = 10000,
   gifUrl,
   restartKey,
 }: {
   onDone: () => void;
-  durationMs: number;
-  gifUrl: string;
+  durationMs?: number;
+  gifUrl?: string;
   restartKey?: number | string;
 }) {
   const [fadeOut, setFadeOut] = useState(false);
-  const gifSrc = restartKey ? `${gifUrl}?t=${restartKey}` : gifUrl;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [gifSrc, setGifSrc] = useState<string>(() => gifUrl || "/loader.gif");
+
+  // Client-side only: update src with timestamp/restartKey so the GIF plays from frame 1 without SSR hydration mismatch
+  useEffect(() => {
+    const base = gifUrl || "/loader.gif";
+    if (restartKey) {
+      setGifSrc(`${base}?t=${restartKey}`);
+    } else {
+      setGifSrc(`${base}?t=${Date.now()}`);
+    }
+  }, [gifUrl, restartKey]);
 
   useEffect(() => {
     const fadeDuration = 500;
@@ -87,35 +98,54 @@ function LoaderScreen({
 
   return (
     <div
+      suppressHydrationWarning
       dir="rtl"
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 99999,
-        background: "white",
+        background: "#ffffff",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: "16px",
         transition: "opacity 0.5s ease",
         opacity: fadeOut ? 0 : 1,
         pointerEvents: fadeOut ? "none" : "auto",
         fontFamily: "'Cairo','Segoe UI',Arial,sans-serif",
       }}
     >
+      {/* Graceful placeholder spinner while GIF decodes */}
+      {!imgLoaded && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none bg-white z-0">
+          <div className="w-11 h-11 rounded-full border-3 border-blue-600 border-t-transparent animate-spin" />
+          <span className="text-xs font-bold text-slate-600 tracking-wide">
+            جاري التحقق من الوثيقة...
+          </span>
+        </div>
+      )}
+
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        suppressHydrationWarning
         key={gifSrc}
         src={gifSrc}
         alt="بوابة خدمات الغرفة"
         loading="eager"
         decoding="sync"
+        onLoad={() => setImgLoaded(true)}
         onError={(e) => {
+          setImgLoaded(true);
           e.currentTarget.src =
             "https://lottie.host/73358927-6e0d-453a-9a9f-e0607ae61ad8/9sISJeaK1n.gif";
         }}
-        style={{ width: "100%", height: "100vh", objectFit: "contain" }}
+        style={{
+          width: "100%",
+          height: "100vh",
+          objectFit: "contain",
+          position: "relative",
+          zIndex: 1,
+        }}
       />
     </div>
   );
@@ -577,9 +607,14 @@ export default function DocumentVerificationPage() {
   const router = useRouter();
   const params = useParams();
   const [config, setConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
-  const [loaded, setLoaded] = useState(true);
+  // FIRST SHOW THE LOADER: initialLoaderDone starts false
+  const [initialLoaderDone, setInitialLoaderDone] = useState(false);
   const [buttonLoaderKey, setButtonLoaderKey] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  const handleLoaderDone = useCallback(() => {
+    setInitialLoaderDone(true);
+  }, []);
 
   // Hidden download trigger helper
   const triggerDownload = (fileUrl: string, fileName?: string) => {
@@ -680,7 +715,6 @@ export default function DocumentVerificationPage() {
           if (!serialParam || parsed.serialNumber === serialParam) {
             if (isMounted) {
               setConfig(parsed);
-              if (parsed.enableInitialLoader) setLoaded(false);
             }
           }
         }
@@ -704,11 +738,6 @@ export default function DocumentVerificationPage() {
           } catch {
             // ignore
           }
-          if (fbConfig.enableInitialLoader) {
-            setLoaded(false);
-          } else {
-            setLoaded(true);
-          }
         }
       } catch (fbErr) {
         console.warn("Direct Firebase fetch notice:", fbErr);
@@ -730,11 +759,6 @@ export default function DocumentVerificationPage() {
             localStorage.setItem("portal_config_cache", JSON.stringify(data));
           } catch {
             // ignore
-          }
-          if (data.enableInitialLoader) {
-            setLoaded(false);
-          } else {
-            setLoaded(true);
           }
         }
       } catch (err) {
@@ -804,9 +828,6 @@ export default function DocumentVerificationPage() {
     }
   }, [config.serialNumber, config.unifiedNumber, config.requestNumber]);
 
-  const handleLoaderDone = useCallback(() => {
-    setLoaded(true);
-  }, []);
 
   const handleButtonLoaderDone = useCallback(() => {
     setButtonLoaderKey(null);
@@ -869,21 +890,21 @@ export default function DocumentVerificationPage() {
 
   return (
     <>
-      {/* Results page */}
+      {/* Results page - only revealed AFTER the initial loader finishes */}
       <ResultsPage
         config={config}
-        revealed={loaded}
+        revealed={initialLoaderDone}
         onDownload={handleDownloadClick}
         onVerifyAgain={handleVerifyAgainClick}
         onBack={handleBackClick}
       />
 
-      {/* Initial page loader if enabled */}
-      {!loaded && config.enableInitialLoader && (
+      {/* 1. FIRST: Show loader for 10 seconds */}
+      {!initialLoaderDone && (
         <LoaderScreen
           onDone={handleLoaderDone}
-          durationMs={config.loaderDurationMs}
-          gifUrl={config.loaderGifUrl}
+          durationMs={config.loaderDurationMs || 10000}
+          gifUrl={config.loaderGifUrl || "/loader.gif"}
         />
       )}
 
@@ -892,9 +913,9 @@ export default function DocumentVerificationPage() {
         <LoaderScreen
           key={buttonLoaderKey}
           restartKey={buttonLoaderKey}
-          gifUrl={config.buttonLoaderGifUrl}
+          gifUrl={config.buttonLoaderGifUrl || "/button-loader.gif"}
           onDone={handleButtonLoaderDone}
-          durationMs={config.buttonLoaderDurationMs}
+          durationMs={config.buttonLoaderDurationMs || 4000}
         />
       )}
     </>

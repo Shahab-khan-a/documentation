@@ -64,6 +64,6 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   buttonLoaderGifUrl: "/button-loader.gif",
   loaderDurationMs: 10000,
   buttonLoaderDurationMs: 4000,
-  enableInitialLoader: false,
+  enableInitialLoader: true,
 };
 
