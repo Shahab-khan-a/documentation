@@ -1,0 +1,103 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { DEFAULT_FALLBACK_GIF, DEFAULT_ONLINE_FALLBACK_GIF } from "@/constants/defaults";
+
+export interface LoaderScreenProps {
+  onDone: () => void;
+  durationMs?: number;
+  gifUrl?: string;
+  restartKey?: number | string;
+}
+
+export function LoaderScreen({
+  onDone,
+  durationMs = 10000,
+  gifUrl,
+  restartKey,
+}: LoaderScreenProps) {
+  const [fadeOut, setFadeOut] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [gifSrc, setGifSrc] = useState<string>(() => gifUrl || DEFAULT_FALLBACK_GIF);
+
+  // Client-side only: update src with timestamp/restartKey so the GIF plays from frame 1 without SSR hydration mismatch
+  useEffect(() => {
+    const base = gifUrl || DEFAULT_FALLBACK_GIF;
+    if (restartKey) {
+      setGifSrc(`${base}?t=${restartKey}`);
+    } else {
+      setGifSrc(`${base}?t=${Date.now()}`);
+    }
+  }, [gifUrl, restartKey]);
+
+  useEffect(() => {
+    const fadeDuration = 500;
+    const activeDuration = Math.max(durationMs - fadeDuration, 500);
+
+    const fadeTimer = setTimeout(() => {
+      setFadeOut(true);
+    }, activeDuration);
+
+    const doneTimer = setTimeout(() => {
+      onDone();
+    }, durationMs);
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(doneTimer);
+    };
+  }, [onDone, durationMs]);
+
+  return (
+    <div
+      suppressHydrationWarning
+      dir="rtl"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 99999,
+        background: "#ffffff",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "opacity 0.5s ease",
+        opacity: fadeOut ? 0 : 1,
+        pointerEvents: fadeOut ? "none" : "auto",
+        fontFamily: "'Cairo','Segoe UI',Arial,sans-serif",
+      }}
+    >
+      {/* Graceful placeholder spinner while GIF decodes */}
+      {!imgLoaded && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none bg-white z-0">
+          <div className="w-11 h-11 rounded-full border-3 border-blue-600 border-t-transparent animate-spin" />
+          <span className="text-xs font-bold text-slate-600 tracking-wide">
+            جاري التحقق من الوثيقة...
+          </span>
+        </div>
+      )}
+
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        suppressHydrationWarning
+        key={gifSrc}
+        src={gifSrc}
+        alt="بوابة خدمات الغرفة"
+        loading="eager"
+        decoding="sync"
+        onLoad={() => setImgLoaded(true)}
+        onError={(e) => {
+          setImgLoaded(true);
+          e.currentTarget.src = DEFAULT_ONLINE_FALLBACK_GIF;
+        }}
+        style={{
+          width: "100%",
+          height: "100vh",
+          objectFit: "contain",
+          position: "relative",
+          zIndex: 1,
+        }}
+      />
+    </div>
+  );
+}
