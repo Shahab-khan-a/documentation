@@ -1,39 +1,28 @@
-import { google } from "googleapis";
-import path from "path";
-import fs from "fs";
 import { NextResponse } from "next/server";
 import { Readable } from "stream";
-
-const KEY_FILE_PATH = path.join(process.cwd(), "credentials.json");
-const SCOPES = ["https://www.googleapis.com/auth/drive"];
-
-const auth = new google.auth.GoogleAuth({
-  keyFile: KEY_FILE_PATH,
-  scopes: SCOPES,
-});
-
-const drive = google.drive({ version: "v3", auth });
+import { getGoogleDriveClient, getPublicDriveDownloadUrl } from "@/lib/googleDrive";
 
 export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const fileId = searchParams.get("fileId");
+  const customName = searchParams.get("name");
+
+  if (!fileId) {
+    return NextResponse.json(
+      { success: false, error: "File ID is required" },
+      { status: 400 }
+    );
+  }
+
+  const { drive, isConfigured } = getGoogleDriveClient();
+
+  // If service account is not configured on Vercel, redirect directly to Google Drive public download
+  if (!isConfigured || !drive) {
+    console.info(`Credentials not configured, redirecting to direct Google Drive download for file: ${fileId}`);
+    return NextResponse.redirect(getPublicDriveDownloadUrl(fileId), 307);
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const fileId = searchParams.get("fileId");
-    const customName = searchParams.get("name");
-
-    if (!fileId) {
-      return NextResponse.json(
-        { success: false, error: "File ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!fs.existsSync(KEY_FILE_PATH) && !process.env.GOOGLE_CREDENTIALS) {
-      return NextResponse.json(
-        { success: false, error: "Google Drive credentials not configured" },
-        { status: 404 }
-      );
-    }
-
     // 1. Get file metadata from Google Drive
     const metaRes = await drive.files.get({
       fileId,
@@ -41,7 +30,7 @@ export async function GET(req: Request) {
       fields: "id, name, mimeType, size",
     });
 
-    const fileName = customName || metaRes.data.name || "document.pdf";
+    const fileName = (customName || metaRes.data.name || "document.pdf").trim();
     const mimeType = metaRes.data.mimeType || "application/octet-stream";
 
     // 2. Stream file content from Google Drive
@@ -73,23 +62,30 @@ export async function GET(req: Request) {
       },
     });
 
-    // Encode filename for Content-Disposition header
+    // RFC-6266 & RFC-5987 compliant Content-Disposition
+    // safeAsciiName ensures no invalid character crash (e.g. ERR_INVALID_CHAR on Arabic text)
+    const safeAsciiName = (fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "") || "download.pdf").trim();
     const encodedFileName = encodeURIComponent(fileName);
+
+    const headers = new Headers();
+    headers.set("Content-Type", mimeType);
+    headers.set(
+      "Content-Disposition",
+      `attachment; filename="${safeAsciiName}"; filename*=UTF-8''${encodedFileName}`
+    );
+    headers.set("Cache-Control", "public, max-age=3600, s-maxage=3600");
+
+    if (metaRes.data.size) {
+      headers.set("Content-Length", metaRes.data.size);
+    }
 
     return new NextResponse(webStream, {
       status: 200,
-      headers: {
-        "Content-Type": mimeType,
-        "Content-Disposition": `attachment; filename="${fileName}"; filename*=UTF-8''${encodedFileName}`,
-        ...(metaRes.data.size ? { "Content-Length": metaRes.data.size } : {}),
-      },
+      headers,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Google Drive Download Error:", error);
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    console.warn("Google Drive stream proxy encountered an error, falling back to direct public download link:", error);
+    // Bulletproof fallback: redirect directly to Google Drive so visitor always gets the original file
+    return NextResponse.redirect(getPublicDriveDownloadUrl(fileId), 307);
   }
 }

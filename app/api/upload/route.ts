@@ -1,30 +1,21 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { google } from "googleapis";
 import { Readable } from "stream";
+import {
+  getGoogleDriveClient,
+  getPublicDriveDownloadUrl,
+  getDirectDriveViewUrl,
+} from "@/lib/googleDrive";
 
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-const KEY_FILE_PATH = path.join(process.cwd(), "credentials.json");
-const SCOPES = ["https://www.googleapis.com/auth/drive"];
 
-const auth = new google.auth.GoogleAuth({
-  keyFile: KEY_FILE_PATH,
-  scopes: SCOPES,
-});
-
-const drive = google.drive({ version: "v3", auth });
-const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || "1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl";
-
-const APPS_SCRIPT_URL =
-  process.env.GOOGLE_APPS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbyi5j_acFTJXANgElR84azJ1qb5aHvGvtdnMEWwPOGRQEGgsZ-S6tBAr1b5siR-8LJS/exec";
+const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || "";
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-
     const replaceFileId = (formData.get("replaceFileId") as string | null)?.trim() || null;
 
     if (!file) {
@@ -41,7 +32,7 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Optional local backup cache (safe for serverless/read-only environments like Vercel /var/task)
+    // Optional local cache for local dev / offline preview
     const localFileUrl = `/uploads/${uniqueFileName}`;
     try {
       if (!fs.existsSync(UPLOADS_DIR)) {
@@ -49,11 +40,104 @@ export async function POST(req: Request) {
       }
       const filePath = path.join(UPLOADS_DIR, uniqueFileName);
       fs.writeFileSync(filePath, buffer);
-    } catch (fsErr) {
-      console.warn("Local uploads dir is read-only or unavailable (serverless environment):", fsErr);
+    } catch {
+      // Ignore read-only or serverless filesystem limitations (e.g. Vercel)
     }
 
-    // ─── 1. GOOGLE APPS SCRIPT DIRECT DRIVE UPLOAD (Primary for Personal Drive Folders) ───
+    const mimeType = file.type || "application/octet-stream";
+
+    // ─── 1. GOOGLE DRIVE SERVICE ACCOUNT UPLOAD (PRIMARY & MOST RELIABLE) ───
+    const { drive, folderId, isConfigured, error: credsError } = getGoogleDriveClient();
+
+    if (isConfigured && drive) {
+      try {
+        let driveResId: string | null = null;
+        let driveViewLink: string | null = null;
+
+        // If replacing an existing file in Google Drive
+        if (replaceFileId) {
+          try {
+            const bufferStream = new Readable();
+            bufferStream.push(buffer);
+            bufferStream.push(null);
+
+            const updateRes = await drive.files.update({
+              fileId: replaceFileId,
+              supportsAllDrives: true,
+              requestBody: {
+                name: originalName,
+              },
+              media: {
+                mimeType,
+                body: bufferStream,
+              },
+              fields: "id, name, mimeType, webViewLink, webContentLink, size",
+            });
+            driveResId = updateRes.data.id || replaceFileId;
+            driveViewLink = updateRes.data.webViewLink || null;
+          } catch (updateErr) {
+            console.warn("Failed updating existing file in Drive, creating fresh file:", updateErr);
+          }
+        }
+
+        // If not replacing or replacement failed, create new file
+        if (!driveResId) {
+          const freshBufferStream = new Readable();
+          freshBufferStream.push(buffer);
+          freshBufferStream.push(null);
+
+          const driveRes = await drive.files.create({
+            supportsAllDrives: true,
+            requestBody: {
+              name: originalName,
+              parents: folderId && folderId !== "YOUR_SHARED_FOLDER_ID_HERE" ? [folderId] : undefined,
+            },
+            media: {
+              mimeType,
+              body: freshBufferStream,
+            },
+            fields: "id, name, mimeType, webViewLink, webContentLink, size",
+          });
+          driveResId = driveRes.data.id || null;
+          driveViewLink = driveRes.data.webViewLink || null;
+        }
+
+        if (driveResId) {
+          // Set file to public reader so anyone with the link can view & download
+          try {
+            await drive.permissions.create({
+              fileId: driveResId,
+              supportsAllDrives: true,
+              requestBody: {
+                role: "reader",
+                type: "anyone",
+              },
+            });
+          } catch {
+            // Non-critical if permissions already inherited from parent folder
+          }
+
+          const driveDownloadUrl = `/api/drive/download?fileId=${driveResId}&name=${encodeURIComponent(originalName)}`;
+          const directDownloadUrl = getPublicDriveDownloadUrl(driveResId);
+          const finalViewLink = driveViewLink || getDirectDriveViewUrl(driveResId);
+
+          return NextResponse.json({
+            success: true,
+            source: "google_drive",
+            fileUrl: driveDownloadUrl,
+            directDownloadUrl,
+            driveFileId: driveResId,
+            driveViewLink: finalViewLink,
+            fileName: originalName,
+            fileSize: file.size,
+          });
+        }
+      } catch (driveErr) {
+        console.error("Google Drive service account upload failed:", driveErr);
+      }
+    }
+
+    // ─── 2. GOOGLE APPS SCRIPT FALLBACK (IF CONFIGURED) ───
     if (APPS_SCRIPT_URL) {
       try {
         const gasRes = await fetch(APPS_SCRIPT_URL, {
@@ -62,7 +146,7 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             base64: buffer.toString("base64"),
             fileName: originalName,
-            mimeType: file.type || "application/pdf",
+            mimeType,
           }),
         });
 
@@ -85,8 +169,9 @@ export async function POST(req: Request) {
             success: true,
             source: "google_drive",
             fileUrl: driveDownloadUrl,
+            directDownloadUrl: getPublicDriveDownloadUrl(gasData.fileId),
             driveFileId: gasData.fileId,
-            driveViewLink: gasData.webViewLink || `https://drive.google.com/file/d/${gasData.fileId}/view`,
+            driveViewLink: gasData.webViewLink || getDirectDriveViewUrl(gasData.fileId),
             fileName: originalName,
             fileSize: file.size,
           });
@@ -96,99 +181,25 @@ export async function POST(req: Request) {
       }
     }
 
-    // ─── 2. GOOGLE DRIVE SERVICE ACCOUNT UPLOAD / UPDATE (Fallback) ───
-    if (fs.existsSync(KEY_FILE_PATH) || process.env.GOOGLE_CREDENTIALS) {
-      try {
-        const bufferStream = new Readable();
-        bufferStream.push(buffer);
-        bufferStream.push(null);
-
-        let driveResId: string | null = null;
-        let driveViewLink: string | null = null;
-
-        // If updating an existing file in-place
-        if (replaceFileId) {
-          try {
-            const updateRes = await drive.files.update({
-              fileId: replaceFileId,
-              supportsAllDrives: true,
-              requestBody: {
-                name: originalName,
-              },
-              media: {
-                mimeType: file.type || "application/pdf",
-                body: bufferStream,
-              },
-              fields: "id, name, mimeType, webViewLink, webContentLink, size",
-            });
-            driveResId = updateRes.data.id || replaceFileId;
-            driveViewLink = updateRes.data.webViewLink || null;
-          } catch {
-            // fallback to create
-          }
-        }
-
-        // If not updating or in-place update failed, create file in Drive
-        if (!driveResId) {
-          const freshBufferStream = new Readable();
-          freshBufferStream.push(buffer);
-          freshBufferStream.push(null);
-
-          const driveRes = await drive.files.create({
-            supportsAllDrives: true,
-            requestBody: {
-              name: originalName,
-              parents: [FOLDER_ID],
-            },
-            media: {
-              mimeType: file.type || "application/pdf",
-              body: freshBufferStream,
-            },
-            fields: "id, name, mimeType, webViewLink, webContentLink, size",
-          });
-          driveResId = driveRes.data.id || null;
-          driveViewLink = driveRes.data.webViewLink || null;
-        }
-
-        if (driveResId) {
-          try {
-            await drive.permissions.create({
-              fileId: driveResId,
-              supportsAllDrives: true,
-              requestBody: {
-                role: "reader",
-                type: "anyone",
-              },
-            });
-          } catch {
-            // ignore
-          }
-
-          const driveDownloadUrl = `/api/drive/download?fileId=${driveResId}&name=${encodeURIComponent(originalName)}`;
-
-          return NextResponse.json({
-            success: true,
-            source: "google_drive",
-            fileUrl: driveDownloadUrl,
-            driveFileId: driveResId,
-            driveViewLink:
-              driveViewLink ||
-              `https://drive.google.com/file/d/${driveResId}/view`,
-            fileName: originalName,
-            fileSize: file.size,
-          });
-        }
-      } catch (driveErr) {
-        console.warn("Google Drive service account upload note:", driveErr);
-      }
+    // ─── 3. IF HOSTED ON VERCEL & GOOGLE DRIVE IS NOT CONFIGURED ───
+    if (process.env.VERCEL) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            credsError ||
+            "Google Drive is not connected on Vercel. Please add GOOGLE_CREDENTIALS to your Vercel Environment Variables.",
+        },
+        { status: 500 }
+      );
     }
 
-    // ─── 3. LOCAL BACKUP ───
+    // ─── 4. LOCAL FALLBACK (Local Development Only) ───
     return NextResponse.json({
       success: true,
       source: "local",
       fileUrl: localFileUrl,
-      driveViewLink: `https://drive.google.com/drive/folders/${FOLDER_ID}`,
+      driveViewLink: `https://drive.google.com/drive/folders/${folderId}`,
       fileName: originalName,
       fileSize: file.size,
     });

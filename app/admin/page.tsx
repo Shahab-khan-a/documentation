@@ -86,6 +86,7 @@ export default function AdminDashboard() {
   const [driveModalOpen, setDriveModalOpen] = useState(false);
   const [driveFiles, setDriveFiles] = useState<DriveItem[]>([]);
   const [loadingDriveFiles, setLoadingDriveFiles] = useState(false);
+  const [driveConfigured, setDriveConfigured] = useState(true);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [fileToDelete, setFileToDelete] = useState<DriveItem | null>(null);
   const [updatingFileId, setUpdatingFileId] = useState<string | null>(null);
@@ -113,6 +114,9 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/drive");
       const data = await res.json();
+      if (data.configured !== undefined) {
+        setDriveConfigured(Boolean(data.configured));
+      }
       if (data.success && Array.isArray(data.files)) {
         setDriveFiles(data.files);
       }
@@ -1217,6 +1221,7 @@ export default function AdminDashboard() {
         deletingFileId={deletingFileId}
         lang={lang}
         isRtl={isRtl}
+        isConfigured={driveConfigured}
         onClose={() => {
           setDrivePickerTarget(null);
           setDriveModalOpen(false);

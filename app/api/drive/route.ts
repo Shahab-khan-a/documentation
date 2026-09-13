@@ -1,34 +1,29 @@
-import { google } from "googleapis";
+import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs";
-import { NextResponse } from "next/server";
+import { getGoogleDriveClient, getPublicDriveDownloadUrl } from "@/lib/googleDrive";
 
-// 1. Google Auth Configuration
-const KEY_FILE_PATH = path.join(process.cwd(), "credentials.json");
-const SCOPES = ["https://www.googleapis.com/auth/drive"];
-
-const auth = new google.auth.GoogleAuth({
-  keyFile: KEY_FILE_PATH,
-  scopes: SCOPES,
-});
-
-const drive = google.drive({ version: "v3", auth });
-
-// 2. Drive se files fetch karne ke liye GET route
+// 1. Fetch files from Google Drive (GET route)
 export async function GET(req: Request) {
   try {
-    if (!fs.existsSync(KEY_FILE_PATH) && !process.env.GOOGLE_CREDENTIALS) {
-      // Return empty file list safely without crashing in serverless/Vercel environments
-      return NextResponse.json({ success: true, files: [] });
+    const { drive, folderId, isConfigured, error: credsError } = getGoogleDriveClient();
+
+    if (!isConfigured || !drive) {
+      return NextResponse.json({
+        success: false,
+        configured: false,
+        error: credsError || "Google Drive credentials not configured.",
+        files: [],
+      });
     }
 
     const { searchParams } = new URL(req.url);
     const folderIdParam = searchParams.get("folderId");
-    const FOLDER_ID = folderIdParam || process.env.GOOGLE_DRIVE_FOLDER_ID || "1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl";
+    const activeFolderId = folderIdParam || folderId;
 
     let query = "trashed = false";
-    if (FOLDER_ID && FOLDER_ID !== "YOUR_SHARED_FOLDER_ID_HERE") {
-      query = `'${FOLDER_ID}' in parents and trashed = false`;
+    if (activeFolderId && activeFolderId !== "YOUR_SHARED_FOLDER_ID_HERE") {
+      query = `'${activeFolderId}' in parents and trashed = false`;
     }
 
     const response = await drive.files.list({
@@ -36,28 +31,39 @@ export async function GET(req: Request) {
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
       orderBy: "createdTime desc",
-      fields: "files(id, name, mimeType, webViewLink, webContentLink, size, createdTime, modifiedTime, thumbnailLink, iconLink)",
+      fields:
+        "files(id, name, mimeType, webViewLink, webContentLink, size, createdTime, modifiedTime, thumbnailLink, iconLink)",
     });
 
     const files = (response.data.files || []).map((f) => ({
       ...f,
       downloadUrl: `/api/drive/download?fileId=${f.id}&name=${encodeURIComponent(f.name || "document.pdf")}`,
+      directDownloadUrl: f.id ? getPublicDriveDownloadUrl(f.id) : undefined,
     }));
 
-    return NextResponse.json({ success: true, files });
+    return NextResponse.json({ success: true, configured: true, files });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : String(error);
     console.error("Drive API Error:", error);
     return NextResponse.json(
-      { success: false, error: errMessage },
+      { success: false, error: errMessage, files: [] },
       { status: 500 }
     );
   }
 }
 
-// 3. Drive se file delete karne ke liye DELETE route
+// 2. Delete file from Google Drive (DELETE route)
 export async function DELETE(req: Request) {
   try {
+    const { drive, folderId, isConfigured, error: credsError } = getGoogleDriveClient();
+
+    if (!isConfigured || !drive) {
+      return NextResponse.json(
+        { success: false, error: credsError || "Google Drive credentials not configured." },
+        { status: 400 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const fileId = searchParams.get("fileId");
     const fileName = searchParams.get("fileName");
@@ -69,7 +75,6 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || "1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl";
     let deletedMethod = "permanent";
 
     // ─── Tier 1: Try permanent deletion via drive.files.delete ───
@@ -93,7 +98,7 @@ export async function DELETE(req: Request) {
         try {
           await drive.files.update({
             fileId,
-            removeParents: FOLDER_ID,
+            removeParents: folderId,
             supportsAllDrives: true,
           });
           deletedMethod = "removed_from_folder";

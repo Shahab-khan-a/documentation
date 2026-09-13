@@ -15,6 +15,7 @@ export interface GoogleDriveManagerModalProps {
   deletingFileId: string | null;
   lang: AdminLanguage;
   isRtl: boolean;
+  isConfigured?: boolean;
   onClose: () => void;
   onRefresh: () => void;
   onUploadDirect: (file: File) => void;
@@ -43,6 +44,7 @@ export function GoogleDriveManagerModal({
   deletingFileId,
   lang,
   isRtl,
+  isConfigured = true,
   onClose,
   onRefresh,
   onUploadDirect,
@@ -141,6 +143,28 @@ export function GoogleDriveManagerModal({
 
           {/* Modal Content */}
           <div className="p-6 overflow-y-auto flex-1 space-y-4 font-sans bg-slate-50/50">
+            {!isConfigured && (
+              <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-amber-900 text-xs leading-relaxed shadow-xs flex items-start gap-3">
+                <span className="text-lg shrink-0">⚠️</span>
+                <div>
+                  <p className="font-bold">
+                    {lang === "en"
+                      ? "Google Drive credentials not detected on server!"
+                      : lang === "ur"
+                      ? "سرور پر گوگل ڈرائیو کی کریڈینشلز نہیں ملیں!"
+                      : "لم يتم العثور على بيانات اعتماد Google Drive على الخادم!"}
+                  </p>
+                  <p className="mt-1 text-amber-800 text-[11px]">
+                    {lang === "en"
+                      ? "If you are hosting on Vercel, please add GOOGLE_CREDENTIALS to your Vercel Project Environment Variables."
+                      : lang === "ur"
+                      ? "اگر آپ Vercel پر ہوسٹ کر رہے ہیں، تو براہ کرم Vercel پراجیکٹ سیٹنگز میں GOOGLE_CREDENTIALS شامل کریں۔"
+                      : "إذا كنت تستضيف الموقع على Vercel، يرجى إضافة متغير GOOGLE_CREDENTIALS في إعدادات Vercel."}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {loadingDriveFiles ? (
               <div className="py-14 text-center text-slate-500">
                 <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
