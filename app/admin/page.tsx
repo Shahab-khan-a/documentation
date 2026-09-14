@@ -727,8 +727,13 @@ export default function AdminDashboard() {
   };
 
   const handleSave = useCallback(async () => {
-    const cleanSerial = (config.serialNumber || "").trim();
-    const cleanUnified = (config.unifiedNumber || "").trim();
+    const isFooterOrSettings = activeTab === "footer" || activeTab === "settings";
+    let cleanSerial = (config.serialNumber || "").trim();
+    let cleanUnified = (config.unifiedNumber || "").trim();
+
+    if (!cleanSerial && isFooterOrSettings) {
+      cleanSerial = (initialConfig.serialNumber || "").trim() || "11111112773fdgc";
+    }
 
     if (!cleanSerial) {
       setSerialError(true);
@@ -744,6 +749,10 @@ export default function AdminDashboard() {
       return;
     }
     setSerialError(false);
+
+    if (!cleanUnified && isFooterOrSettings) {
+      cleanUnified = (initialConfig.unifiedNumber || "").trim() || "7025562547";
+    }
 
     if (!cleanUnified) {
       const errMsg =
@@ -833,6 +842,12 @@ export default function AdminDashboard() {
         setEditingRecordId(result.data.id || effectiveRecordId);
         try {
           localStorage.setItem("portal_config_cache", JSON.stringify(result.data));
+          window.dispatchEvent(
+            new StorageEvent("storage", {
+              key: "portal_config_cache",
+              newValue: JSON.stringify(result.data),
+            })
+          );
         } catch {
           // ignore
         }
@@ -1482,6 +1497,7 @@ export default function AdminDashboard() {
           <FooterAndSocialTab
             config={config}
             setConfig={setConfig}
+            initialConfig={initialConfig}
             t={t}
             saving={saving}
             onSave={handleSave}

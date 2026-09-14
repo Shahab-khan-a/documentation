@@ -65,6 +65,7 @@ export function SettingsAndTimersTab({
             <input
               type="text"
               value={config.portalTitle}
+              placeholder="بوابة خدمات الغرفة"
               onChange={(e) => setConfig({ ...config, portalTitle: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
             />

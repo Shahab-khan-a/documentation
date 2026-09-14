@@ -1,135 +1,135 @@
 [
   {
-    "updatedAt": "2026-09-13T19:41:27.262Z",
-    "statusColor": "#32c5cb",
-    "applicantName": "المبارك الجهني",
-    "requestType": "الطلب مفتوح الملف",
-    "companyNameEn": "World of Systems & Software",
-    "commercialRegNo": "70112233993",
-    "expiryDate": "12/09/2027",
-    "requestNumber": "2222277676",
+    "facilitySubName": "",
+    "creationTime": "12:15ص",
+    "requestStatus": "تم قبول الطلب وساري",
+    "unifiedNumber": "7025562547",
+    "loaderGifUrl": "/loader.gif",
     "loaderDurationMs": 10000,
-    "serialNumber": "1111145555",
-    "expiryTime": "11:25ص",
-    "portalTitle": "Eservices.ynbcci.org.sa",
-    "chamberName": "ينبع",
-    "currentRecordId": "11111112773fdgc_7025562547",
-    "companyNameAr": "عالم النظم و البرامج",
-    "facilityName": "موسسه مرزوق ",
     "supportPhone": "00966112641362",
+    "downloadButton": {
+      "label": "تحميل",
+      "openInNewTab": false,
+      "fileName": "342b7f24-983b-4e55-b484-f96c23249a83 (1) (2) (1).png",
+      "fileSize": 1617361,
+      "showLoader": true,
+      "fileUrl": "/api/drive/download?fileId=1jgLq622uQV1xbQI5DfZ6aR77tG8iKNEm&name=342b7f24-983b-4e55-b484-f96c23249a83%20(1)%20(2)%20(1).png",
+      "actionType": "file",
+      "url": "#"
+    },
+    "backButton": {
+      "actionType": "link",
+      "label": "العودة",
+      "showLoader": false,
+      "openInNewTab": false,
+      "url": "https://eservices.ynbcci.org.sa/#/Login"
+    },
+    "expiryDate": "12/09/2027",
     "customFields": [],
+    "currentRecordId": "11111112773fdgc_7025562547",
+    "statusColor": "#32c5cb",
+    "updatedAt": "2026-09-13T19:41:27.262Z",
+    "buttonLoaderDurationMs": 3000,
+    "companyNameAr": "عالم النظم و البرامج",
+    "requestNumber": "2222277676",
+    "createdAt": "2026-09-11T17:49:55.709Z",
+    "enableInitialLoader": true,
+    "serialNumber": "1111145555",
+    "facilityName": "موسسه مرزوق ",
+    "verifyAgainButton": {
+      "label": "التحقق مرة آخرى",
+      "showLoader": true,
+      "actionType": "link",
+      "url": "https://eservices.ynbcci.org.sa/#/DocumentVerify",
+      "openInNewTab": false
+    },
+    "portalTitle": "بوابة خدمات الغرفة",
+    "buttonLoaderGifUrl": "/button-loader.gif",
+    "companyNameEn": "World of Systems & Software",
+    "savedAt": "2026-09-11T17:52:50.303Z",
+    "applicantName": "المبارك الجهني",
+    "chamberName": "ينبع",
+    "requestType": "الطلب مفتوح الملف",
     "socialLinks": {
+      "instagram": "#instagram",
+      "skype": "#skype",
+      "twitter": "#twitter",
       "youtube": "#youtube",
+      "facebook": "#facebook"
+    },
+    "expiryTime": "11:25ص",
+    "commercialRegNo": "70112233993",
+    "devLabel": "تطوير وتشغيل",
+    "creationDate": "12/09/2026",
+    "pageTitle": "",
+    "id": "1111145555_7025562547",
+    "amount": "35 ريال"
+  },
+  {
+    "pageTitle": "",
+    "creationTime": "12:15ص",
+    "buttonLoaderGifUrl": "/button-loader.gif",
+    "savedAt": "2026-09-11T17:52:50.303Z",
+    "loaderGifUrl": "/loader.gif",
+    "expiryTime": "11:25ص",
+    "companyNameEn": "World of Systems & Software",
+    "facilitySubName": "",
+    "portalTitle": "بوابة خدمات الغرفة",
+    "devLabel": "تطوير وتشغيل",
+    "supportPhone": "00966112641362",
+    "applicantName": "المبارك الجهني",
+    "customFields": [],
+    "requestType": "الطلب مفتوح الملف",
+    "enableInitialLoader": true,
+    "loaderDurationMs": 10000,
+    "chamberName": "ينبع",
+    "amount": "35 ريال",
+    "currentRecordId": "11111112773fdgc_7025562547",
+    "buttonLoaderDurationMs": 3000,
+    "socialLinks": {
       "twitter": "#twitter",
       "facebook": "#facebook",
       "skype": "#skype",
-      "instagram": "#instagram"
+      "instagram": "#instagram",
+      "youtube": "#youtube"
     },
-    "devLabel": "تطوير وتشغيل",
-    "facilitySubName": "",
-    "amount": "35 ريال",
-    "downloadButton": {
-      "fileUrl": "/api/drive/download?fileId=1jgLq622uQV1xbQI5DfZ6aR77tG8iKNEm&name=342b7f24-983b-4e55-b484-f96c23249a83%20(1)%20(2)%20(1).png",
-      "url": "#",
-      "fileName": "342b7f24-983b-4e55-b484-f96c23249a83 (1) (2) (1).png",
-      "label": "تحميل",
-      "fileSize": 1617361,
-      "actionType": "file",
-      "showLoader": true,
-      "openInNewTab": false
-    },
-    "enableInitialLoader": true,
-    "loaderGifUrl": "/loader.gif",
-    "unifiedNumber": "7025562547",
-    "backButton": {
-      "actionType": "link",
-      "url": "https://eservices.ynbcci.org.sa/#/Login",
-      "label": "العودة",
-      "openInNewTab": false,
-      "showLoader": false
-    },
-    "savedAt": "2026-09-11T17:52:50.303Z",
-    "buttonLoaderDurationMs": 3000,
-    "pageTitle": "",
-    "createdAt": "2026-09-11T17:49:55.709Z",
-    "creationTime": "12:15ص",
-    "creationDate": "12/09/2026",
-    "buttonLoaderGifUrl": "/button-loader.gif",
-    "id": "1111145555_7025562547",
-    "verifyAgainButton": {
-      "showLoader": true,
-      "openInNewTab": false,
-      "url": "https://eservices.ynbcci.org.sa/#/DocumentVerify",
-      "actionType": "link",
-      "label": "التحقق مرة آخرى"
-    },
-    "requestStatus": "تم قبول الطلب وساري"
-  },
-  {
-    "creationTime": "12:15ص",
-    "commercialRegNo": "70112233993",
-    "buttonLoaderGifUrl": "/button-loader.gif",
-    "buttonLoaderDurationMs": 3000,
+    "facilityName": "موسسه مرزوق errrrrr",
+    "serialNumber": "11111112773fdgc",
     "id": "11111112773fdgc_7025562547",
-    "unifiedNumber": "7025562547",
+    "createdAt": "2026-09-11T17:49:55.709Z",
     "downloadButton": {
-      "fileName": "IMG-20260913-WA0015.jpg",
-      "url": "#",
-      "actionType": "file",
       "fileSize": 167357,
       "label": "تحميل",
-      "fileUrl": "/api/drive/download?fileId=1P1O9ufFlmSFOjt208waiZuLRd_O-mW8m&name=IMG-20260913-WA0015.jpg",
-      "openInNewTab": false,
-      "showLoader": true
-    },
-    "creationDate": "12/09/2026",
-    "facilitySubName": "",
-    "pageTitle": "",
-    "loaderGifUrl": "/loader.gif",
-    "enableInitialLoader": true,
-    "backButton": {
-      "label": "العودة",
-      "showLoader": false,
-      "url": "https://eservices.ynbcci.org.sa/#/Login",
-      "openInNewTab": false,
-      "actionType": "link"
-    },
-    "currentRecordId": "11111112773fdgc_7025562547",
-    "requestStatus": "تم قبول الطلب وساري",
-    "createdAt": "2026-09-11T17:49:55.709Z",
-    "expiryTime": "11:25ص",
-    "expiryDate": "12/09/2027",
-    "applicantName": "المبارك الجهني",
-    "requestType": "الطلب مفتوح الملف",
-    "customFields": [],
-    "loaderDurationMs": 10000,
-    "companyNameEn": "World of Systems & Software",
-    "updatedAt": "2026-09-13T19:38:08.026Z",
-    "supportPhone": "00966112641362",
-    "requestNumber": "222222222",
-    "facilityName": "موسسه مرزوق errrrrr",
-    "verifyAgainButton": {
-      "label": "التحقق مرة آخرى",
-      "url": "https://eservices.ynbcci.org.sa/#/DocumentVerify",
-      "actionType": "link",
       "showLoader": true,
+      "url": "#",
+      "fileUrl": "/api/drive/download?fileId=1P1O9ufFlmSFOjt208waiZuLRd_O-mW8m&name=IMG-20260913-WA0015.jpg",
+      "actionType": "file",
+      "fileName": "IMG-20260913-WA0015.jpg",
       "openInNewTab": false
     },
-    "statusColor": "#32c5cb",
-    "socialLinks": {
-      "twitter": "#twitter",
-      "youtube": "#youtube",
-      "instagram": "#instagram",
-      "facebook": "#facebook",
-      "skype": "#skype"
+    "unifiedNumber": "7025562547",
+    "requestStatus": "تم قبول الطلب وساري",
+    "expiryDate": "12/09/2027",
+    "updatedAt": "2026-09-13T19:38:08.026Z",
+    "verifyAgainButton": {
+      "showLoader": true,
+      "openInNewTab": false,
+      "actionType": "link",
+      "label": "التحقق مرة آخرى",
+      "url": "https://eservices.ynbcci.org.sa/#/DocumentVerify"
     },
-    "devLabel": "تطوير وتشغيل",
-    "serialNumber": "11111112773fdgc",
+    "backButton": {
+      "actionType": "link",
+      "showLoader": false,
+      "label": "العودة",
+      "openInNewTab": false,
+      "url": "https://eservices.ynbcci.org.sa/#/Login"
+    },
+    "creationDate": "12/09/2026",
+    "statusColor": "#32c5cb",
+    "commercialRegNo": "70112233993",
     "companyNameAr": "عالم النظم و البرامج",
-    "savedAt": "2026-09-11T17:52:50.303Z",
-    "chamberName": "ينبع",
-    "portalTitle": "Eservices.ynbcci.org.sa",
-    "amount": "35 ريال"
+    "requestNumber": "222222222"
   },
   {
     "serialNumber": "11111112773fdg",
@@ -195,7 +195,8 @@
     "devLabel": "تطوير وتشغيل",
     "companyNameAr": "عالم النظم و البرامج",
     "expiryTime": "11:25ص",
-    "createdAt": "2026-09-11T17:49:55.709Z"
+    "createdAt": "2026-09-11T17:49:55.709Z",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "updatedAt": "2026-09-13T05:02:16.944Z",
@@ -261,7 +262,8 @@
     "id": "11111112773_7025562547",
     "buttonLoaderGifUrl": "/button-loader.gif",
     "companyNameEn": "World of Systems & Software",
-    "supportPhone": "00966112641362"
+    "supportPhone": "00966112641362",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "socialLinks": {
@@ -327,7 +329,8 @@
     "creationTime": "12:15ص",
     "customFields": [],
     "devLabel": "تطوير وتشغيل",
-    "unifiedNumber": "7025562547"
+    "unifiedNumber": "7025562547",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "loaderGifUrl": "/loader.gif",
@@ -393,139 +396,140 @@
     "customFields": [],
     "statusColor": "#32c5cb",
     "updatedAt": "2026-09-13T04:29:19.500Z",
-    "creationTime": "12:15ص"
+    "creationTime": "12:15ص",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "expiryTime": "11:15ص",
-    "unifiedNumber": "7025562547",
-    "currentRecordId": "998822768645hyu_7025562547",
-    "expiryDate": "11/09/2027",
-    "creationTime": "11:15ص",
-    "verifyAgainButton": {
-      "actionType": "animation",
-      "showLoader": true,
-      "url": "#",
-      "label": "التحقق مرة آخرى",
-      "openInNewTab": false
-    },
-    "updatedAt": "2026-09-13T03:43:57.608Z",
-    "loaderDurationMs": 10000,
-    "creationDate": "11/09/2026",
-    "facilitySubName": "فرع المنطقة الغربية",
-    "savedAt": "2026-09-11T17:52:50.303Z",
-    "requestStatus": "تم قبول الطلب وساري",
-    "enableInitialLoader": true,
-    "commercialRegNo": "70112233993",
-    "id": "1111111111_7025562547",
     "loaderGifUrl": "/loader.gif",
-    "devLabel": "تطوير وتشغيل",
-    "requestType": "تصديق تفويض إلكتروني",
-    "buttonLoaderDurationMs": 3000,
-    "requestNumber": "112233551",
-    "statusColor": "#32c5cb",
     "companyNameEn": "World of Systems & Software",
-    "facilityName": "مؤسسة الرياض للتجارة",
-    "buttonLoaderGifUrl": "/button-loader.gif",
+    "id": "1111111111_7025562547",
+    "createdAt": "2026-09-11T17:49:55.709Z",
     "supportPhone": "00966112641362",
     "applicantName": "عبدالرحمن الشمري",
-    "customFields": [],
-    "amount": "75 ريال",
-    "createdAt": "2026-09-11T17:49:55.709Z",
-    "downloadButton": {
-      "fileUrl": "/uploads/1789271001453-CAHMABER_BARD_HEAR.pdf",
-      "actionType": "file",
-      "fileSize": 82155,
-      "fileName": "CAHMABER BARD HEAR.pdf",
-      "openInNewTab": false,
-      "url": "#",
-      "label": "تحميل",
-      "showLoader": true
-    },
-    "pageTitle": "التحقق من الوثائق",
+    "requestType": "تصديق تفويض إلكتروني",
+    "currentRecordId": "998822768645hyu_7025562547",
+    "creationTime": "11:15ص",
     "chamberName": "ينبع",
-    "companyNameAr": "عالم النظم و البرامج",
-    "portalTitle": "بوابة خدمات الغرفة",
     "socialLinks": {
-      "twitter": "#twitter",
-      "youtube": "#youtube",
       "skype": "#skype",
-      "instagram": "#instagram",
-      "facebook": "#facebook"
-    },
-    "serialNumber": "1111111111",
-    "backButton": {
-      "url": "#",
-      "showLoader": false,
-      "openInNewTab": false,
-      "actionType": "link",
-      "label": "العودة"
-    }
-  },
-  {
-    "portalTitle": "بوابة خدمات الغرفة",
-    "companyNameAr": "عالم النظم و البرامج",
-    "updatedAt": "2026-09-13T03:41:34.185Z",
-    "chamberName": "ينبع",
-    "commercialRegNo": "70112233993",
-    "downloadButton": {
-      "showLoader": true,
-      "url": "#",
-      "label": "تحميل",
-      "openInNewTab": false,
-      "fileUrl": "/uploads/1789270604948-WhatsApp_Image_2026-08-31_at_4.18.54_PM.jpeg",
-      "fileName": "WhatsApp Image 2026-08-31 at 4.18.54 PM.jpeg",
-      "actionType": "file",
-      "fileSize": 403101
-    },
-    "buttonLoaderDurationMs": 3000,
-    "serialNumber": "99882276864",
-    "savedAt": "2026-09-11T17:52:50.303Z",
-    "loaderDurationMs": 10000,
-    "socialLinks": {
+      "youtube": "#youtube",
       "facebook": "#facebook",
-      "youtube": "#youtube",
       "twitter": "#twitter",
-      "skype": "#skype",
       "instagram": "#instagram"
     },
-    "enableInitialLoader": true,
+    "updatedAt": "2026-09-13T03:43:57.608Z",
+    "facilitySubName": "فرع المنطقة الغربية",
+    "customFields": [],
+    "buttonLoaderGifUrl": "/button-loader.gif",
+    "portalTitle": "بوابة خدمات الغرفة",
+    "unifiedNumber": "7025562547",
+    "requestStatus": "تم قبول الطلب وساري",
+    "pageTitle": "التحقق من الوثائق",
+    "downloadButton": {
+      "label": "تحميل",
+      "url": "#",
+      "openInNewTab": false,
+      "fileSize": 82155,
+      "fileUrl": "/uploads/1789271001453-CAHMABER_BARD_HEAR.pdf",
+      "fileName": "CAHMABER BARD HEAR.pdf",
+      "actionType": "file",
+      "showLoader": true
+    },
+    "expiryDate": "11/09/2027",
+    "statusColor": "#32c5cb",
+    "serialNumber": "1111111111",
+    "facilityName": "مؤسسة الرياض للتجارة",
+    "savedAt": "2026-09-11T17:52:50.303Z",
+    "commercialRegNo": "70112233993",
+    "creationDate": "11/09/2026",
+    "amount": "75 ريال",
+    "loaderDurationMs": 10000,
     "verifyAgainButton": {
+      "showLoader": true,
       "label": "التحقق مرة آخرى",
       "actionType": "animation",
       "url": "#",
-      "showLoader": true,
       "openInNewTab": false
     },
-    "companyNameEn": "World of Systems & Software",
-    "amount": "75 ريال",
-    "statusColor": "#32c5cb",
+    "companyNameAr": "عالم النظم و البرامج",
+    "enableInitialLoader": true,
     "requestNumber": "112233551",
-    "requestType": "تصديق تفويض إلكتروني",
-    "facilitySubName": "فرع المنطقة الغربية",
-    "currentRecordId": "998822768645hyu_7025562547",
-    "expiryTime": "11:15ص",
-    "customFields": [],
-    "devLabel": "تطوير وتشغيل",
-    "supportPhone": "00966112641362",
-    "id": "99882276864_7025562547",
-    "applicantName": "عبدالرحمن الشمري",
-    "expiryDate": "11/09/2027",
-    "facilityName": "مؤسسة الرياض للتجارة",
-    "requestStatus": "تم قبول الطلب وساري",
+    "buttonLoaderDurationMs": 3000,
     "backButton": {
       "openInNewTab": false,
-      "url": "#",
       "actionType": "link",
-      "showLoader": false,
-      "label": "العودة"
+      "url": "#",
+      "label": "العودة",
+      "showLoader": false
     },
-    "loaderGifUrl": "/loader.gif",
+    "devLabel": "تطوير وتشغيل"
+  },
+  {
     "pageTitle": "التحقق من الوثائق",
-    "creationTime": "11:15ص",
-    "buttonLoaderGifUrl": "/button-loader.gif",
-    "createdAt": "2026-09-11T17:49:55.709Z",
+    "requestStatus": "تم قبول الطلب وساري",
+    "loaderDurationMs": 10000,
     "unifiedNumber": "7025562547",
-    "creationDate": "11/09/2026"
+    "amount": "75 ريال",
+    "creationDate": "11/09/2026",
+    "socialLinks": {
+      "twitter": "#twitter",
+      "facebook": "#facebook",
+      "skype": "#skype",
+      "youtube": "#youtube",
+      "instagram": "#instagram"
+    },
+    "verifyAgainButton": {
+      "url": "#",
+      "openInNewTab": false,
+      "showLoader": true,
+      "label": "التحقق مرة آخرى",
+      "actionType": "animation"
+    },
+    "commercialRegNo": "70112233993",
+    "chamberName": "ينبع",
+    "devLabel": "تطوير وتشغيل",
+    "requestType": "تصديق تفويض إلكتروني",
+    "expiryTime": "11:15ص",
+    "requestNumber": "112233551",
+    "companyNameAr": "عالم النظم و البرامج",
+    "portalTitle": "بوابة خدمات الغرفة",
+    "enableInitialLoader": true,
+    "facilityName": "مؤسسة الرياض للتجارة",
+    "serialNumber": "99882276864",
+    "companyNameEn": "World of Systems & Software",
+    "applicantName": "عبدالرحمن الشمري",
+    "createdAt": "2026-09-11T17:49:55.709Z",
+    "backButton": {
+      "url": "#",
+      "label": "العودة",
+      "openInNewTab": false,
+      "actionType": "link",
+      "showLoader": false
+    },
+    "updatedAt": "2026-09-13T03:41:34.185Z",
+    "currentRecordId": "998822768645hyu_7025562547",
+    "statusColor": "#32c5cb",
+    "buttonLoaderDurationMs": 3000,
+    "customFields": [],
+    "savedAt": "2026-09-11T17:52:50.303Z",
+    "supportPhone": "00966112641362",
+    "downloadButton": {
+      "showLoader": true,
+      "url": "#",
+      "fileSize": 403101,
+      "actionType": "file",
+      "label": "تحميل",
+      "fileUrl": "/uploads/1789270604948-WhatsApp_Image_2026-08-31_at_4.18.54_PM.jpeg",
+      "openInNewTab": false,
+      "fileName": "WhatsApp Image 2026-08-31 at 4.18.54 PM.jpeg"
+    },
+    "expiryDate": "11/09/2027",
+    "id": "99882276864_7025562547",
+    "loaderGifUrl": "/loader.gif",
+    "facilitySubName": "فرع المنطقة الغربية",
+    "buttonLoaderGifUrl": "/button-loader.gif",
+    "creationTime": "11:15ص"
   },
   {
     "downloadButton": {
@@ -591,7 +595,8 @@
     "statusColor": "#32c5cb",
     "companyNameEn": "World of Systems & Software",
     "enableInitialLoader": true,
-    "requestStatus": "تم قبول الطلب وساري"
+    "requestStatus": "تم قبول الطلب وساري",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "applicantName": "عبدالرحمن الشمري",
@@ -657,7 +662,8 @@
     "id": "45454545_7025562547",
     "requestStatus": "تم قبول الطلب وساري",
     "creationDate": "11/09/2026",
-    "companyNameEn": "World of Systems & Software"
+    "companyNameEn": "World of Systems & Software",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "creationDate": "11/09/2026",
@@ -723,72 +729,73 @@
       "showLoader": true,
       "actionType": "animation",
       "openInNewTab": false
-    }
+    },
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
-    "applicantName": "عبدالرحمن الشمري",
-    "updatedAt": "2026-09-12T20:49:13.388Z",
-    "facilityName": "مؤسسة الرياض للتجارة",
-    "requestNumber": "11223355",
-    "supportPhone": "00966112641362",
-    "loaderDurationMs": 10000,
-    "customFields": [],
-    "companyNameEn": "World of Systems & Software",
-    "devLabel": "تطوير وتشغيل",
-    "backButton": {
-      "actionType": "link",
-      "openInNewTab": false,
-      "url": "#",
-      "showLoader": false,
-      "label": "الع"
-    },
-    "companyNameAr": "عالم النظم و البرامج",
-    "enableInitialLoader": true,
-    "serialNumber": "998822768645",
-    "verifyAgainButton": {
-      "showLoader": true,
-      "label": "التحقق مرة آخرى",
-      "openInNewTab": false,
-      "url": "#",
-      "actionType": "animation"
-    },
-    "savedAt": "2026-09-11T17:52:50.303Z",
-    "expiryTime": "11:15ص",
+    "requestType": "تصديق تفويض إلكتروني",
+    "chamberName": "الرياض",
     "socialLinks": {
-      "skype": "#skype",
+      "youtube": "#youtube",
+      "instagram": "#instagram",
       "facebook": "#facebook",
       "twitter": "#twitter",
-      "youtube": "#youtube",
-      "instagram": "#instagram"
+      "skype": "#skype"
     },
-    "creationTime": "11:15ص",
-    "expiryDate": "11/09/2027",
-    "buttonLoaderGifUrl": "/button-loader.gif",
-    "unifiedNumber": "7025562547",
-    "chamberName": "الرياض",
-    "creationDate": "11/09/2026",
+    "facilitySubName": "فرع المنطقة الغربية",
+    "customFields": [],
+    "expiryTime": "11:15ص",
+    "loaderGifUrl": "/loader.gif",
+    "companyNameEn": "World of Systems & Software",
     "portalTitle": "بوابة خدمات الغرفة",
-    "commercialRegNo": "7011223399",
+    "supportPhone": "00966112641362",
+    "currentRecordId": "998822768676_7025562547",
+    "applicantName": "عبدالرحمن الشمري",
     "createdAt": "2026-09-11T17:49:55.709Z",
+    "devLabel": "تطوير وتشغيل",
+    "creationTime": "11:15ص",
+    "loaderDurationMs": 10000,
     "downloadButton": {
+      "fileName": "Updated TImetable Fall2026.pdf",
+      "showLoader": true,
       "fileUrl": "/api/drive/download?fileId=18n9xaeEIdRNXHIIm9aLMb1Xj-Uf5krSF&name=Updated%20TImetable%20Fall2026.pdf",
+      "actionType": "file",
+      "url": "#",
+      "label": "تحميل",
+      "openInNewTab": false,
+      "fileSize": 3188507
+    },
+    "updatedAt": "2026-09-12T20:49:13.388Z",
+    "creationDate": "11/09/2026",
+    "statusColor": "#32c5cb",
+    "verifyAgainButton": {
+      "openInNewTab": false,
+      "label": "التحقق مرة آخرى",
       "url": "#",
       "showLoader": true,
-      "fileSize": 3188507,
-      "label": "تحميل",
-      "fileName": "Updated TImetable Fall2026.pdf",
-      "openInNewTab": false,
-      "actionType": "file"
+      "actionType": "animation"
     },
-    "amount": "75 ريال",
-    "pageTitle": "التحقق من الوثائق",
-    "currentRecordId": "998822768676_7025562547",
-    "statusColor": "#32c5cb",
-    "requestStatus": "تم قبول الطلب وساري",
-    "facilitySubName": "فرع المنطقة الغربية",
+    "companyNameAr": "عالم النظم و البرامج",
     "buttonLoaderDurationMs": 3000,
-    "requestType": "تصديق تفويض إلكتروني",
-    "loaderGifUrl": "/loader.gif",
+    "requestNumber": "11223355",
+    "buttonLoaderGifUrl": "/button-loader.gif",
+    "backButton": {
+      "openInNewTab": false,
+      "label": "الع",
+      "showLoader": false,
+      "url": "#",
+      "actionType": "link"
+    },
+    "savedAt": "2026-09-11T17:52:50.303Z",
+    "unifiedNumber": "7025562547",
+    "commercialRegNo": "7011223399",
+    "requestStatus": "تم قبول الطلب وساري",
+    "pageTitle": "التحقق من الوثائق",
+    "expiryDate": "11/09/2027",
+    "enableInitialLoader": true,
+    "amount": "75 ريال",
+    "serialNumber": "998822768645",
+    "facilityName": "مؤسسة الرياض للتجارة",
     "id": "998822768645_7025562547"
   },
   {
@@ -855,7 +862,8 @@
     "requestType": "تصديق تفويض إلكتروني",
     "pageTitle": "التحقق من الوثائق",
     "currentRecordId": "998822768676_7025562547",
-    "statusColor": "#32c5cb"
+    "statusColor": "#32c5cb",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "backButton": {
@@ -921,7 +929,8 @@
     },
     "pageTitle": "التحقق من الوثائق",
     "serialNumber": "9988222hhh",
-    "amount": "75 ريال"
+    "amount": "75 ريال",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "applicantName": "عبدالرحمن الشمري",
@@ -987,7 +996,8 @@
     "companyNameEn": "World of Systems & Software",
     "amount": "75 ريال",
     "updatedAt": "2026-09-12T20:31:24.034Z",
-    "devLabel": "تطوير وتشغيل"
+    "devLabel": "تطوير وتشغيل",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "createdAt": "2026-09-11T17:49:55.709Z",
@@ -1053,7 +1063,8 @@
       "fileName": "Updated TImetable Fall2026.pdf",
       "fileSize": 3188507
     },
-    "updatedAt": "2026-09-12T20:31:10.921Z"
+    "updatedAt": "2026-09-12T20:31:10.921Z",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   },
   {
     "buttonLoaderDurationMs": 3000,
@@ -1119,6 +1130,7 @@
       "actionType": "file",
       "showLoader": true
     },
-    "updatedAt": "2026-09-12T20:30:47.502Z"
+    "updatedAt": "2026-09-12T20:30:47.502Z",
+    "copyrightText": "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
   }
 ]

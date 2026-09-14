@@ -20,10 +20,24 @@ declare global {
   var __portal_config_memory__: PortalConfig | undefined;
 }
 
+function cleanPortalTitle(title?: string): string {
+  if (!title) return DEFAULT_PORTAL_CONFIG.portalTitle;
+  const trimmed = title.trim();
+  if (
+    /^[A-Za-z0-9\s._\-:/]+$/.test(trimmed) ||
+    trimmed.toLowerCase().includes("eservices") ||
+    trimmed.toLowerCase().includes("ynbcci")
+  ) {
+    return DEFAULT_PORTAL_CONFIG.portalTitle;
+  }
+  return trimmed;
+}
+
 function mergeWithDefaults(parsed: Partial<PortalConfig>): PortalConfig {
   return {
     ...DEFAULT_PORTAL_CONFIG,
     ...parsed,
+    portalTitle: cleanPortalTitle(parsed.portalTitle),
     customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
     backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(parsed.backButton || {}) },
     verifyAgainButton: { ...DEFAULT_PORTAL_CONFIG.verifyAgainButton, ...(parsed.verifyAgainButton || {}) },
@@ -96,12 +110,28 @@ export async function GET(req: Request) {
       "Expires": "0",
     };
 
+    const activeGlobal = ensureConfigFile();
+
     // 1. If serial or requestNumber is requested, search for specific saved record in Firebase first
     if (serial || requestNumber) {
       try {
         const specific = await getPortalRecordBySerialUnified(serial, unified, requestNumber);
         if (specific) {
-          return NextResponse.json(specific, { headers: responseHeaders });
+          const mergedSpecific = {
+            ...activeGlobal,
+            ...specific,
+            portalTitle: cleanPortalTitle(specific.portalTitle || activeGlobal.portalTitle),
+            copyrightText:
+              specific.copyrightText !== undefined && specific.copyrightText !== ""
+                ? specific.copyrightText
+                : activeGlobal.copyrightText,
+            supportPhone: specific.supportPhone || activeGlobal.supportPhone,
+            devLabel: specific.devLabel || activeGlobal.devLabel,
+            companyNameAr: specific.companyNameAr || activeGlobal.companyNameAr,
+            companyNameEn: specific.companyNameEn || activeGlobal.companyNameEn,
+            socialLinks: { ...activeGlobal.socialLinks, ...(specific.socialLinks || {}) },
+          };
+          return NextResponse.json(mergedSpecific, { headers: responseHeaders });
         }
       } catch (err) {
         console.warn("Could not retrieve specific record from Firebase:", err);
@@ -121,7 +151,21 @@ export async function GET(req: Request) {
                 (r.serialNumber === serial && (!unified || r.unifiedNumber === unified))
             );
             if (found) {
-              return NextResponse.json(found, { headers: responseHeaders });
+              const mergedFound = {
+                ...activeGlobal,
+                ...found,
+                portalTitle: cleanPortalTitle(found.portalTitle || activeGlobal.portalTitle),
+                copyrightText:
+                  found.copyrightText !== undefined && found.copyrightText !== ""
+                    ? found.copyrightText
+                    : activeGlobal.copyrightText,
+                supportPhone: found.supportPhone || activeGlobal.supportPhone,
+                devLabel: found.devLabel || activeGlobal.devLabel,
+                companyNameAr: found.companyNameAr || activeGlobal.companyNameAr,
+                companyNameEn: found.companyNameEn || activeGlobal.companyNameEn,
+                socialLinks: { ...activeGlobal.socialLinks, ...(found.socialLinks || {}) },
+              };
+              return NextResponse.json(mergedFound, { headers: responseHeaders });
             }
           }
         }
@@ -134,8 +178,22 @@ export async function GET(req: Request) {
     try {
       const fbConfig = await getConfigFromFirebase(serial, unified, requestNumber);
       if (fbConfig) {
-        globalThis.__portal_config_memory__ = fbConfig;
-        return NextResponse.json(fbConfig, { headers: responseHeaders });
+        const mergedFb = {
+          ...activeGlobal,
+          ...fbConfig,
+          portalTitle: cleanPortalTitle(fbConfig.portalTitle || activeGlobal.portalTitle),
+          copyrightText:
+            fbConfig.copyrightText !== undefined && fbConfig.copyrightText !== ""
+              ? fbConfig.copyrightText
+              : activeGlobal.copyrightText,
+          supportPhone: fbConfig.supportPhone || activeGlobal.supportPhone,
+          devLabel: fbConfig.devLabel || activeGlobal.devLabel,
+          companyNameAr: fbConfig.companyNameAr || activeGlobal.companyNameAr,
+          companyNameEn: fbConfig.companyNameEn || activeGlobal.companyNameEn,
+          socialLinks: { ...activeGlobal.socialLinks, ...(fbConfig.socialLinks || {}) },
+        };
+        globalThis.__portal_config_memory__ = mergedFb;
+        return NextResponse.json(mergedFb, { headers: responseHeaders });
       }
     } catch (err) {
       console.warn("Could not retrieve current config from Firebase:", err);
@@ -157,11 +215,13 @@ export async function POST(req: Request) {
     const updated: PortalConfig = {
       ...current,
       ...body,
+      portalTitle: cleanPortalTitle(body.portalTitle || current.portalTitle),
       customFields: Array.isArray(body.customFields) ? body.customFields : (current.customFields || []),
       backButton: { ...current.backButton, ...(body.backButton || {}) },
       verifyAgainButton: { ...current.verifyAgainButton, ...(body.verifyAgainButton || {}) },
       downloadButton: { ...current.downloadButton, ...(body.downloadButton || {}) },
       socialLinks: { ...current.socialLinks, ...(body.socialLinks || {}) },
+      copyrightText: body.copyrightText !== undefined ? body.copyrightText : current.copyrightText,
     };
 
     const cleanSerial = (updated.serialNumber || "").trim();
@@ -180,8 +240,30 @@ export async function POST(req: Request) {
       console.warn("Notice while saving to Firebase Firestore in API route:", fbErr);
     }
 
-    // 2. Archive into local saved-records.json
+    // 2. Archive into local saved-records.json and sync global organization/copyright
     try {
+      const recordsFile = path.join(DATA_DIR, "saved-records.json");
+      let list: PortalRecord[] = [];
+      if (fs.existsSync(recordsFile)) {
+        try {
+          list = JSON.parse(fs.readFileSync(recordsFile, "utf-8"));
+        } catch {
+          list = [];
+        }
+      }
+
+      // Sync global organization & copyright branding across all archived records
+      list = list.map((item) => ({
+        ...item,
+        portalTitle: cleanPortalTitle(item.portalTitle),
+        copyrightText: updated.copyrightText,
+        supportPhone: updated.supportPhone || item.supportPhone,
+        devLabel: updated.devLabel || item.devLabel,
+        companyNameAr: updated.companyNameAr || item.companyNameAr,
+        companyNameEn: updated.companyNameEn || item.companyNameEn,
+        socialLinks: { ...(item.socialLinks || {}), ...(updated.socialLinks || {}) },
+      }));
+
       if (cleanSerial) {
         const now = new Date().toISOString();
         const rec: PortalRecord = {
@@ -192,26 +274,18 @@ export async function POST(req: Request) {
           createdAt: now,
           updatedAt: now,
         };
-        const recordsFile = path.join(DATA_DIR, "saved-records.json");
-        let list: PortalRecord[] = [];
-        if (fs.existsSync(recordsFile)) {
-          try {
-            list = JSON.parse(fs.readFileSync(recordsFile, "utf-8"));
-          } catch {
-            list = [];
-          }
-        }
         const idx = list.findIndex((r) => r.id === recordId);
         if (idx >= 0) {
           list[idx] = { ...rec, createdAt: list[idx].createdAt || now };
         } else {
           list.unshift(rec);
         }
-        if (!fs.existsSync(DATA_DIR)) {
-          fs.mkdirSync(DATA_DIR, { recursive: true });
-        }
-        fs.writeFileSync(recordsFile, JSON.stringify(list, null, 2), "utf-8");
       }
+
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(recordsFile, JSON.stringify(list, null, 2), "utf-8");
     } catch {
       // ignore
     }

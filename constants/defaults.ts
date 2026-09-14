@@ -19,7 +19,13 @@ export function normalizePortalConfig(raw?: Partial<PortalConfig> | null): Porta
   return {
     ...DEFAULT_PORTAL_CONFIG,
     ...raw,
-    portalTitle: raw.portalTitle || DEFAULT_PORTAL_CONFIG.portalTitle,
+    portalTitle:
+      raw.portalTitle &&
+      !/^[A-Za-z0-9\s._\-:/]+$/.test(raw.portalTitle.trim()) &&
+      !raw.portalTitle.toLowerCase().includes("eservices") &&
+      !raw.portalTitle.toLowerCase().includes("ynbcci")
+        ? raw.portalTitle
+        : DEFAULT_PORTAL_CONFIG.portalTitle,
     pageTitle: raw.pageTitle || DEFAULT_PORTAL_CONFIG.pageTitle,
     chamberName: raw.chamberName || DEFAULT_PORTAL_CONFIG.chamberName,
     facilityName: raw.facilityName || DEFAULT_PORTAL_CONFIG.facilityName,

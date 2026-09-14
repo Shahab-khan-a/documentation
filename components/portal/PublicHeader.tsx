@@ -7,8 +7,17 @@ export interface PublicHeaderProps {
 }
 
 export function PublicHeader({ portalTitle = "بوابة خدمات الغرفة" }: PublicHeaderProps) {
+  // Disallow English domain/words like Eservices.ynbcci.org.sa and strictly display the Arabic title
+  const isEnglishOrEmpty =
+    !portalTitle ||
+    /^[A-Za-z0-9\s._\-:/]+$/.test(portalTitle.trim()) ||
+    portalTitle.toLowerCase().includes("eservices") ||
+    portalTitle.toLowerCase().includes("ynbcci");
+
+  const displayTitle = isEnglishOrEmpty ? "بوابة خدمات الغرفة" : portalTitle;
+
   return (
-    <header className="w-full bg-white relative overflow-hidden">
+    <header dir="rtl" className="w-full bg-white relative overflow-hidden">
       {/* Subtle Islamic geometric star pattern backdrop */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -31,7 +40,7 @@ export function PublicHeader({ portalTitle = "بوابة خدمات الغرفة
           className="font-bold text-[17px] sm:text-[18px] tracking-tight"
           style={{ color: "#136d93" }}
         >
-          {portalTitle}
+          {displayTitle}
         </span>
       </div>
       <hr className="border-t border-slate-200 m-0" />

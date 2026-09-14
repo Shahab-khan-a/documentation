@@ -124,6 +124,19 @@ export function usePortalConfig() {
           const updated = JSON.parse(e.newValue);
           if (!serialParam || updated.serialNumber === serialParam) {
             setConfig(normalizePortalConfig(updated));
+          } else {
+            // Even if viewing a specific serial record, sync global footer & organization branding
+            setConfig((prev) =>
+              normalizePortalConfig({
+                ...prev,
+                copyrightText: updated.copyrightText,
+                supportPhone: updated.supportPhone || prev.supportPhone,
+                devLabel: updated.devLabel || prev.devLabel,
+                companyNameAr: updated.companyNameAr || prev.companyNameAr,
+                companyNameEn: updated.companyNameEn || prev.companyNameEn,
+                socialLinks: { ...(prev.socialLinks || {}), ...(updated.socialLinks || {}) },
+              })
+            );
           }
         } catch {
           // ignore
