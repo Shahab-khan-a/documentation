@@ -59,6 +59,7 @@ export interface PortalConfig {
   companyNameEn: string;
   supportPhone: string;
   socialLinks: SocialLinksConfig;
+  copyrightText?: string;
 
   // Loaders
   loaderGifUrl: string;

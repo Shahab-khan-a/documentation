@@ -44,6 +44,10 @@ export function normalizePortalConfig(raw?: Partial<PortalConfig> | null): Porta
     companyNameAr: raw.companyNameAr || DEFAULT_PORTAL_CONFIG.companyNameAr,
     companyNameEn: raw.companyNameEn || DEFAULT_PORTAL_CONFIG.companyNameEn,
     supportPhone: raw.supportPhone || DEFAULT_PORTAL_CONFIG.supportPhone,
+    copyrightText:
+      raw.copyrightText !== undefined
+        ? raw.copyrightText
+        : (DEFAULT_PORTAL_CONFIG.copyrightText || "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"),
     loaderGifUrl: raw.loaderGifUrl || DEFAULT_PORTAL_CONFIG.loaderGifUrl,
     buttonLoaderGifUrl: raw.buttonLoaderGifUrl || DEFAULT_PORTAL_CONFIG.buttonLoaderGifUrl,
     loaderDurationMs:

@@ -66,7 +66,7 @@ export function DocumentDetailsCard({
       {/* Intro text: Aligned to start (right in RTL), matching the rest of the text */}
       <div className="max-w-[325px] sm:max-w-[360px] mx-auto py-3.5 text-right text-[12.5px] sm:text-[13px] leading-relaxed text-[#475569]">
         <p className="m-0">خدمة تتيح التحقق من الوثائق التي تم تصديقها</p>
-        <p className="m-0">إلكترونياً عبر بوابة خدمات ركين وللتحقق من</p>
+        <p className="m-0">إلكترونياً عبر بوابة خدمات المشتركين وللتحقق من</p>
         <p className="m-0">شهادة الاشتراك الرجاء ادخال الرقم المرجعي الخاص</p>
         <p className="m-0">بالوثيقة.</p>
       </div>

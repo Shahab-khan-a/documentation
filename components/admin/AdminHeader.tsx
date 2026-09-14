@@ -19,6 +19,7 @@ export interface AdminHeaderProps {
   onOpenFirebaseRecords: () => void;
   publicLink: string;
   t: TranslationStrings;
+  onLogout?: () => void;
 }
 
 export function AdminHeader({
@@ -35,6 +36,7 @@ export function AdminHeader({
   onOpenFirebaseRecords,
   publicLink,
   t,
+  onLogout,
 }: AdminHeaderProps) {
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-200/80 shadow-xs transition-all select-none">
@@ -136,6 +138,27 @@ export function AdminHeader({
               <span className="hidden md:inline text-[11px]">اردو</span>
             </button>
           </div>
+
+          {/* Lock / Logout Button */}
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="h-7 sm:h-8 px-2 sm:px-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all flex items-center gap-1.5 text-[11px] sm:text-xs font-bold shrink-0 cursor-pointer shadow-2xs active:scale-95 bg-white"
+              title={
+                lang === "en"
+                  ? "Lock Admin Panel"
+                  : lang === "ur"
+                  ? "ایڈمن پینل لاک کریں"
+                  : "قفل لوحة التحكم"
+              }
+            >
+              <span className="text-xs">🔒</span>
+              <span className="hidden md:inline">
+                {lang === "en" ? "Lock" : lang === "ur" ? "لاک" : "قفل"}
+              </span>
+            </button>
+          )}
 
           {/* Discard Unsaved Changes (Only when dirty) */}
           {hasUnsavedChanges && (

@@ -26,8 +26,36 @@ import { PublicPreviewPane } from "@/components/admin/PublicPreviewPane";
 import { FooterAndSocialTab } from "@/components/admin/FooterAndSocialTab";
 import { SettingsAndTimersTab } from "@/components/admin/SettingsAndTimersTab";
 import { FloatingUnsavedDock } from "@/components/admin/FloatingUnsavedDock";
+import { AdminPasswordScreen } from "@/components/admin/AdminPasswordScreen";
 
 export default function AdminDashboard() {
+  // Password protection for admin panel ("swati")
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    try {
+      const sessionAuth = sessionStorage.getItem("admin_auth");
+      const localAuth = localStorage.getItem("admin_auth");
+      if (sessionAuth === "swati" || localAuth === "swati") {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch {
+      setIsAuthenticated(false);
+    }
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    try {
+      sessionStorage.removeItem("admin_auth");
+      localStorage.removeItem("admin_auth");
+    } catch {
+      // ignore
+    }
+    setIsAuthenticated(false);
+  }, []);
+
   const [config, setConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
   const [initialConfig, setInitialConfig] = useState<PortalConfig>(DEFAULT_PORTAL_CONFIG);
   const [loading, setLoading] = useState(true);
@@ -199,6 +227,9 @@ export default function AdminDashboard() {
         }
         if (active && driveRes.ok) {
           const driveData = await driveRes.json();
+          if (driveData.configured !== undefined) {
+            setDriveConfigured(Boolean(driveData.configured));
+          }
           if (driveData.success && Array.isArray(driveData.files)) {
             setDriveFiles(driveData.files);
           }
@@ -1174,6 +1205,27 @@ export default function AdminDashboard() {
     );
   };
 
+  if (isAuthenticated === null) {
+    return (
+      <div
+        className="min-h-screen bg-slate-950 flex items-center justify-center text-white"
+        dir="rtl"
+        suppressHydrationWarning
+      >
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-semibold text-slate-400" suppressHydrationWarning>
+            التحقق من الصلاحيات...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated === false) {
+    return <AdminPasswordScreen onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
+
   if (loading) {
     return (
       <div
@@ -1355,6 +1407,7 @@ export default function AdminDashboard() {
         }}
         publicLink={getPublicLink(config)}
         t={t}
+        onLogout={handleLogout}
       />
 
       {/* ═══════════════ MAIN CONTENT BODY ═══════════════ */}

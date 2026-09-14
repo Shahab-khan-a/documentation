@@ -59,6 +59,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     twitter: "#twitter",
     facebook: "#facebook",
   },
+  copyrightText: "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026",
 
   loaderGifUrl: "/loader.gif",
   buttonLoaderGifUrl: "/button-loader.gif",

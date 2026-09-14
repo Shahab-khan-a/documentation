@@ -177,6 +177,14 @@ export function PublicFooter({ config }: PublicFooterProps) {
         </div>
       </div>
     </div>
+
+    {/* Row 6: Official Chamber Copyright Notice below blue banner */}
+    <div
+      dir="rtl"
+      className="text-center mt-3.5 pb-2 text-[12.5px] sm:text-[13px] font-semibold text-[#1e293b] select-none tracking-normal"
+    >
+      {d.copyrightText || "جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"}
+    </div>
   </div>
 
       {/* Floating admin shortcut badge on bottom left */}

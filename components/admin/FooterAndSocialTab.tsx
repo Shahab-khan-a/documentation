@@ -106,6 +106,32 @@ export function FooterAndSocialTab({
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none transition-all"
             />
           </div>
+
+          {/* Copyright notice text below footer */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              {lang === "en"
+                ? "Copyright Text (Under Footer)"
+                : lang === "ur"
+                ? "کاپی رائٹ تحریر (فوٹر کے نیچے)"
+                : "حقوق النشر (أسفل الفوتر)"}
+            </label>
+            <input
+              type="text"
+              dir="rtl"
+              value={config.copyrightText || ""}
+              placeholder="جميع الحقوق محفوظة الغرفة التجارية بينبع © 2026"
+              onChange={(e) => setConfig({ ...config, copyrightText: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none transition-all"
+            />
+            <span className="text-[11px] text-slate-400 mt-1 block">
+              {lang === "en"
+                ? "Displayed under the main blue footer card on the public page."
+                : lang === "ur"
+                ? "مین پیج پر نیلے فوٹر کارڈ کے بالکل نیچے ظاہر ہوتی ہے۔"
+                : "يظهر أسفل كارد الفوتر الأزرق في الصفحة الرئيسية."}
+            </span>
+          </div>
         </div>
 
         {/* Card 2: Social Media Platform URLs */}
