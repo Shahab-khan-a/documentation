@@ -266,13 +266,13 @@ export default function AdminDashboard() {
   };
 
   // Helper to compute public URL with dynamic requestNumber and serial numbers (without unified number)
-  const getPublicLink = useCallback((conf: PortalConfig) => {
+  const getPublicLink = useCallback((conf: PortalConfig | PortalRecord) => {
     const req = conf.requestNumber?.trim() || "13255887";
     const s = conf.serialNumber?.trim();
     if (s) {
-      return `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`;
+      return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`;
     }
-    return `/DocumentVerify/${encodeURIComponent(req)}/mem`;
+    return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem`;
   }, []);
 
   const handleDeleteRecord = async (record: PortalRecord) => {
@@ -330,11 +330,7 @@ export default function AdminDashboard() {
 
   const handleCopyRecordLink = (record: PortalRecord) => {
     if (typeof window === "undefined") return;
-    const req = (record.requestNumber || "").trim() || "13255887";
-    const s = (record.serialNumber || "").trim();
-    const path = s
-      ? `/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`
-      : `/DocumentVerify/${encodeURIComponent(req)}/mem`;
+    const path = getPublicLink(record);
     const fullUrl = `${window.location.origin}${path}`;
     navigator.clipboard.writeText(fullUrl);
     setCopiedRecordId(record.id);

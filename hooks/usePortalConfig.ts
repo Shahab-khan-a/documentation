@@ -10,34 +10,88 @@ import {
   subscribeToPortalConfig,
 } from "@/lib/firebase";
 
+function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
+  serial?: string;
+  unified?: string;
+  requestNumber?: string;
+} {
+  const rawSerial =
+    typeof params?.serial === "string"
+      ? params.serial
+      : Array.isArray(params?.serial)
+      ? params.serial[0]
+      : undefined;
+  const rawUnified =
+    typeof params?.unified === "string"
+      ? params.unified
+      : Array.isArray(params?.unified)
+      ? params.unified[0]
+      : undefined;
+  const rawReq =
+    typeof params?.requestNumber === "string"
+      ? params.requestNumber
+      : Array.isArray(params?.requestNumber)
+      ? params.requestNumber[0]
+      : undefined;
+
+  let serial = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
+  let unified = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
+  let requestNumber = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
+
+  if (typeof window !== "undefined") {
+    const hash = window.location.hash || "";
+    const pathname = window.location.pathname || "";
+    const source = hash.toLowerCase().includes("documentverify")
+      ? hash
+      : pathname.toLowerCase().includes("documentverify")
+      ? pathname
+      : hash || pathname;
+
+    if (source) {
+      const clean = source.replace(/^[#/]+/, "").split("?")[0];
+      const parts = clean
+        .split("/")
+        .map((p) => decodeURIComponent(p).trim())
+        .filter(Boolean);
+
+      const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
+      if (dvIndex !== -1) {
+        const after = parts.slice(dvIndex + 1);
+        if (!requestNumber && after[0]) {
+          requestNumber = after[0];
+        }
+        if (after[1]?.toLowerCase() === "mem") {
+          if (!serial && after[2]) serial = after[2];
+          if (!unified && after[3]) unified = after[3];
+        } else {
+          if (!serial && after[1]) serial = after[1];
+          if (!unified && after[2]) unified = after[2];
+        }
+      } else if (parts.length > 0) {
+        const nonReserved = parts.filter(
+          (p) => !["sa", "admin", "api", "documentverify"].includes(p.toLowerCase())
+        );
+        if (!serial && nonReserved.length >= 1) {
+          serial = nonReserved[0];
+          if (!unified && nonReserved.length >= 2) {
+            unified = nonReserved[1];
+          }
+        }
+      }
+    }
+  }
+
+  return { serial, unified, requestNumber };
+}
+
 export function usePortalConfig() {
   const params = useParams();
   const [config, setConfig] = useState<PortalConfig>(() => ({ ...DEFAULT_PORTAL_CONFIG }));
 
   // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
-    const rawSerial =
-      typeof params?.serial === "string"
-        ? params.serial
-        : Array.isArray(params?.serial)
-        ? params.serial[0]
-        : undefined;
-    const rawUnified =
-      typeof params?.unified === "string"
-        ? params.unified
-        : Array.isArray(params?.unified)
-        ? params.unified[0]
-        : undefined;
-    const rawReq =
-      typeof params?.requestNumber === "string"
-        ? params.requestNumber
-        : Array.isArray(params?.requestNumber)
-        ? params.requestNumber[0]
-        : undefined;
-
-    const serialParam = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
-    const unifiedParam = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
-    const reqParam = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
+    const { serial: serialParam, unified: unifiedParam, requestNumber: reqParam } =
+      extractParamsFromUrl(params);
 
     let isMounted = true;
 
@@ -145,20 +199,27 @@ export function usePortalConfig() {
     };
     window.addEventListener("storage", handleStorageChange);
 
+    // 6. Handle client-side hash navigation
+    const handleHashChange = () => {
+      fetchLiveConfig();
+    };
+    window.addEventListener("hashchange", handleHashChange);
+
     return () => {
       isMounted = false;
       if (unsubscribeFirebase) unsubscribeFirebase();
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("hashchange", handleHashChange);
     };
   }, [params]);
 
-  // Synchronize browser URL bar to display '/DocumentVerify/[requestNumber]/mem/[serialNumber]' (without unified number)
+  // Synchronize browser URL bar to display '/sa/#/DocumentVerify/[requestNumber]/mem/[serialNumber]' (without unified number)
   useEffect(() => {
     const cleanSerial = config.serialNumber?.trim();
-    const cleanReq = config.requestNumber?.trim();
+    const cleanReq = config.requestNumber?.trim() || "13255887";
     if (!cleanSerial) return;
 
-    const targetPath = `/DocumentVerify/${encodeURIComponent(cleanReq || "13255887")}/mem/${encodeURIComponent(cleanSerial)}`;
+    const targetPath = `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}`;
 
     if (typeof window !== "undefined") {
       const currentPath = window.location.pathname;
@@ -166,8 +227,12 @@ export function usePortalConfig() {
       if (currentPath.startsWith("/admin") || currentPath.startsWith("/api")) {
         return;
       }
+      const currentFull = `${window.location.pathname}${window.location.hash}`;
       try {
-        if (decodeURIComponent(currentPath) !== decodeURIComponent(targetPath)) {
+        if (
+          decodeURIComponent(currentFull) !== decodeURIComponent(targetPath) &&
+          decodeURIComponent(currentFull) !== decodeURIComponent(`/sa${targetPath.replace("/sa", "")}`)
+        ) {
           window.history.replaceState(null, "", targetPath);
         }
       } catch {
