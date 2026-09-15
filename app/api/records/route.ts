@@ -95,6 +95,7 @@ export async function POST(req: Request) {
     const existingIndex = current.findIndex(
       (r) =>
         r.id === recordId ||
+        (currentRecordId && (r.id === currentRecordId || r.currentRecordId === currentRecordId)) ||
         (r.serialNumber === cleanSerial && (!cleanUnified || r.unifiedNumber === cleanUnified))
     );
     if (existingIndex >= 0) {

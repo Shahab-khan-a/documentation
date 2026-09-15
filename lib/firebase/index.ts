@@ -232,6 +232,16 @@ export async function savePortalRecordToFirebase(
 
     const recordData = sanitizeFirestoreData(rawRecord);
 
+    // If currentRecordId is provided and differs from new recordId, clean up old record doc
+    if (currentRecordId && currentRecordId !== recordId && currentRecordId !== "current") {
+      try {
+        const oldDocRef = doc(db, "portal_configs", currentRecordId);
+        await deleteDoc(oldDocRef);
+      } catch {
+        // ignore
+      }
+    }
+
     // 1. Save to portal_configs with recordId
     const recordDocRef = doc(db, "portal_configs", recordId);
     await setDoc(recordDocRef, recordData, { merge: true });
@@ -279,14 +289,23 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
         if (id === "test_connection" || id === "current") return;
         const data = d.data() as PortalRecord;
         if (data && (data.serialNumber || data.chamberName)) {
-          const recId = data.id || id;
-          recordsMap.set(recId, {
-            ...data,
-            id: recId,
-            serialNumber: (data.serialNumber || "").trim(),
-            unifiedNumber: (data.unifiedNumber || "").trim(),
-            requestNumber: (data.requestNumber || "").trim(),
-          });
+          const cleanS = (data.serialNumber || "").trim();
+          const cleanU = (data.unifiedNumber || "").trim();
+          const canonicalKey = cleanS ? (cleanU ? `${cleanS}_${cleanU}` : cleanS) : (data.id || id);
+
+          const existing = recordsMap.get(canonicalKey);
+          const currentUpdated = data.updatedAt || data.createdAt || "";
+          const existingUpdated = existing?.updatedAt || existing?.createdAt || "";
+
+          if (!existing || currentUpdated >= existingUpdated) {
+            recordsMap.set(canonicalKey, {
+              ...data,
+              id: canonicalKey,
+              serialNumber: cleanS,
+              unifiedNumber: cleanU,
+              requestNumber: (data.requestNumber || "").trim(),
+            });
+          }
         }
       }
     });
@@ -383,6 +402,38 @@ export async function deletePortalRecordFromFirebase(
       } catch (scanErr) {
         console.warn("Could not scan portal_configs during deletion:", scanErr);
       }
+    }
+
+    // If the active 'current' document was pointing to this deleted record, update 'current'
+    try {
+      const currentDocRef = doc(db, "portal_configs", "current");
+      const currentSnap = await getDoc(currentDocRef);
+      if (currentSnap.exists()) {
+        const curData = currentSnap.data();
+        if (
+          (cleanSerial && curData?.serialNumber === cleanSerial) ||
+          (cleanId && (curData?.id === cleanId || curData?.currentRecordId === cleanId))
+        ) {
+          const configsCol = collection(db, "portal_configs");
+          const snapshot = await getDocs(configsCol);
+          let replacement: any = null;
+          for (const d of snapshot.docs) {
+            const did = d.id;
+            if (did !== "current" && did !== "test_connection" && did !== cleanId && did !== cleanSerial) {
+              const ddata = d.data();
+              if (ddata?.serialNumber && ddata.serialNumber !== cleanSerial) {
+                replacement = ddata;
+                break;
+              }
+            }
+          }
+          if (replacement) {
+            await setDoc(currentDocRef, sanitizeFirestoreData(replacement));
+          }
+        }
+      }
+    } catch {
+      // ignore
     }
 
     return true;

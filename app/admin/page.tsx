@@ -281,7 +281,7 @@ export default function AdminDashboard() {
     const cleanUnified = (record.unifiedNumber || "").trim();
     const cleanReq = (record.requestNumber || "").trim();
 
-    setDeletingRecordId(cleanId);
+    setDeletingRecordId(cleanId || cleanSerial);
 
     // Instant Optimistic UI Update: Remove card from UI immediately!
     setSavedRecords((prev) =>
@@ -292,6 +292,11 @@ export default function AdminDashboard() {
       })
     );
 
+    // If currently loaded in editor, clear editingRecordId
+    if (editingRecordId && (editingRecordId === cleanId || editingRecordId === cleanSerial)) {
+      setEditingRecordId(null);
+    }
+
     try {
       // 1. Delete all Firestore document variations (id, serial, composite) directly on client
       try {
@@ -300,7 +305,7 @@ export default function AdminDashboard() {
         console.warn("Client delete warning:", fbErr);
       }
 
-      // 2. Delete from server API & local disk
+      // 2. Delete from server API & memory
       const queryParams = new URLSearchParams();
       if (cleanId) queryParams.set("id", cleanId);
       if (cleanSerial) queryParams.set("serial", cleanSerial);
@@ -312,6 +317,9 @@ export default function AdminDashboard() {
       }).catch((err) => {
         console.warn("Server delete warning:", err);
       });
+
+      // 3. Re-fetch from Firebase to ensure full verification
+      await fetchSavedRecords();
 
       showToast(
         lang === "en"
@@ -385,6 +393,14 @@ export default function AdminDashboard() {
 
     try {
       setLoadingRecords(true);
+
+      // Direct Firebase save on client
+      try {
+        await savePortalRecordToFirebase(newSample);
+      } catch (fbErr) {
+        console.warn("Direct Firebase sample save notice:", fbErr);
+      }
+
       const res = await fetch("/api/records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -795,20 +811,40 @@ export default function AdminDashboard() {
       setUploadProgressModalOpen(true);
     }
 
-    const effectiveRecordId =
-      editingRecordId && initialConfig.serialNumber === cleanSerial
-        ? editingRecordId
-        : `${cleanSerial}_${cleanUnified}`;
+    const cleanReq = (config.requestNumber || "").trim();
+    const effectiveRecordId = cleanUnified
+      ? `${cleanSerial}_${cleanUnified}`
+      : cleanSerial;
 
     try {
-      const payload: PortalConfig & { currentRecordId?: string } = {
+      // 1. If editing an existing record and the ID changed, clean up previous document from Firebase
+      if (editingRecordId && editingRecordId !== effectiveRecordId) {
+        try {
+          await deletePortalRecordFromFirebase(
+            editingRecordId,
+            initialConfig.serialNumber,
+            initialConfig.unifiedNumber,
+            initialConfig.requestNumber
+          );
+          const delParams = new URLSearchParams();
+          delParams.set("id", editingRecordId);
+          if (initialConfig.serialNumber) delParams.set("serial", initialConfig.serialNumber);
+          await fetch(`/api/records?${delParams.toString()}`, { method: "DELETE" }).catch(() => {});
+        } catch (cleanupErr) {
+          console.warn("Cleanup old record ID notice:", cleanupErr);
+        }
+      }
+
+      const payload: PortalConfig & { currentRecordId?: string; id?: string } = {
         ...config,
+        id: effectiveRecordId,
         serialNumber: cleanSerial,
         unifiedNumber: cleanUnified,
+        requestNumber: cleanReq,
         currentRecordId: effectiveRecordId,
       };
 
-      // 1. Direct Firebase Cloud Firestore save from client
+      // 2. Direct Firebase Cloud Firestore save from client
       try {
         await saveConfigToFirebase(payload);
         await savePortalRecordToFirebase(payload, effectiveRecordId);
@@ -820,12 +856,22 @@ export default function AdminDashboard() {
         setUploadPercentage(55);
       }
 
-      // 2. Server API route save (also syncs Firebase, disk & memory)
-      const res = await fetch("/api/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // 3. Server API route saves (syncs both /api/config and /api/records)
+      const [res] = await Promise.all([
+        fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
+        fetch("/api/records", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch((err) => {
+          console.warn("Server records save warning:", err);
+          return null;
+        }),
+      ]);
 
       if (isButtonsTab && attachedButtonKey) {
         setUploadPercentage(85);
@@ -833,21 +879,47 @@ export default function AdminDashboard() {
 
       if (res.ok) {
         const result = await res.json();
-        setConfig(result.data);
-        setInitialConfig(result.data);
-        setEditingRecordId(result.data.id || effectiveRecordId);
+        const savedData = result.data || payload;
+        setConfig(savedData);
+        setInitialConfig(savedData);
+        setEditingRecordId(effectiveRecordId);
         try {
-          localStorage.setItem("portal_config_cache", JSON.stringify(result.data));
+          localStorage.setItem("portal_config_cache", JSON.stringify(savedData));
           window.dispatchEvent(
             new StorageEvent("storage", {
               key: "portal_config_cache",
-              newValue: JSON.stringify(result.data),
+              newValue: JSON.stringify(savedData),
             })
           );
         } catch {
           // ignore
         }
 
+        // Instant Optimistic Update to savedRecords state for immediate modal reflect
+        const recordForState: PortalRecord = {
+          ...savedData,
+          id: effectiveRecordId,
+          serialNumber: cleanSerial,
+          unifiedNumber: cleanUnified,
+          requestNumber: cleanReq,
+          updatedAt: new Date().toISOString(),
+        };
+
+        setSavedRecords((prev) => {
+          const matchPredicate = (r: PortalRecord) =>
+            r.id === effectiveRecordId ||
+            (editingRecordId && (r.id === editingRecordId || r.currentRecordId === editingRecordId)) ||
+            (cleanSerial && r.serialNumber === cleanSerial && (!cleanUnified || r.unifiedNumber === cleanUnified));
+
+          const exists = prev.some(matchPredicate);
+          if (exists) {
+            return prev.map((r) => (matchPredicate(r) ? { ...r, ...recordForState } : r));
+          } else {
+            return [recordForState, ...prev];
+          }
+        });
+
+        // Re-fetch from Firebase to verify
         fetchSavedRecords();
 
         const targetPath = getPublicLink(result.data);
