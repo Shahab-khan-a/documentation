@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PortalConfig } from "@/types/portal";
 import { DEFAULT_PORTAL_CONFIG } from "@/constants/defaults";
@@ -66,6 +66,29 @@ export default function DocumentVerificationPage() {
     downloadLoaderActive,
     downloadFileWithAnimation,
   } = useFileDownload();
+
+  // Instant redirect to Admin Panel if /admin is typed at the end of the URL or hash
+  useEffect(() => {
+    const checkAdminRedirect = () => {
+      if (typeof window === "undefined") return;
+      const hash = (window.location.hash || "").trim().toLowerCase();
+      const pathname = (window.location.pathname || "").trim().toLowerCase();
+      if (
+        hash.endsWith("/admin") ||
+        hash.endsWith("/admin/") ||
+        hash === "#admin" ||
+        hash === "#/admin" ||
+        pathname.endsWith("/admin") ||
+        pathname.endsWith("/admin/")
+      ) {
+        window.location.href = "/admin";
+      }
+    };
+
+    checkAdminRedirect();
+    window.addEventListener("hashchange", checkAdminRedirect);
+    return () => window.removeEventListener("hashchange", checkAdminRedirect);
+  }, []);
 
   // FIRST SHOW THE LOADER: initialLoaderDone starts false
   const [initialLoaderDone, setInitialLoaderDone] = useState(false);

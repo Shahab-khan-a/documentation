@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
 import {
@@ -7,8 +6,6 @@ import {
   getPublicDriveDownloadUrl,
   getDirectDriveViewUrl,
 } from "@/lib/googleDrive";
-
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 
 const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || "";
 
@@ -27,23 +24,8 @@ export async function POST(req: Request) {
 
     const originalName = file.name || "document.pdf";
     const sanitizedName = originalName.replace(/[^a-zA-Z0-9._\-\u0600-\u06FF]/g, "_");
-    const uniqueFileName = `${Date.now()}-${sanitizedName}`;
-
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Optional local cache for local dev / offline preview
-    const localFileUrl = `/uploads/${uniqueFileName}`;
-    try {
-      if (!fs.existsSync(UPLOADS_DIR)) {
-        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-      }
-      const filePath = path.join(UPLOADS_DIR, uniqueFileName);
-      fs.writeFileSync(filePath, buffer);
-    } catch {
-      // Ignore read-only or serverless filesystem limitations (e.g. Vercel)
-    }
-
     const mimeType = file.type || "application/octet-stream";
 
     // ─── 1. GOOGLE DRIVE SERVICE ACCOUNT UPLOAD (PRIMARY & MOST RELIABLE) ───
@@ -194,15 +176,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // ─── 4. LOCAL FALLBACK (Local Development Only) ───
-    return NextResponse.json({
-      success: true,
-      source: "local",
-      fileUrl: localFileUrl,
-      driveViewLink: `https://drive.google.com/drive/folders/${folderId}`,
-      fileName: originalName,
-      fileSize: file.size,
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: credsError || "Failed to upload file to Google Drive. Please verify your Google Drive credentials.",
+      },
+      { status: 500 }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("POST /api/upload error:", error);

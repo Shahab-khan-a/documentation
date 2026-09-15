@@ -6,6 +6,21 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/sa/admin",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/sa/:path*/admin",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/DocumentVerify/:path*/admin",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
         source: "/:serial/:unified/admin",
         destination: "/admin",
         permanent: false,

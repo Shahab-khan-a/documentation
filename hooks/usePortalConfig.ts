@@ -41,6 +41,23 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
   if (typeof window !== "undefined") {
     const hash = window.location.hash || "";
     const pathname = window.location.pathname || "";
+
+    const hashLower = hash.trim().toLowerCase();
+    const pathLower = pathname.trim().toLowerCase();
+
+    // Check if user navigated to /admin at the end of the URL or hash
+    if (
+      hashLower.endsWith("/admin") ||
+      hashLower.endsWith("/admin/") ||
+      hashLower === "#admin" ||
+      hashLower === "#/admin" ||
+      pathLower.endsWith("/admin") ||
+      pathLower.endsWith("/admin/")
+    ) {
+      window.location.href = "/admin";
+      return { serial: undefined, unified: undefined, requestNumber: undefined };
+    }
+
     const source = hash.toLowerCase().includes("documentverify")
       ? hash
       : pathname.toLowerCase().includes("documentverify")
@@ -53,6 +70,12 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
         .split("/")
         .map((p) => decodeURIComponent(p).trim())
         .filter(Boolean);
+
+      // Check if any segment is "admin"
+      if (parts.some((p) => p.toLowerCase() === "admin")) {
+        window.location.href = "/admin";
+        return { serial: undefined, unified: undefined, requestNumber: undefined };
+      }
 
       const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
       if (dvIndex !== -1) {
@@ -79,6 +102,13 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
         }
       }
     }
+  }
+
+  if (serial?.toLowerCase() === "admin" || unified?.toLowerCase() === "admin") {
+    if (typeof window !== "undefined") {
+      window.location.href = "/admin";
+    }
+    return { serial: undefined, unified: undefined, requestNumber: undefined };
   }
 
   return { serial, unified, requestNumber };

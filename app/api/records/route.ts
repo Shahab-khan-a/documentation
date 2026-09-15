@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import os from "os";
 import { PortalConfig, PortalRecord } from "@/lib/portal-types";
 import {
   getAllPortalRecordsFromFirebase,
@@ -9,114 +6,43 @@ import {
   deletePortalRecordFromFirebase,
 } from "@/lib/firebase";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const RECORDS_FILE = path.join(DATA_DIR, "saved-records.json");
-const TMP_RECORDS_FILE = path.join(os.tmpdir(), "saved-records.json");
-
-// In-memory cache fallback for serverless
+// Transient in-memory cache
 declare global {
   var __portal_records_memory__: PortalRecord[] | undefined;
 }
 
-function readLocalRecords(): PortalRecord[] {
-  try {
-    if (fs.existsSync(RECORDS_FILE)) {
-      const raw = fs.readFileSync(RECORDS_FILE, "utf-8");
-      const list = JSON.parse(raw);
-      if (Array.isArray(list)) {
-        globalThis.__portal_records_memory__ = list;
-        return list;
-      }
-    }
-  } catch {
-    // try tmp or memory
-  }
-
-  if (globalThis.__portal_records_memory__) {
-    return globalThis.__portal_records_memory__;
-  }
-
-  try {
-    if (fs.existsSync(TMP_RECORDS_FILE)) {
-      const raw = fs.readFileSync(TMP_RECORDS_FILE, "utf-8");
-      const list = JSON.parse(raw);
-      if (Array.isArray(list)) {
-        globalThis.__portal_records_memory__ = list;
-        return list;
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  globalThis.__portal_records_memory__ = [];
-  return [];
-}
-
-function saveLocalRecords(records: PortalRecord[]) {
-  globalThis.__portal_records_memory__ = records;
-  let saved = false;
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2), "utf-8");
-    saved = true;
-  } catch {
-    // ignore
-  }
-
-  if (!saved) {
-    try {
-      fs.writeFileSync(TMP_RECORDS_FILE, JSON.stringify(records, null, 2), "utf-8");
-    } catch {
-      // kept in memory
-    }
-  }
-}
-
 /**
- * GET /api/records - Retrieve all saved portal records
+ * GET /api/records - Retrieve all portal records directly from Firebase Firestore
  */
 export async function GET() {
   try {
-    // 1. Fetch from Firebase Firestore
-    let fbRecords: PortalRecord[] = [];
-    try {
-      fbRecords = await getAllPortalRecordsFromFirebase();
-    } catch (fbErr) {
-      console.warn("Could not fetch records from Firebase (using local backup):", fbErr);
+    const fbRecords = await getAllPortalRecordsFromFirebase();
+    if (fbRecords && fbRecords.length > 0) {
+      globalThis.__portal_records_memory__ = fbRecords;
+      return NextResponse.json(
+        {
+          success: true,
+          records: fbRecords,
+          count: fbRecords.length,
+          source: "firebase",
+        },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+            "Pragma": "no-cache",
+          },
+        }
+      );
     }
 
-    const localRecords = readLocalRecords();
-
-    // Merge Firestore and local records (avoid duplicates by ID)
-    const map = new Map<string, PortalRecord>();
-    for (const r of localRecords) {
-      if (r && (r.id || r.serialNumber)) {
-        const id = r.id || `${r.serialNumber}_${r.unifiedNumber}`;
-        map.set(id, { ...r, id });
-      }
-    }
-    for (const r of fbRecords) {
-      if (r && (r.id || r.serialNumber)) {
-        const id = r.id || `${r.serialNumber}_${r.unifiedNumber}`;
-        map.set(id, { ...r, id });
-      }
-    }
-
-    const merged = Array.from(map.values()).sort((a, b) =>
-      (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")
-    );
-
-    // Save synced merged list locally
-    saveLocalRecords(merged);
-
+    // If Firestore returned empty or during initial connection, use memory cache if available
+    const fallback = globalThis.__portal_records_memory__ || [];
     return NextResponse.json(
       {
         success: true,
-        records: merged,
-        count: merged.length,
+        records: fallback,
+        count: fallback.length,
+        source: "memory",
       },
       {
         headers: {
@@ -126,14 +52,14 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.error("GET /api/records error:", error);
-    const local = readLocalRecords();
-    return NextResponse.json({ success: true, records: local, count: local.length });
+    console.error("GET /api/records Firebase error:", error);
+    const fallback = globalThis.__portal_records_memory__ || [];
+    return NextResponse.json({ success: true, records: fallback, count: fallback.length });
   }
 }
 
 /**
- * POST /api/records - Save a new or updated record
+ * POST /api/records - Save a record directly to Firebase Firestore
  */
 export async function POST(req: Request) {
   try {
@@ -161,30 +87,25 @@ export async function POST(req: Request) {
       updatedAt: now,
     };
 
-    // 1. Save to Firebase Firestore
-    try {
-      await savePortalRecordToFirebase(recordData, currentRecordId || recordId);
-    } catch (fbErr: any) {
-      console.warn("Could not save portal record to Firebase:", fbErr);
-    }
+    // Save directly to Firebase Firestore
+    await savePortalRecordToFirebase(recordData, currentRecordId || recordId);
 
-    // 2. Save to local storage
-    const current = readLocalRecords();
-    const existingIndex = current.findIndex((r) => r.id === recordId);
-    let updatedList: PortalRecord[];
+    // Update transient memory cache
+    const current = globalThis.__portal_records_memory__ || [];
+    const existingIndex = current.findIndex(
+      (r) =>
+        r.id === recordId ||
+        (r.serialNumber === cleanSerial && (!cleanUnified || r.unifiedNumber === cleanUnified))
+    );
     if (existingIndex >= 0) {
-      updatedList = [...current];
-      updatedList[existingIndex] = {
-        ...recordData,
-        createdAt: current[existingIndex].createdAt || now,
-      };
+      current[existingIndex] = recordData;
     } else {
-      updatedList = [recordData, ...current];
+      current.unshift(recordData);
     }
-    saveLocalRecords(updatedList);
+    globalThis.__portal_records_memory__ = current;
 
     return NextResponse.json(
-      { success: true, data: recordData, record: recordData },
+      { success: true, data: recordData, record: recordData, source: "firebase" },
       {
         headers: {
           "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
@@ -192,16 +113,16 @@ export async function POST(req: Request) {
       }
     );
   } catch (error) {
-    console.error("POST /api/records error:", error);
+    console.error("POST /api/records Firebase error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to save portal record" },
+      { success: false, error: "Failed to save portal record to Firebase" },
       { status: 500 }
     );
   }
 }
 
 /**
- * DELETE /api/records?id=... - Delete a record directly from Firebase and local store
+ * DELETE /api/records?id=... - Delete record directly from Firebase Firestore
  */
 export async function DELETE(req: Request) {
   try {
@@ -223,31 +144,27 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // 1. Delete from Firebase Firestore (all copies)
-    try {
-      await deletePortalRecordFromFirebase(cleanId, cleanSerial, cleanUnified, cleanReq);
-    } catch (fbErr) {
-      console.warn("Could not delete portal record from Firebase:", fbErr);
-    }
+    // Delete directly from Firebase Firestore
+    await deletePortalRecordFromFirebase(cleanId, cleanSerial, cleanUnified, cleanReq);
 
-    // 2. Delete from local storage (filter by both ID and serialNumber)
-    const current = readLocalRecords();
-    const filtered = current.filter((r) => {
-      if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
-      if (cleanSerial && r.serialNumber === cleanSerial) return false;
-      return true;
-    });
-    saveLocalRecords(filtered);
+    // Update memory cache
+    if (globalThis.__portal_records_memory__) {
+      globalThis.__portal_records_memory__ = globalThis.__portal_records_memory__.filter((r) => {
+        if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
+        if (cleanSerial && r.serialNumber === cleanSerial) return false;
+        return true;
+      });
+    }
 
     return NextResponse.json({
       success: true,
       deletedId: cleanId || cleanSerial,
-      remainingCount: filtered.length,
+      source: "firebase",
     });
   } catch (error) {
-    console.error("DELETE /api/records error:", error);
+    console.error("DELETE /api/records Firebase error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to delete portal record" },
+      { success: false, error: "Failed to delete portal record from Firebase" },
       { status: 500 }
     );
   }
