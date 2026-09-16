@@ -365,30 +365,22 @@ export default function AdminDashboard() {
   };
 
   const handleCreateSampleRecord = useCallback(async () => {
-    const sampleChambers = ["الرياض", "جدة", "ينبع", "الشرقية", "مكة المكرمة", "المدينة المنورة"];
-    const randomChamber = sampleChambers[Math.floor(Math.random() * sampleChambers.length)];
     const randomSerial = String(Math.floor(100000 + Math.random() * 900000));
     const randomUnified = `70${Math.floor(10000000 + Math.random() * 90000000)}`;
-    const randomReq = String(Math.floor(10000000 + Math.random() * 90000000));
 
     const newSample: PortalConfig = {
       ...DEFAULT_PORTAL_CONFIG,
-      chamberName: randomChamber,
-      facilityName: `مؤسسة ${randomChamber} لتقنية المعلومات والحلول الرقمية`,
-      facilitySubName: "فرع الاستشارات وتطوير الأنظمة",
+      chamberName: "ينبع",
+      facilityName: "",
+      facilitySubName: "",
       serialNumber: randomSerial,
       unifiedNumber: randomUnified,
-      requestNumber: randomReq,
-      requestType: "تصديق إلكتروني فوري",
-      applicantName: "محمد ناصر القحطاني",
-      creationDate: "15/09/2026-",
-      creationTime: "11:20ص",
-      amount: "100.00 ريال",
-      expiryDate: "15/09/2027-",
-      expiryTime: "11:20ص",
-      commercialRegNo: `1010${randomSerial.slice(0, 4)}`,
+      requestNumber: "",
+      requestType: "طلب مفتوح ملف",
+      applicantName: "",
+      commercialRegNo: "",
       requestStatus: "تم قبول الطلب وساري",
-      statusColor: "#10b981",
+      statusColor: "#32c5cb",
     };
 
     try {
