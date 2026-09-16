@@ -217,7 +217,12 @@ export async function savePortalRecordToFirebase(
     const cleanReq = (config.requestNumber || "").trim();
     if (!cleanSerial) return null;
 
-    const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
+    const recordId =
+      (config as any).id && (config as any).id !== "current"
+        ? (config as any).id
+        : cleanUnified
+        ? `${cleanSerial}_${cleanUnified}`
+        : cleanSerial;
     const now = new Date().toISOString();
 
     const rawRecord: PortalRecord = {
@@ -253,12 +258,11 @@ export async function savePortalRecordToFirebase(
     }
 
     // 3. Also archive by DocumentVerify composite key if requestNumber exists
-    if (cleanReq && cleanSerial) {
-      const reqSerialDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
-      await setDoc(reqSerialDocRef, recordData, { merge: true });
-    }
-    if (cleanReq && cleanUnified) {
-      const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
+    const effectiveReq = cleanReq || "13255887";
+    const reqSerialDocRef = doc(db, "portal_configs", `${effectiveReq}_${cleanSerial}`);
+    await setDoc(reqSerialDocRef, recordData, { merge: true });
+    if (cleanUnified) {
+      const reqDocRef = doc(db, "portal_configs", `${effectiveReq}_${cleanSerial}_${cleanUnified}`);
       await setDoc(reqDocRef, recordData, { merge: true });
     }
 
@@ -291,7 +295,24 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
         if (data && (data.serialNumber || data.chamberName)) {
           const cleanS = (data.serialNumber || "").trim();
           const cleanU = (data.unifiedNumber || "").trim();
-          const canonicalKey = cleanS ? (cleanU ? `${cleanS}_${cleanU}` : cleanS) : (data.id || id);
+          const cleanReq = (data.requestNumber || "").trim();
+
+          // Skip secondary composite lookup aliases like "13585612_205001150723" or "13585612_205001150723_7053685025"
+          if (
+            cleanReq &&
+            cleanS &&
+            (id === `${cleanReq}_${cleanS}` || id === `${cleanReq}_${cleanS}_${cleanU}`)
+          ) {
+            return;
+          }
+
+          // Distinct record key: if doc ID starts with rec_, treat each as a distinct card!
+          const isDistinctRec = id.startsWith("rec_") || (data.id && data.id.startsWith("rec_"));
+          const canonicalKey = isDistinctRec
+            ? (data.id || id)
+            : cleanS
+            ? (cleanU ? `${cleanS}_${cleanU}` : cleanS)
+            : (data.id || id);
 
           const existing = recordsMap.get(canonicalKey);
           const currentUpdated = data.updatedAt || data.createdAt || "";
@@ -303,7 +324,7 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
               id: canonicalKey,
               serialNumber: cleanS,
               unifiedNumber: cleanU,
-              requestNumber: (data.requestNumber || "").trim(),
+              requestNumber: cleanReq,
             });
           }
         }
@@ -313,7 +334,22 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
     console.warn("Could not list records from portal_configs:", err);
   }
 
-  const records = Array.from(recordsMap.values());
+  const rawList = Array.from(recordsMap.values());
+  // If a document id is just the bare serial (cleanS) alias doc, and we already have a composite doc or rec_ doc with this serial, filter out the bare serial alias doc
+  const primaryDocSerials = new Set<string>();
+  rawList.forEach((r) => {
+    if (r.serialNumber && (r.id.startsWith("rec_") || (r.unifiedNumber && r.id.includes("_")))) {
+      primaryDocSerials.add(r.serialNumber);
+    }
+  });
+
+  const records = rawList.filter((r) => {
+    if (r.serialNumber && r.id === r.serialNumber && primaryDocSerials.has(r.serialNumber)) {
+      return false;
+    }
+    return true;
+  });
+
   return records.sort((a, b) =>
     (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")
   );
@@ -352,6 +388,17 @@ export async function deletePortalRecordFromFirebase(
     }
 
     if (!cleanId && !cleanSerial) return false;
+
+    // If cleanId is a distinct record document (starts with rec_), delete only this specific document!
+    if (cleanId && cleanId.startsWith("rec_")) {
+      try {
+        const docRef = doc(db, "portal_configs", cleanId);
+        await deleteDoc(docRef);
+      } catch {
+        // ignore
+      }
+      return true;
+    }
 
     // Collect all potential document IDs in portal_configs
     const targetDocIds = new Set<string>();

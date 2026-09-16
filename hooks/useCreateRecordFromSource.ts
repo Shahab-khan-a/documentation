@@ -35,17 +35,15 @@ export function useCreateRecordFromSource({
   // Initialize or re-populate when sourceRecord opens
   useEffect(() => {
     if (sourceRecord && open) {
-      // Pick a new unique serial by default so it never collides with source
-      const freshSerial = generateNewSerial();
+      // Keep exact same data from source record without any automatic change
       setFormData({
         ...sourceRecord,
-        serialNumber: freshSerial,
       });
       setSerialError("");
     } else {
       setFormData(null);
     }
-  }, [sourceRecord, open, generateNewSerial]);
+  }, [sourceRecord, open]);
 
   // Compute live preview link
   const livePreviewUrl = useMemo(() => {
@@ -76,7 +74,7 @@ export function useCreateRecordFromSource({
       if (e) e.preventDefault();
       if (!formData || !sourceRecord) return;
 
-      let cleanSerial = (formData.serialNumber || "").trim();
+      const cleanSerial = (formData.serialNumber || "").trim();
       if (!cleanSerial) {
         setSerialError(
           lang === "en"
@@ -88,22 +86,16 @@ export function useCreateRecordFromSource({
         return;
       }
 
-      // Safety check: ensure serial doesn't collide with the source record
-      const sourceSerial = (sourceRecord.serialNumber || "").trim();
-      if (cleanSerial === sourceSerial) {
-        cleanSerial = `${cleanSerial}_new_${Math.floor(100 + Math.random() * 900)}`;
-        handleFieldChange("serialNumber", cleanSerial);
-      }
-
       const cleanUnified = (formData.unifiedNumber || "").trim();
       const cleanReq = (formData.requestNumber || "").trim();
       const now = new Date().toISOString();
 
-      const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
+      // Generate a unique document id so multiple identical cards can be stored independently without modifying or suffixing data
+      const uniqueId = `rec_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
 
       const newRecordToSave: PortalRecord = {
         ...formData,
-        id: recordId,
+        id: uniqueId,
         serialNumber: cleanSerial,
         unifiedNumber: cleanUnified,
         requestNumber: cleanReq,

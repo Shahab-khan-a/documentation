@@ -75,7 +75,12 @@ export async function POST(req: Request) {
     }
 
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
-    const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
+    const recordId =
+      (body as any).id && (body as any).id !== "current"
+        ? (body as any).id
+        : cleanUnified
+        ? `${cleanSerial}_${cleanUnified}`
+        : cleanSerial;
     const now = new Date().toISOString();
 
     const recordData: PortalRecord = {
@@ -94,9 +99,8 @@ export async function POST(req: Request) {
     const current = globalThis.__portal_records_memory__ || [];
     const existingIndex = current.findIndex(
       (r) =>
-        r.id === recordId ||
-        (currentRecordId && (r.id === currentRecordId || r.currentRecordId === currentRecordId)) ||
-        (r.serialNumber === cleanSerial && (!cleanUnified || r.unifiedNumber === cleanUnified))
+        (recordId && r.id === recordId) ||
+        (currentRecordId && (r.id === currentRecordId || r.currentRecordId === currentRecordId))
     );
     if (existingIndex >= 0) {
       current[existingIndex] = recordData;
@@ -152,7 +156,7 @@ export async function DELETE(req: Request) {
     if (globalThis.__portal_records_memory__) {
       globalThis.__portal_records_memory__ = globalThis.__portal_records_memory__.filter((r) => {
         if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
-        if (cleanSerial && r.serialNumber === cleanSerial) return false;
+        if (!cleanId.startsWith("rec_") && cleanSerial && r.serialNumber === cleanSerial) return false;
         return true;
       });
     }

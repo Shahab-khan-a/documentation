@@ -287,7 +287,7 @@ export default function AdminDashboard() {
     setSavedRecords((prev) =>
       prev.filter((r) => {
         if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
-        if (cleanSerial && r.serialNumber === cleanSerial) return false;
+        if (!cleanId.startsWith("rec_") && cleanSerial && r.serialNumber === cleanSerial) return false;
         return true;
       })
     );
