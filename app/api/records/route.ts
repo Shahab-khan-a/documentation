@@ -74,7 +74,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
+    const isNewRecCard = Boolean((body as any).id && (body as any).id.startsWith("rec_"));
+    const currentRecordId = isNewRecCard
+      ? undefined
+      : (body as { currentRecordId?: string }).currentRecordId;
     const recordId =
       (body as any).id && (body as any).id !== "current"
         ? (body as any).id
@@ -91,17 +94,22 @@ export async function POST(req: Request) {
       createdAt: (body as any).createdAt || now,
       updatedAt: now,
     };
+    if (isNewRecCard) {
+      delete (recordData as any).currentRecordId;
+    }
 
     // Save directly to Firebase Firestore
-    await savePortalRecordToFirebase(recordData, currentRecordId || recordId);
+    await savePortalRecordToFirebase(recordData, currentRecordId);
 
     // Update transient memory cache
     const current = globalThis.__portal_records_memory__ || [];
-    const existingIndex = current.findIndex(
-      (r) =>
-        (recordId && r.id === recordId) ||
-        (currentRecordId && (r.id === currentRecordId || r.currentRecordId === currentRecordId))
-    );
+    const existingIndex = isNewRecCard
+      ? current.findIndex((r) => r.id === recordId)
+      : current.findIndex(
+          (r) =>
+            (recordId && r.id === recordId) ||
+            (currentRecordId && (r.id === currentRecordId || r.currentRecordId === currentRecordId))
+        );
     if (existingIndex >= 0) {
       current[existingIndex] = recordData;
     } else {
@@ -120,7 +128,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("POST /api/records Firebase error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to save portal record to Firebase" },
+      { success: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

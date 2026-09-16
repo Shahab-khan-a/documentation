@@ -422,9 +422,14 @@ export default function AdminDashboard() {
       try {
         setLoadingRecords(true);
 
+        const cleanNewRecord: PortalRecord = {
+          ...newRecord,
+        };
+        delete (cleanNewRecord as any).currentRecordId;
+
         // 1. Direct Firebase save on client (WITHOUT currentRecordId to guarantee source record remains untouched)
         try {
-          await savePortalRecordToFirebase(newRecord);
+          await savePortalRecordToFirebase(cleanNewRecord);
         } catch (fbErr) {
           console.warn("Direct Firebase save notice:", fbErr);
         }
@@ -433,12 +438,12 @@ export default function AdminDashboard() {
         const res = await fetch("/api/records", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newRecord),
+          body: JSON.stringify(cleanNewRecord),
         });
         const data = await res.json();
 
         if (data.success) {
-          const publicUrl = getPublicLink(newRecord);
+          const publicUrl = getPublicLink(cleanNewRecord);
           const fullUrl =
             typeof window !== "undefined" ? `${window.location.origin}${publicUrl}` : publicUrl;
 

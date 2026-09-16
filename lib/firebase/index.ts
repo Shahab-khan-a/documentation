@@ -217,6 +217,8 @@ export async function savePortalRecordToFirebase(
     const cleanReq = (config.requestNumber || "").trim();
     if (!cleanSerial) return null;
 
+    const isNewRecCard = Boolean((config as any).id && (config as any).id.startsWith("rec_"));
+
     const recordId =
       (config as any).id && (config as any).id !== "current"
         ? (config as any).id
@@ -234,11 +236,20 @@ export async function savePortalRecordToFirebase(
       createdAt: (config as any).createdAt || now,
       updatedAt: now,
     };
+    if (isNewRecCard) {
+      delete (rawRecord as any).currentRecordId;
+    }
 
     const recordData = sanitizeFirestoreData(rawRecord);
 
     // If currentRecordId is provided and differs from new recordId, clean up old record doc
-    if (currentRecordId && currentRecordId !== recordId && currentRecordId !== "current") {
+    // BUT strictly NEVER delete when saving a new cloned card (rec_)
+    if (
+      !isNewRecCard &&
+      currentRecordId &&
+      currentRecordId !== recordId &&
+      currentRecordId !== "current"
+    ) {
       try {
         const oldDocRef = doc(db, "portal_configs", currentRecordId);
         await deleteDoc(oldDocRef);
@@ -251,8 +262,8 @@ export async function savePortalRecordToFirebase(
     const recordDocRef = doc(db, "portal_configs", recordId);
     await setDoc(recordDocRef, recordData, { merge: true });
 
-    // 2. Also save by serial if cleanSerial exists
-    if (cleanSerial && recordId !== cleanSerial) {
+    // 2. Also save by serial if cleanSerial exists (ONLY for primary records, NOT for separate rec_ cloned cards)
+    if (!isNewRecCard && cleanSerial && recordId !== cleanSerial) {
       const serialDocRef = doc(db, "portal_configs", cleanSerial);
       await setDoc(serialDocRef, recordData, { merge: true });
     }
@@ -266,9 +277,11 @@ export async function savePortalRecordToFirebase(
       await setDoc(reqDocRef, recordData, { merge: true });
     }
 
-    // 4. Save as current active config
-    const currentDocRef = doc(db, "portal_configs", "current");
-    await setDoc(currentDocRef, recordData, { merge: true });
+    // 4. Save as current active config ONLY if not a separate rec_ cloned card
+    if (!isNewRecCard) {
+      const currentDocRef = doc(db, "portal_configs", "current");
+      await setDoc(currentDocRef, recordData, { merge: true });
+    }
 
     return recordData;
   } catch (err) {
@@ -335,16 +348,16 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
   }
 
   const rawList = Array.from(recordsMap.values());
-  // If a document id is just the bare serial (cleanS) alias doc, and we already have a composite doc or rec_ doc with this serial, filter out the bare serial alias doc
-  const primaryDocSerials = new Set<string>();
+  // If a document id is just the bare serial (cleanS) alias doc, and we already have an exact composite doc `[serial]_[unified]` with the same serial, filter out only the redundant bare serial alias
+  const compositeDocSerials = new Set<string>();
   rawList.forEach((r) => {
-    if (r.serialNumber && (r.id.startsWith("rec_") || (r.unifiedNumber && r.id.includes("_")))) {
-      primaryDocSerials.add(r.serialNumber);
+    if (r.serialNumber && r.unifiedNumber && r.id === `${r.serialNumber}_${r.unifiedNumber}`) {
+      compositeDocSerials.add(r.serialNumber);
     }
   });
 
   const records = rawList.filter((r) => {
-    if (r.serialNumber && r.id === r.serialNumber && primaryDocSerials.has(r.serialNumber)) {
+    if (r.serialNumber && r.id === r.serialNumber && compositeDocSerials.has(r.serialNumber)) {
       return false;
     }
     return true;

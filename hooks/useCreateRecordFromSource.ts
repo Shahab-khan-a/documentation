@@ -102,6 +102,8 @@ export function useCreateRecordFromSource({
         createdAt: now,
         updatedAt: now,
       };
+      // CRITICAL: Ensure currentRecordId is deleted so the source record is never overwritten or deleted
+      delete (newRecordToSave as any).currentRecordId;
 
       setIsSaving(true);
       try {
