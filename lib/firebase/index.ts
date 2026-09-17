@@ -268,6 +268,14 @@ export async function savePortalRecordToFirebase(
     const recordDocRef = doc(db, "portal_configs", recordId);
     await setDoc(recordDocRef, recordData, { merge: true });
 
+    // Also mirror directly into portal_records collection so it appears in both collections in Firebase Console
+    try {
+      const recordsDocRef = doc(db, "portal_records", recordId);
+      await setDoc(recordsDocRef, recordData, { merge: true });
+    } catch {
+      // ignore if security rules are still being updated
+    }
+
     // 2. Also save by serial if cleanSerial exists (ONLY for primary records, NOT for separate rec_ cloned cards)
     if (!isNewRecCard && cleanSerial && recordId !== cleanSerial) {
       const serialDocRef = doc(db, "portal_configs", cleanSerial);
@@ -432,6 +440,12 @@ export async function deletePortalRecordFromFirebase(
       } catch {
         // ignore
       }
+      try {
+        const docRecRef = doc(db, "portal_records", cleanId);
+        await deleteDoc(docRecRef);
+      } catch {
+        // ignore
+      }
 
       // Also clean up any direct DocumentVerify lookup aliases that belong specifically to this recordId
       try {
@@ -443,6 +457,11 @@ export async function deletePortalRecordFromFirebase(
           if (d.data()?.id === cleanId) {
             try {
               await deleteDoc(doc(db, "portal_configs", dId));
+            } catch {
+              // ignore
+            }
+            try {
+              await deleteDoc(doc(db, "portal_records", dId));
             } catch {
               // ignore
             }
@@ -458,6 +477,7 @@ export async function deletePortalRecordFromFirebase(
     const targetDocIds = new Set<string>();
     if (cleanId) targetDocIds.add(cleanId);
     if (cleanSerial) {
+      targetDocIds.add(cleanSerial);
       if (cleanUnified) {
         targetDocIds.add(`${cleanSerial}_${cleanUnified}`);
       }
@@ -469,12 +489,18 @@ export async function deletePortalRecordFromFirebase(
       }
     }
 
-    // Delete direct document references
+    // Delete direct document references in both portal_configs and portal_records
     for (const docId of targetDocIds) {
       if (!docId || docId === "current" || docId === "test_connection") continue;
       try {
         const docRef = doc(db, "portal_configs", docId);
         await deleteDoc(docRef);
+      } catch {
+        // ignore
+      }
+      try {
+        const docRecRef = doc(db, "portal_records", docId);
+        await deleteDoc(docRecRef);
       } catch {
         // ignore
       }

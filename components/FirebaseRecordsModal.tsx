@@ -799,7 +799,7 @@ export function FirebaseRecordsModal({
           <div className="flex items-center gap-1.5 text-slate-500 font-medium truncate min-w-0">
             <span className="text-orange-500 font-bold shrink-0">🔥</span>
             <span className="truncate text-[11px] sm:text-xs">
-              Firebase Firestore • <code className="text-blue-700 font-bold font-mono">portal_records</code>
+              Firebase Firestore • <code className="text-blue-700 font-bold font-mono">portal_configs</code>
             </span>
           </div>
 

@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Primary Collection: Portal configurations, certificates, and archived records
+    match /portal_configs/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // 2. Portal Records Collection: Shareable links and cloned cards
+    match /portal_records/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 3. Global Rule: Allow read/write for all application collections
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
