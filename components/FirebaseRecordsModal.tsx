@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { PortalRecord } from "@/lib/portal-types";
 import { AdminLanguage, TranslationStrings } from "@/lib/admin-translations";
+import { getDualDomainUrls } from "@/lib/record-urls";
 
 // ─────────────────────────────────────────────────────────────────
 // CRISP MODERN SVG ICONS (CRYSTAL CLEAR ON ALL PLATFORMS & SCREENS)
@@ -101,7 +102,7 @@ export interface FirebaseRecordsModalProps {
   loadingRecords: boolean;
   onRefresh: () => void;
   onDeleteRecord: (record: PortalRecord) => Promise<void> | void;
-  onCopyRecordLink: (record: PortalRecord) => void;
+  onCopyRecordLink: (record: PortalRecord, domainType?: "org" | "com", url?: string) => void;
   onLoadRecordIntoEditor: (record: PortalRecord) => void;
   onCreateSampleRecord?: () => Promise<void> | void;
   deletingRecordId?: string | null;
@@ -129,6 +130,8 @@ export function FirebaseRecordsModal({
   const [selectedChamber, setSelectedChamber] = useState("ALL");
   const [recordToDelete, setRecordToDelete] = useState<PortalRecord | null>(null);
   const [isCreatingSample, setIsCreatingSample] = useState(false);
+  const [internalCopiedKey, setInternalCopiedKey] = useState<string | null>(null);
+
 
   const isRtl = lang === "ar" || lang === "ur";
 
@@ -210,6 +213,20 @@ export function FirebaseRecordsModal({
       await onDeleteRecord(recordToDelete);
     } finally {
       setRecordToDelete(null);
+    }
+  };
+
+  const handleCopyUrl = (url: string, key: string, record: PortalRecord, domainType: "org" | "com") => {
+    if (typeof window !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+    }
+    setInternalCopiedKey(key);
+    setTimeout(() => {
+      setInternalCopiedKey((prev) => (prev === key ? null : prev));
+    }, 2500);
+
+    if (onCopyRecordLink) {
+      onCopyRecordLink(record, domainType, url);
     }
   };
 
@@ -462,9 +479,11 @@ export function FirebaseRecordsModal({
                 const path = cleanSerial
                   ? `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
                   : `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
-                const fullUrl =
-                  typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
-                const isCopied = copiedRecordId === record.id;
+                const { orgUrl, comUrl } = getDualDomainUrls(path);
+                const isOrgCopied =
+                  internalCopiedKey === `${record.id}_org` ||
+                  (copiedRecordId === record.id && !internalCopiedKey);
+                const isComCopied = internalCopiedKey === `${record.id}_com`;
                 const isDeleting = deletingRecordId === record.id;
 
                 return (
@@ -556,84 +575,176 @@ export function FirebaseRecordsModal({
                         </div>
                       </div>
 
-                      {/* Interactive Public URL Strip (1-Click Copy with Feedback) */}
-                      <div
-                        onClick={() => onCopyRecordLink(record)}
-                        className={`p-2 rounded-xl border font-mono text-[11px] flex items-center justify-between gap-2 cursor-pointer transition-all ${
-                          isCopied
-                            ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs"
-                            : "bg-slate-50/90 hover:bg-blue-50/70 border-slate-200/90 hover:border-blue-300 text-slate-700"
-                        }`}
-                        title="انقر لنسخ الرابط المباشر"
-                      >
-                        <div className="flex items-center gap-1.5 truncate min-w-0">
-                          <span className="text-xs shrink-0">
-                            {isCopied ? (
-                              <IconCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <IconLinkChain className="w-3.5 h-3.5 text-blue-600" />
-                            )}
-                          </span>
-                          <span className="truncate text-blue-700 font-bold" dir="ltr">
-                            {fullUrl}
-                          </span>
-                        </div>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 transition-colors flex items-center gap-1 ${
-                            isCopied
-                              ? "bg-emerald-600 text-white"
-                              : "bg-white text-slate-600 border border-slate-200 group-hover:text-blue-600"
+                      {/* ═══════════════════════════════════════════════════════════ */}
+                      {/* DUAL DOMAIN PUBLIC URLS (.ORG AND .COM)                      */}
+                      {/* ═══════════════════════════════════════════════════════════ */}
+                      <div className="space-y-1.5">
+                        {/* 1. .ORG URL Strip */}
+                        <div
+                          onClick={() => handleCopyUrl(orgUrl, `${record.id}_org`, record, "org")}
+                          className={`p-2 rounded-xl border font-mono text-[11px] flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                            isOrgCopied
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs"
+                              : "bg-slate-50/90 hover:bg-indigo-50/70 border-slate-200/90 hover:border-indigo-300 text-slate-700"
                           }`}
+                          title={
+                            lang === "en"
+                              ? "Click to copy .org link"
+                              : lang === "ur"
+                              ? ".org لنک کاپی کرنے کے لیے کلک کریں"
+                              : "انقر لنسخ رابط .org"
+                          }
                         >
-                          {isCopied ? (
-                            <>
-                              <IconCheck className="w-3 h-3" />
-                              <span>{lang === "en" ? "Copied! ✓" : lang === "ur" ? "کاپی ہو گیا! ✓" : "تم النسخ! ✓"}</span>
-                            </>
-                          ) : (
-                            <>
-                              <IconCopy className="w-3 h-3" />
-                              <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
-                            </>
-                          )}
-                        </span>
+                          <div className="flex items-center gap-2 truncate min-w-0">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200/90 shrink-0">
+                              .ORG
+                            </span>
+                            <span className="truncate text-indigo-900 font-bold" dir="ltr">
+                              {orgUrl}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <a
+                              href={orgUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 rounded-lg hover:bg-slate-200/70 text-slate-500 hover:text-indigo-600 transition-colors"
+                              title={t.open_link_btn || "Open link"}
+                            >
+                              <IconExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                                isOrgCopied
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-white text-slate-600 border border-slate-200 group-hover:text-indigo-600"
+                              }`}
+                            >
+                              {isOrgCopied ? (
+                                <>
+                                  <IconCheck className="w-3 h-3" />
+                                  <span>{lang === "en" ? "Copied! ✓" : lang === "ur" ? "کاپی ہو گیا! ✓" : "تم النسخ! ✓"}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <IconCopy className="w-3 h-3" />
+                                  <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 2. .COM URL Strip (Right below .ORG) */}
+                        <div
+                          onClick={() => handleCopyUrl(comUrl, `${record.id}_com`, record, "com")}
+                          className={`p-2 rounded-xl border font-mono text-[11px] flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                            isComCopied
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs"
+                              : "bg-slate-50/90 hover:bg-cyan-50/70 border-slate-200/90 hover:border-cyan-300 text-slate-700"
+                          }`}
+                          title={
+                            lang === "en"
+                              ? "Click to copy .com link"
+                              : lang === "ur"
+                              ? ".com لنک کاپی کرنے کے لیے کلک کریں"
+                              : "انقر لنسخ رابط .com"
+                          }
+                        >
+                          <div className="flex items-center gap-2 truncate min-w-0">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-cyan-100 text-cyan-800 border border-cyan-200/90 shrink-0">
+                              .COM
+                            </span>
+                            <span className="truncate text-cyan-950 font-bold" dir="ltr">
+                              {comUrl}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <a
+                              href={comUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 rounded-lg hover:bg-slate-200/70 text-slate-500 hover:text-cyan-700 transition-colors"
+                              title={t.open_link_btn || "Open link"}
+                            >
+                              <IconExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                                isComCopied
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-white text-slate-600 border border-slate-200 group-hover:text-cyan-700"
+                              }`}
+                            >
+                              {isComCopied ? (
+                                <>
+                                  <IconCheck className="w-3 h-3" />
+                                  <span>{lang === "en" ? "Copied! ✓" : lang === "ur" ? "کاپی ہو گیا! ✓" : "تم النسخ! ✓"}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <IconCopy className="w-3 h-3" />
+                                  <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     {/* Action Buttons Toolbar */}
-                    <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        {/* 1. Copy Link Button */}
+                    <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs flex-wrap sm:flex-nowrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* 1. Copy .ORG Button */}
                         <button
                           type="button"
-                          onClick={() => onCopyRecordLink(record)}
-                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs text-xs ${
-                            isCopied
+                          onClick={() => handleCopyUrl(orgUrl, `${record.id}_org`, record, "org")}
+                          className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs text-xs ${
+                            isOrgCopied
                               ? "bg-emerald-600 text-white shadow-emerald-500/20"
-                              : "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/80"
+                              : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/80"
                           }`}
+                          title="Copy .org Link"
                         >
-                          {isCopied ? (
+                          {isOrgCopied ? (
                             <IconCheck className="w-3.5 h-3.5 text-white" />
                           ) : (
-                            <IconCopy className="w-3.5 h-3.5 text-blue-600" />
+                            <IconCopy className="w-3.5 h-3.5 text-indigo-600" />
                           )}
                           <span>
-                            {isCopied
-                              ? lang === "en"
-                                ? "Copied"
-                                : lang === "ur"
-                                ? "کاپی ہو گیا"
-                                : "تم النسخ"
-                              : lang === "en"
-                              ? "Copy Link"
-                              : lang === "ur"
-                              ? "لنک کاپی"
-                              : "نسخ الرابط"}
+                            {isOrgCopied
+                              ? (lang === "en" ? "Copied .ORG" : lang === "ur" ? ".ORG کاپی ہو گیا" : "تم نسخ .ORG")
+                              : (lang === "en" ? "Copy .ORG" : lang === "ur" ? "کاپی .ORG" : "نسخ .ORG")}
                           </span>
                         </button>
 
-                        {/* 2. Open Public Link Button */}
+                        {/* 2. Copy .COM Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyUrl(comUrl, `${record.id}_com`, record, "com")}
+                          className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs text-xs ${
+                            isComCopied
+                              ? "bg-emerald-600 text-white shadow-emerald-500/20"
+                              : "bg-cyan-50 text-cyan-800 hover:bg-cyan-100 border border-cyan-200/80"
+                          }`}
+                          title="Copy .com Link"
+                        >
+                          {isComCopied ? (
+                            <IconCheck className="w-3.5 h-3.5 text-white" />
+                          ) : (
+                            <IconCopy className="w-3.5 h-3.5 text-cyan-700" />
+                          )}
+                          <span>
+                            {isComCopied
+                              ? (lang === "en" ? "Copied .COM" : lang === "ur" ? ".COM کاپی ہو گیا" : "تم نسخ .COM")
+                              : (lang === "en" ? "Copy .COM" : lang === "ur" ? "کاپی .COM" : "نسخ .COM")}
+                          </span>
+                        </button>
+
+                        {/* 3. Open Public Link Button */}
                         <Link
                           href={path}
                           target="_blank"
@@ -644,7 +755,7 @@ export function FirebaseRecordsModal({
                           <span className="hidden sm:inline">{t.open_link_btn || "فتح"}</span>
                         </Link>
 
-                        {/* 3. Load into Editor Button */}
+                        {/* 4. Load into Editor Button */}
                         <button
                           type="button"
                           onClick={() => onLoadRecordIntoEditor(record)}

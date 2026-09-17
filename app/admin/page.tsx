@@ -18,6 +18,7 @@ import { UploadProgressModal } from "@/components/UploadProgressModal";
 import { UploadSuccessModal } from "@/components/UploadSuccessModal";
 import { GoogleDriveManagerModal } from "@/components/admin/GoogleDriveManagerModal";
 import { QuickPreviewModal } from "@/components/admin/QuickPreviewModal";
+import { getDualDomainUrls } from "@/lib/record-urls";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebarDrawer } from "@/components/admin/AdminSidebarDrawer";
 import { ButtonsAndFilesTab } from "@/components/admin/ButtonsAndFilesTab";
@@ -344,14 +345,28 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCopyRecordLink = (record: PortalRecord) => {
+  const handleCopyRecordLink = (
+    record: PortalRecord,
+    domainType: "org" | "com" = "org",
+    customUrl?: string
+  ) => {
     if (typeof window === "undefined") return;
     const path = getPublicLink(record);
-    const fullUrl = `${window.location.origin}${path}`;
+    const { orgUrl, comUrl } = getDualDomainUrls(path);
+    const fullUrl = customUrl || (domainType === "com" ? comUrl : orgUrl);
     navigator.clipboard.writeText(fullUrl);
     setCopiedRecordId(record.id);
     setTimeout(() => setCopiedRecordId(null), 2500);
-    showToast(t.link_copied, "success", fullUrl, t.open_link_btn);
+    showToast(
+      lang === "en"
+        ? `${domainType.toUpperCase()} Link copied!`
+        : lang === "ur"
+        ? `${domainType.toUpperCase()} لنک کاپی ہو گیا!`
+        : `تم نسخ رابط ${domainType.toUpperCase()} بنجاح!`,
+      "success",
+      fullUrl,
+      t.open_link_btn
+    );
   };
 
   const handleLoadRecordIntoEditor = (record: PortalRecord) => {
