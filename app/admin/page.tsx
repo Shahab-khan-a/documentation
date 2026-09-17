@@ -197,6 +197,23 @@ export default function AdminDashboard() {
     return JSON.stringify(config) !== JSON.stringify(initialConfig);
   }, [config, initialConfig]);
 
+  // Check if current serial number already exists in Firebase records
+  const isDuplicateSerial = useMemo(() => {
+    const current = (config.serialNumber || "").trim().toLowerCase();
+    if (!current || !savedRecords || savedRecords.length === 0) return false;
+    return savedRecords.some((r) => {
+      const rSerial = (r.serialNumber || "").trim().toLowerCase();
+      if (!rSerial) return false;
+      if (
+        editingRecordId &&
+        (r.id === editingRecordId || (r as any).currentRecordId === editingRecordId)
+      ) {
+        return false;
+      }
+      return rSerial === current;
+    });
+  }, [config.serialNumber, savedRecords, editingRecordId]);
+
   // Load stored config & drive files on mount
   useEffect(() => {
     let active = true;
@@ -779,6 +796,27 @@ export default function AdminDashboard() {
       return;
     }
     setSerialError(false);
+
+    // 🌟 DUPLICATE SERIAL CHECK: Prevent saving if serial number already exists in Firebase
+    if (isDuplicateSerial) {
+      setActiveTab("document");
+      showToast(
+        lang === "en"
+          ? `Serial Number "${cleanSerial}" already exist! Card cannot be created.`
+          : lang === "ur"
+          ? `سیریل نمبر "${cleanSerial}" already exist ہے! کارڈ نہیں بن سکتا۔`
+          : `الرقم التسلسلي "${cleanSerial}" already exist (موجود مسبقاً)! لن يتم إنشاء البطاقة.`,
+        "error"
+      );
+      setTimeout(() => {
+        const el = document.getElementById("serial-number-input");
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return;
+    }
 
     if (!cleanUnified && isFooterOrSettings) {
       cleanUnified = (initialConfig.unifiedNumber || "").trim() || "7025562547";
@@ -1567,6 +1605,7 @@ export default function AdminDashboard() {
               setFirebaseModalOpen(true);
             }}
             savedRecordsCount={savedRecords.length}
+            isDuplicateSerial={isDuplicateSerial}
             handleAddCustomField={handleAddCustomField}
             handleAddPresetField={handleAddPresetField}
             handleUpdateCustomField={handleUpdateCustomField}

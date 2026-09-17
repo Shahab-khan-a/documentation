@@ -18,6 +18,7 @@ export interface DocumentDetailsTabProps {
   setUnifiedError: (v: string | null) => void;
   onOpenFirebaseModal: () => void;
   savedRecordsCount: number;
+  isDuplicateSerial?: boolean;
   handleAddCustomField: () => void;
   handleAddPresetField: (preset: string) => void;
   handleUpdateCustomField: (id: string, key: "label" | "value", val: string) => void;
@@ -37,6 +38,7 @@ export function DocumentDetailsTab({
   setUnifiedError,
   onOpenFirebaseModal,
   savedRecordsCount,
+  isDuplicateSerial = false,
   handleAddCustomField,
   handleAddPresetField,
   handleUpdateCustomField,
@@ -56,8 +58,13 @@ export function DocumentDetailsTab({
         <button
           type="button"
           onClick={onSave}
-          disabled={saving}
-          className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+          disabled={saving || isDuplicateSerial}
+          className={`px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all flex items-center gap-1.5 ${
+            isDuplicateSerial
+              ? "bg-slate-400 cursor-not-allowed opacity-60"
+              : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 cursor-pointer active:scale-95"
+          }`}
+          title={isDuplicateSerial ? "Serial Number already exist" : t.save_btn}
         >
           <IconCheck className="w-4 h-4" />
           <span>{saving ? t.saving_btn : t.save_btn}</span>
@@ -67,7 +74,9 @@ export function DocumentDetailsTab({
       {/* 🌟 Dedicated Option Card: الرقم التسلسلي (Serial Number) */}
       <div
         className={`rounded-3xl border p-6 sm:p-7 shadow-sm transition-all ${
-          serialError
+          isDuplicateSerial
+            ? "bg-rose-50/70 border-rose-400 ring-2 ring-rose-300"
+            : serialError
             ? "bg-rose-50/60 border-rose-400 ring-2 ring-rose-300"
             : "bg-white border-slate-200/90 hover:border-blue-300"
         }`}
@@ -78,11 +87,16 @@ export function DocumentDetailsTab({
               🔢
             </span>
             <div>
-              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 flex-wrap">
                 <span>{t.serial_number}</span>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">
                   {lang === "en" ? "Required to Save" : lang === "ur" ? "سیو کیلئے لازمی" : "إجباري للحفظ"}
                 </span>
+                {isDuplicateSerial && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-600 text-white uppercase tracking-wider animate-pulse shadow-xs">
+                    already exist
+                  </span>
+                )}
               </h3>
             </div>
           </div>
@@ -126,18 +140,40 @@ export function DocumentDetailsTab({
                   : "أدخل الرقم التسلسلي هنا (مثال: 7032840279 أو 13255887)"
               }
               className={`w-full ps-8 pe-4 py-3 rounded-2xl border text-sm font-mono font-bold transition-all focus:outline-none ${
-                serialError
+                isDuplicateSerial
+                  ? "border-rose-500 bg-rose-50/80 text-rose-900 ring-2 ring-rose-400 focus:ring-rose-500 shadow-sm"
+                  : serialError
                   ? "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-400 focus:ring-rose-500"
                   : "border-slate-200 bg-slate-50/60 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500"
               }`}
             />
           </div>
 
-          {serialError && (
+          {/* Missing Serial Error */}
+          {serialError && !isDuplicateSerial && (
             <p className="text-xs font-bold text-rose-600 flex items-center gap-1.5 animate-bounce">
               <span>⚠️</span>
               <span>{t.serial_number_required_error}</span>
             </p>
+          )}
+
+          {/* Duplicate Serial Error: already exist */}
+          {isDuplicateSerial && (
+            <div className="p-3 rounded-2xl bg-rose-100/90 border border-rose-300 text-rose-900 text-xs font-bold flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-1 shadow-2xs">
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-base shrink-0">⚠️</span>
+                <span className="truncate">
+                  {lang === "en"
+                    ? `Serial Number "${config.serialNumber}" already exist! Card/page cannot be created.`
+                    : lang === "ur"
+                    ? `سیریل نمبر "${config.serialNumber}" already exist ہے! کارڈ/پیج نہیں بنے گا۔`
+                    : `الرقم التسلسلي "${config.serialNumber}" already exist (موجود مسبقاً)! لن يتم إنشاء البطاقة.`}
+                </span>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider shrink-0 shadow-xs">
+                already exist
+              </span>
+            </div>
           )}
         </div>
       </div>
