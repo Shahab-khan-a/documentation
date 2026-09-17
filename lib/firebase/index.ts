@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { firebaseConfig } from "./config";
 import { PortalConfig, PortalRecord } from "../portal-types";
+import { DEFAULT_PORTAL_CONFIG } from "../default-config";
 
 // Singleton initialization: prevents "Firebase App already exists" error during Next.js hot-reload
 const app: FirebaseApp =
@@ -270,11 +271,26 @@ export async function savePortalRecordToFirebase(
 
     // 3. Also archive by DocumentVerify composite key if requestNumber exists
     const effectiveReq = cleanReq || "13255887";
-    const reqSerialDocRef = doc(db, "portal_configs", `${effectiveReq}_${cleanSerial}`);
-    await setDoc(reqSerialDocRef, recordData, { merge: true });
-    if (cleanUnified) {
-      const reqDocRef = doc(db, "portal_configs", `${effectiveReq}_${cleanSerial}_${cleanUnified}`);
-      await setDoc(reqDocRef, recordData, { merge: true });
+    if (!isNewRecCard) {
+      const reqSerialDocRef = doc(db, "portal_configs", `${effectiveReq}_${cleanSerial}`);
+      await setDoc(reqSerialDocRef, recordData, { merge: true });
+      if (cleanUnified) {
+        const reqDocRef = doc(db, "portal_configs", `${effectiveReq}_${cleanSerial}_${cleanUnified}`);
+        await setDoc(reqDocRef, recordData, { merge: true });
+      }
+    } else {
+      // For cloned/new rec_ cards:
+      // Only set composite lookup key if the document DOES NOT exist yet or already belongs to this recordId
+      // This strictly PREVENTS overwriting the source record's verification link when the serial number is unchanged!
+      try {
+        const reqSerialDocRef = doc(db, "portal_configs", `${effectiveReq}_${cleanSerial}`);
+        const existingSnap = await getDoc(reqSerialDocRef);
+        if (!existingSnap.exists() || existingSnap.data()?.id === recordId) {
+          await setDoc(reqSerialDocRef, recordData, { merge: true });
+        }
+      } catch {
+        // ignore
+      }
     }
 
     // 4. Save as current active config ONLY if not a separate rec_ cloned card
@@ -320,12 +336,12 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
           }
 
           // Distinct record key: if doc ID starts with rec_, treat each as a distinct card!
-          const isDistinctRec = id.startsWith("rec_") || (data.id && data.id.startsWith("rec_"));
+          const isDistinctRec = id.startsWith("rec_");
           const canonicalKey = isDistinctRec
-            ? (data.id || id)
+            ? id
             : cleanS
             ? (cleanU ? `${cleanS}_${cleanU}` : cleanS)
-            : (data.id || id);
+            : id;
 
           const existing = recordsMap.get(canonicalKey);
           const currentUpdated = data.updatedAt || data.createdAt || "";
@@ -357,6 +373,7 @@ export async function getAllPortalRecordsFromFirebase(): Promise<PortalRecord[]>
   });
 
   const records = rawList.filter((r) => {
+    if (r.id && r.id.startsWith("rec_")) return true;
     if (r.serialNumber && r.id === r.serialNumber && compositeDocSerials.has(r.serialNumber)) {
       return false;
     }
@@ -448,6 +465,8 @@ export async function deletePortalRecordFromFirebase(
         for (const d of snapshot.docs) {
           const dId = d.id;
           if (dId === "current" || dId === "test_connection") continue;
+          // CRITICAL: Never accidentally delete unrelated rec_ documents during serial cleanup
+          if (dId.startsWith("rec_") && dId !== cleanId) continue;
           const data = d.data();
           const matchesSerial = cleanSerial && (data?.serialNumber === cleanSerial || dId === cleanSerial || dId.endsWith(`_${cleanSerial}`));
           const matchesId = cleanId && (data?.id === cleanId || dId === cleanId);
@@ -469,26 +488,19 @@ export async function deletePortalRecordFromFirebase(
       const currentDocRef = doc(db, "portal_configs", "current");
       const currentSnap = await getDoc(currentDocRef);
       if (currentSnap.exists()) {
-        const curData = currentSnap.data();
+        const currData = currentSnap.data();
         if (
-          (cleanSerial && curData?.serialNumber === cleanSerial) ||
-          (cleanId && (curData?.id === cleanId || curData?.currentRecordId === cleanId))
+          (cleanSerial && currData?.serialNumber === cleanSerial) ||
+          (cleanId && (currData?.id === cleanId || currData?.currentRecordId === cleanId))
         ) {
-          const configsCol = collection(db, "portal_configs");
-          const snapshot = await getDocs(configsCol);
-          let replacement: any = null;
-          for (const d of snapshot.docs) {
-            const did = d.id;
-            if (did !== "current" && did !== "test_connection" && did !== cleanId && did !== cleanSerial) {
-              const ddata = d.data();
-              if (ddata?.serialNumber && ddata.serialNumber !== cleanSerial) {
-                replacement = ddata;
-                break;
-              }
-            }
-          }
-          if (replacement) {
-            await setDoc(currentDocRef, sanitizeFirestoreData(replacement));
+          // Point 'current' to the most recent remaining record or fallback
+          const remaining = await getAllPortalRecordsFromFirebase();
+          if (remaining.length > 0) {
+            const nextActive = sanitizeFirestoreData(remaining[0]);
+            await setDoc(currentDocRef, nextActive, { merge: false });
+          } else {
+            const fallback = sanitizeFirestoreData({ ...DEFAULT_PORTAL_CONFIG });
+            await setDoc(currentDocRef, fallback, { merge: false });
           }
         }
       }
@@ -504,15 +516,47 @@ export async function deletePortalRecordFromFirebase(
 }
 
 /**
- * Find specific portal record by serial, optional unified number, and optional request number
+ * Retrieve a specific Portal Record directly by its document ID (e.g., rec_...)
+ */
+export async function getPortalRecordById(id: string): Promise<PortalConfig | null> {
+  try {
+    const cleanId = (id || "").trim();
+    if (!cleanId) return null;
+    const docRef = doc(db, "portal_configs", cleanId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as PortalConfig;
+    }
+    return null;
+  } catch (err) {
+    console.warn("Could not get portal record by id:", err);
+    return null;
+  }
+}
+
+/**
+ * Find specific portal record by serial, optional unified number, optional request number, and optional recordId
  */
 export async function getPortalRecordBySerialUnified(
   serial?: string,
   unified?: string,
-  requestNumber?: string
+  requestNumber?: string,
+  recordId?: string
 ): Promise<PortalConfig | null> {
   try {
+    // 0. If recordId is provided or serial itself is a rec_ document ID, look up directly
+    const cleanRecordId = (recordId || "").trim();
+    if (cleanRecordId) {
+      const rec = await getPortalRecordById(cleanRecordId);
+      if (rec) return rec;
+    }
+
     const cleanSerial = (serial || "").trim();
+    if (cleanSerial.startsWith("rec_")) {
+      const rec = await getPortalRecordById(cleanSerial);
+      if (rec) return rec;
+    }
+
     const cleanUnified = (unified || "").trim();
     const cleanReq = (requestNumber || "").trim();
 

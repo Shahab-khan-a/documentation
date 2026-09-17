@@ -35,10 +35,12 @@ export function useCreateRecordFromSource({
   // Initialize or re-populate when sourceRecord opens
   useEffect(() => {
     if (sourceRecord && open) {
-      // Keep exact same data from source record without any automatic change
-      setFormData({
-        ...sourceRecord,
-      });
+      // Deep clone exact same data from source record so source is completely isolated in memory
+      try {
+        setFormData(JSON.parse(JSON.stringify(sourceRecord)));
+      } catch {
+        setFormData({ ...sourceRecord });
+      }
       setSerialError("");
     } else {
       setFormData(null);
@@ -93,8 +95,15 @@ export function useCreateRecordFromSource({
       // Generate a unique document id so multiple identical cards can be stored independently without modifying or suffixing data
       const uniqueId = `rec_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
 
+      let deepClonedData: any;
+      try {
+        deepClonedData = JSON.parse(JSON.stringify(formData));
+      } catch {
+        deepClonedData = { ...formData };
+      }
+
       const newRecordToSave: PortalRecord = {
-        ...formData,
+        ...deepClonedData,
         id: uniqueId,
         serialNumber: cleanSerial,
         unifiedNumber: cleanUnified,

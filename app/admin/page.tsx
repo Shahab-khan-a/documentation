@@ -269,10 +269,12 @@ export default function AdminDashboard() {
   const getPublicLink = useCallback((conf: PortalConfig | PortalRecord) => {
     const req = conf.requestNumber?.trim() || "13255887";
     const s = conf.serialNumber?.trim();
+    const recId = (conf as any).id;
+    const query = recId && typeof recId === "string" && recId.startsWith("rec_") ? `?id=${encodeURIComponent(recId)}` : "";
     if (s) {
-      return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}`;
+      return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}${query}`;
     }
-    return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem`;
+    return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem${query}`;
   }, []);
 
   const handleDeleteRecord = async (record: PortalRecord) => {
@@ -865,9 +867,12 @@ export default function AdminDashboard() {
     }
 
     const cleanReq = (config.requestNumber || "").trim();
-    const effectiveRecordId = cleanUnified
-      ? `${cleanSerial}_${cleanUnified}`
-      : cleanSerial;
+    const effectiveRecordId =
+      editingRecordId && editingRecordId.startsWith("rec_")
+        ? editingRecordId
+        : cleanUnified
+        ? `${cleanSerial}_${cleanUnified}`
+        : cleanSerial;
 
     try {
       // 1. If editing an existing record and the ID changed, clean up previous document from Firebase

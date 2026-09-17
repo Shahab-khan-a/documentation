@@ -6,6 +6,7 @@ import {
   getConfigFromFirebase,
   savePortalRecordToFirebase,
   getPortalRecordBySerialUnified,
+  getPortalRecordById,
 } from "@/lib/firebase";
 
 // In-memory cache fallback for fast response
@@ -42,10 +43,12 @@ function mergeWithDefaults(parsed: Partial<PortalConfig>): PortalConfig {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const rawId = searchParams.get("id") || undefined;
     const rawSerial = searchParams.get("serial") || undefined;
     const rawUnified = searchParams.get("unified") || undefined;
     const rawReq = searchParams.get("req") || searchParams.get("requestNumber") || undefined;
 
+    const recordId = rawId ? decodeURIComponent(rawId).trim() : undefined;
     const serial = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
     const unified = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
     const requestNumber = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
@@ -56,10 +59,23 @@ export async function GET(req: Request) {
       "Expires": "0",
     };
 
+    // 0. If recordId is provided, query specific document directly by ID
+    if (recordId) {
+      try {
+        const specific = await getPortalRecordById(recordId);
+        if (specific) {
+          const mergedSpecific = mergeWithDefaults(specific);
+          return NextResponse.json(mergedSpecific, { headers: responseHeaders });
+        }
+      } catch (err) {
+        console.warn("Could not retrieve specific record by id from Firebase:", err);
+      }
+    }
+
     // 1. If serial or requestNumber is requested, query specific record in Firebase Firestore
     if (serial || requestNumber) {
       try {
-        const specific = await getPortalRecordBySerialUnified(serial, unified, requestNumber);
+        const specific = await getPortalRecordBySerialUnified(serial, unified, requestNumber, recordId);
         if (specific) {
           const mergedSpecific = mergeWithDefaults(specific);
           return NextResponse.json(mergedSpecific, { headers: responseHeaders });

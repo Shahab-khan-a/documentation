@@ -461,9 +461,11 @@ export function FirebaseRecordsModal({
                 const cleanSerial = (record.serialNumber || "").trim();
                 const cleanUnified = (record.unifiedNumber || "").trim();
                 const cleanReq = (record.requestNumber || "").trim() || "13255887";
+                const isCloned = Boolean(record.id && record.id.startsWith("rec_"));
+                const queryParam = isCloned ? `?id=${encodeURIComponent(record.id)}` : "";
                 const path = cleanSerial
-                  ? `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}`
-                  : `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem`;
+                  ? `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
+                  : `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
                 const fullUrl =
                   typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
                 const isCopied = copiedRecordId === record.id;

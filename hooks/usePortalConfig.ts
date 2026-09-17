@@ -6,6 +6,7 @@ import { DEFAULT_PORTAL_CONFIG, normalizePortalConfig } from "@/constants/defaul
 import { PortalConfig } from "@/types/portal";
 import {
   getPortalRecordBySerialUnified,
+  getPortalRecordById,
   getConfigFromFirebase,
   subscribeToPortalConfig,
 } from "@/lib/firebase";
@@ -14,6 +15,7 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
   serial?: string;
   unified?: string;
   requestNumber?: string;
+  recordId?: string;
 } {
   const rawSerial =
     typeof params?.serial === "string"
@@ -37,8 +39,25 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
   let serial = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
   let unified = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
   let requestNumber = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
+  let recordId: string | undefined;
 
   if (typeof window !== "undefined") {
+    // 1. Check for ?id= in search params or hash query string
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const qId = searchParams.get("id");
+      if (qId) recordId = decodeURIComponent(qId).trim();
+
+      if (!recordId && window.location.hash.includes("?")) {
+        const hashQuery = window.location.hash.split("?")[1];
+        const hashParams = new URLSearchParams(hashQuery);
+        const hId = hashParams.get("id");
+        if (hId) recordId = decodeURIComponent(hId).trim();
+      }
+    } catch {
+      // ignore
+    }
+
     const hash = window.location.hash || "";
     const pathname = window.location.pathname || "";
 
@@ -55,7 +74,7 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
       pathLower.endsWith("/admin/")
     ) {
       window.location.href = "/admin";
-      return { serial: undefined, unified: undefined, requestNumber: undefined };
+      return { serial: undefined, unified: undefined, requestNumber: undefined, recordId: undefined };
     }
 
     const source = hash.toLowerCase().includes("documentverify")
@@ -74,7 +93,13 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
       // Check if any segment is "admin"
       if (parts.some((p) => p.toLowerCase() === "admin")) {
         window.location.href = "/admin";
-        return { serial: undefined, unified: undefined, requestNumber: undefined };
+        return { serial: undefined, unified: undefined, requestNumber: undefined, recordId: undefined };
+      }
+
+      // Check if any segment is a rec_ ID
+      const recPart = parts.find((p) => p.startsWith("rec_"));
+      if (recPart && !recordId) {
+        recordId = recPart;
       }
 
       const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
@@ -85,10 +110,22 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
         }
         if (after[1]?.toLowerCase() === "mem") {
           if (!serial && after[2]) serial = after[2];
-          if (!unified && after[3]) unified = after[3];
+          if (!unified && after[3]) {
+            if (after[3].startsWith("rec_")) {
+              if (!recordId) recordId = after[3];
+            } else {
+              unified = after[3];
+            }
+          }
         } else {
           if (!serial && after[1]) serial = after[1];
-          if (!unified && after[2]) unified = after[2];
+          if (!unified && after[2]) {
+            if (after[2].startsWith("rec_")) {
+              if (!recordId) recordId = after[2];
+            } else {
+              unified = after[2];
+            }
+          }
         }
       } else if (parts.length > 0) {
         const nonReserved = parts.filter(
@@ -108,10 +145,10 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
     if (typeof window !== "undefined") {
       window.location.href = "/admin";
     }
-    return { serial: undefined, unified: undefined, requestNumber: undefined };
+    return { serial: undefined, unified: undefined, requestNumber: undefined, recordId: undefined };
   }
 
-  return { serial, unified, requestNumber };
+  return { serial, unified, requestNumber, recordId };
 }
 
 export function usePortalConfig() {
@@ -120,7 +157,7 @@ export function usePortalConfig() {
 
   // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
-    const { serial: serialParam, unified: unifiedParam, requestNumber: reqParam } =
+    const { serial: serialParam, unified: unifiedParam, requestNumber: reqParam, recordId: recordIdParam } =
       extractParamsFromUrl(params);
 
     let isMounted = true;
@@ -131,7 +168,9 @@ export function usePortalConfig() {
         const cached = localStorage.getItem("portal_config_cache");
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (!serialParam || parsed.serialNumber === serialParam) {
+          const matchRecordId = recordIdParam && parsed.id === recordIdParam;
+          const matchSerial = !recordIdParam && (!serialParam || parsed.serialNumber === serialParam);
+          if (matchRecordId || matchSerial) {
             if (isMounted) {
               setConfig(normalizePortalConfig(parsed));
             }
@@ -144,9 +183,13 @@ export function usePortalConfig() {
       // 2. Query Firebase directly on the client first
       try {
         let fbConfig: PortalConfig | null = null;
-        if (serialParam) {
-          fbConfig = await getPortalRecordBySerialUnified(serialParam, unifiedParam, reqParam);
-        } else {
+        if (recordIdParam) {
+          fbConfig = await getPortalRecordById(recordIdParam);
+        }
+        if (!fbConfig && serialParam) {
+          fbConfig = await getPortalRecordBySerialUnified(serialParam, unifiedParam, reqParam, recordIdParam);
+        }
+        if (!fbConfig && !recordIdParam && !serialParam) {
           fbConfig = await getConfigFromFirebase(serialParam, unifiedParam, reqParam);
         }
 
@@ -166,6 +209,7 @@ export function usePortalConfig() {
       // 3. Concurrent fetch via API route
       try {
         const query = new URLSearchParams();
+        if (recordIdParam) query.set("id", recordIdParam);
         if (serialParam) query.set("serial", serialParam);
         if (unifiedParam) query.set("unified", unifiedParam);
         if (reqParam) query.set("req", reqParam);
