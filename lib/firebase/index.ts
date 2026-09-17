@@ -96,6 +96,11 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
     const cleanReq = (config.requestNumber || "").trim();
     const now = new Date().toISOString();
 
+    // If this is a cloned card (starts with rec_), strictly do NOT overwrite global current or primary composite keys
+    if ((config as any).id && typeof (config as any).id === "string" && (config as any).id.startsWith("rec_")) {
+      return true;
+    }
+
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
 
     const rawData: PortalRecord = {
@@ -419,7 +424,7 @@ export async function deletePortalRecordFromFirebase(
 
     if (!cleanId && !cleanSerial) return false;
 
-    // If cleanId is a distinct record document (starts with rec_), delete only this specific document!
+    // If cleanId is a distinct record document (starts with rec_), delete this specific document and its direct aliases
     if (cleanId && cleanId.startsWith("rec_")) {
       try {
         const docRef = doc(db, "portal_configs", cleanId);
@@ -427,14 +432,32 @@ export async function deletePortalRecordFromFirebase(
       } catch {
         // ignore
       }
+
+      // Also clean up any direct DocumentVerify lookup aliases that belong specifically to this recordId
+      try {
+        const configsCol = collection(db, "portal_configs");
+        const snapshot = await getDocs(configsCol);
+        for (const d of snapshot.docs) {
+          const dId = d.id;
+          if (dId === "current" || dId === "test_connection") continue;
+          if (d.data()?.id === cleanId) {
+            try {
+              await deleteDoc(doc(db, "portal_configs", dId));
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
       return true;
     }
 
-    // Collect all potential document IDs in portal_configs
+    // Collect all potential document IDs in portal_configs for standard record
     const targetDocIds = new Set<string>();
     if (cleanId) targetDocIds.add(cleanId);
     if (cleanSerial) {
-      targetDocIds.add(cleanSerial);
       if (cleanUnified) {
         targetDocIds.add(`${cleanSerial}_${cleanUnified}`);
       }
@@ -457,30 +480,27 @@ export async function deletePortalRecordFromFirebase(
       }
     }
 
-    // Also scan portal_configs collection and delete any documents where serialNumber or id matches
-    if (cleanSerial || cleanId) {
-      try {
-        const configsCol = collection(db, "portal_configs");
-        const snapshot = await getDocs(configsCol);
-        for (const d of snapshot.docs) {
-          const dId = d.id;
-          if (dId === "current" || dId === "test_connection") continue;
-          // CRITICAL: Never accidentally delete unrelated rec_ documents during serial cleanup
-          if (dId.startsWith("rec_") && dId !== cleanId) continue;
-          const data = d.data();
-          const matchesSerial = cleanSerial && (data?.serialNumber === cleanSerial || dId === cleanSerial || dId.endsWith(`_${cleanSerial}`));
-          const matchesId = cleanId && (data?.id === cleanId || dId === cleanId);
-          if (matchesSerial || matchesId) {
-            try {
-              await deleteDoc(doc(db, "portal_configs", dId));
-            } catch {
-              // ignore
-            }
+    // Also scan portal_configs collection and delete any documents where id strictly matches or aliases pointing to cleanId
+    try {
+      const configsCol = collection(db, "portal_configs");
+      const snapshot = await getDocs(configsCol);
+      for (const d of snapshot.docs) {
+        const dId = d.id;
+        if (dId === "current" || dId === "test_connection") continue;
+        // Never accidentally delete unrelated rec_ documents
+        if (dId.startsWith("rec_") && dId !== cleanId) continue;
+        const data = d.data();
+        const matchesId = cleanId && (data?.id === cleanId || dId === cleanId);
+        if (matchesId) {
+          try {
+            await deleteDoc(doc(db, "portal_configs", dId));
+          } catch {
+            // ignore
           }
         }
-      } catch (scanErr) {
-        console.warn("Could not scan portal_configs during deletion:", scanErr);
       }
+    } catch (scanErr) {
+      console.warn("Could not scan portal_configs during deletion:", scanErr);
     }
 
     // If the active 'current' document was pointing to this deleted record, update 'current'

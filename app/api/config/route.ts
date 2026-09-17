@@ -125,7 +125,25 @@ export async function POST(req: Request) {
     const cleanSerial = (updated.serialNumber || "").trim();
     const cleanUnified = (updated.unifiedNumber || "").trim();
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
-    const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
+    const isRecCard = Boolean(body.id && typeof body.id === "string" && body.id.startsWith("rec_"));
+    const recordId = isRecCard ? body.id : cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
+
+    if (isRecCard) {
+      // Cloned record: save directly to its own document in Firestore without clobbering active global config
+      try {
+        await savePortalRecordToFirebase({ ...updated, id: recordId } as any, currentRecordId || recordId);
+      } catch (fbErr: any) {
+        console.warn("Notice saving cloned record in /api/config:", fbErr);
+      }
+      return NextResponse.json(
+        { success: true, data: { ...updated, id: recordId }, source: "firebase" },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+          },
+        }
+      );
+    }
 
     // Update transient memory cache
     globalThis.__portal_config_memory__ = updated;

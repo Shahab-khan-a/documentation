@@ -160,11 +160,10 @@ export async function DELETE(req: Request) {
     // Delete directly from Firebase Firestore
     await deletePortalRecordFromFirebase(cleanId, cleanSerial, cleanUnified, cleanReq);
 
-    // Update memory cache
+    // Update memory cache: remove only the exact deleted record
     if (globalThis.__portal_records_memory__) {
       globalThis.__portal_records_memory__ = globalThis.__portal_records_memory__.filter((r) => {
         if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
-        if (!cleanId.startsWith("rec_") && cleanSerial && r.serialNumber === cleanSerial) return false;
         return true;
       });
     }

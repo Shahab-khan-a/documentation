@@ -162,7 +162,7 @@ export default function AdminDashboard() {
       // 1. Fetch direct from Firestore on client
       try {
         const fbRecs = await getAllPortalRecordsFromFirebase();
-        if (fbRecs && fbRecs.length > 0) {
+        if (Array.isArray(fbRecs)) {
           setSavedRecords(fbRecs);
         }
       } catch (fbErr) {
@@ -209,6 +209,10 @@ export default function AdminDashboard() {
           (savedLang === "ar" || savedLang === "en" || savedLang === "ur")
         ) {
           setLang(savedLang);
+        }
+        const savedEditingId = localStorage.getItem("admin_editing_record_id");
+        if (active && savedEditingId) {
+          setEditingRecordId(savedEditingId);
         }
       } catch {
         // ignore
@@ -283,13 +287,12 @@ export default function AdminDashboard() {
     const cleanUnified = (record.unifiedNumber || "").trim();
     const cleanReq = (record.requestNumber || "").trim();
 
-    setDeletingRecordId(cleanId || cleanSerial);
+    setDeletingRecordId(cleanId);
 
-    // Instant Optimistic UI Update: Remove card from UI immediately!
+    // Instant Optimistic UI Update: Remove ONLY this exact card from UI immediately!
     setSavedRecords((prev) =>
       prev.filter((r) => {
         if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
-        if (!cleanId.startsWith("rec_") && cleanSerial && r.serialNumber === cleanSerial) return false;
         return true;
       })
     );
@@ -297,6 +300,9 @@ export default function AdminDashboard() {
     // If currently loaded in editor, clear editingRecordId
     if (editingRecordId && (editingRecordId === cleanId || editingRecordId === cleanSerial)) {
       setEditingRecordId(null);
+      try {
+        localStorage.removeItem("admin_editing_record_id");
+      } catch {}
     }
 
     try {
@@ -352,6 +358,9 @@ export default function AdminDashboard() {
     setConfig(record);
     setInitialConfig(record);
     setEditingRecordId(record.id);
+    try {
+      localStorage.setItem("admin_editing_record_id", record.id);
+    } catch {}
     setUnifiedError(null);
     setSerialError(false);
     setFirebaseModalOpen(false);
@@ -428,6 +437,9 @@ export default function AdminDashboard() {
           ...newRecord,
         };
         delete (cleanNewRecord as any).currentRecordId;
+
+        // Instant Optimistic UI Update: Prepend new card immediately to records list
+        setSavedRecords((prev) => [cleanNewRecord, ...prev.filter((r) => r.id !== cleanNewRecord.id)]);
 
         // 1. Direct Firebase save on client (WITHOUT currentRecordId to guarantee source record remains untouched)
         try {
@@ -867,16 +879,16 @@ export default function AdminDashboard() {
     }
 
     const cleanReq = (config.requestNumber || "").trim();
-    const effectiveRecordId =
-      editingRecordId && editingRecordId.startsWith("rec_")
-        ? editingRecordId
-        : cleanUnified
-        ? `${cleanSerial}_${cleanUnified}`
-        : cleanSerial;
+    const isRecRecord = Boolean(editingRecordId && editingRecordId.startsWith("rec_"));
+    const effectiveRecordId = isRecRecord
+      ? editingRecordId!
+      : cleanUnified
+      ? `${cleanSerial}_${cleanUnified}`
+      : cleanSerial;
 
     try {
-      // 1. If editing an existing record and the ID changed, clean up previous document from Firebase
-      if (editingRecordId && editingRecordId !== effectiveRecordId) {
+      // 1. If editing an existing standard record and the ID changed, clean up previous document from Firebase
+      if (editingRecordId && editingRecordId !== effectiveRecordId && !isRecRecord) {
         try {
           await deletePortalRecordFromFirebase(
             editingRecordId,
@@ -893,19 +905,23 @@ export default function AdminDashboard() {
         }
       }
 
-      const payload: PortalConfig & { currentRecordId?: string; id?: string } = {
+      const payload: PortalRecord = {
         ...config,
         id: effectiveRecordId,
         serialNumber: cleanSerial,
         unifiedNumber: cleanUnified,
         requestNumber: cleanReq,
         currentRecordId: effectiveRecordId,
+        updatedAt: new Date().toISOString(),
+        createdAt: (config as any).createdAt || (initialConfig as any).createdAt || new Date().toISOString(),
       };
 
       // 2. Direct Firebase Cloud Firestore save from client
       try {
-        await saveConfigToFirebase(payload);
-        await savePortalRecordToFirebase(payload, effectiveRecordId);
+        if (!isRecRecord) {
+          await saveConfigToFirebase(payload);
+        }
+        await savePortalRecordToFirebase(payload, editingRecordId || effectiveRecordId);
       } catch (fbErr: unknown) {
         console.warn("Direct Firebase client save notice:", fbErr);
       }
@@ -942,6 +958,7 @@ export default function AdminDashboard() {
         setInitialConfig(savedData);
         setEditingRecordId(effectiveRecordId);
         try {
+          localStorage.setItem("admin_editing_record_id", effectiveRecordId);
           localStorage.setItem("portal_config_cache", JSON.stringify(savedData));
           window.dispatchEvent(
             new StorageEvent("storage", {
@@ -966,8 +983,7 @@ export default function AdminDashboard() {
         setSavedRecords((prev) => {
           const matchPredicate = (r: PortalRecord) =>
             r.id === effectiveRecordId ||
-            (editingRecordId && (r.id === editingRecordId || r.currentRecordId === editingRecordId)) ||
-            (cleanSerial && r.serialNumber === cleanSerial && (!cleanUnified || r.unifiedNumber === cleanUnified));
+            (editingRecordId && (r.id === editingRecordId || r.currentRecordId === editingRecordId));
 
           const exists = prev.some(matchPredicate);
           if (exists) {
