@@ -4,7 +4,6 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { PortalRecord } from "@/lib/portal-types";
 import { AdminLanguage, TranslationStrings } from "@/lib/admin-translations";
-import { CreateNewFromRecordModal } from "./admin/CreateNewFromRecordModal";
 
 // ─────────────────────────────────────────────────────────────────
 // CRISP MODERN SVG ICONS (CRYSTAL CLEAR ON ALL PLATFORMS & SCREENS)
@@ -105,7 +104,6 @@ export interface FirebaseRecordsModalProps {
   onCopyRecordLink: (record: PortalRecord) => void;
   onLoadRecordIntoEditor: (record: PortalRecord) => void;
   onCreateSampleRecord?: () => Promise<void> | void;
-  onSaveAsNewRecord?: (newRecord: PortalRecord) => Promise<boolean | void> | boolean | void;
   deletingRecordId?: string | null;
   copiedRecordId?: string | null;
   lang: AdminLanguage;
@@ -122,7 +120,6 @@ export function FirebaseRecordsModal({
   onCopyRecordLink,
   onLoadRecordIntoEditor,
   onCreateSampleRecord,
-  onSaveAsNewRecord,
   deletingRecordId,
   copiedRecordId,
   lang,
@@ -131,7 +128,6 @@ export function FirebaseRecordsModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChamber, setSelectedChamber] = useState("ALL");
   const [recordToDelete, setRecordToDelete] = useState<PortalRecord | null>(null);
-  const [recordForCreateNew, setRecordForCreateNew] = useState<PortalRecord | null>(null);
   const [isCreatingSample, setIsCreatingSample] = useState(false);
 
   const isRtl = lang === "ar" || lang === "ur";
@@ -648,24 +644,7 @@ export function FirebaseRecordsModal({
                           <span className="hidden sm:inline">{t.open_link_btn || "فتح"}</span>
                         </Link>
 
-                        {/* 3. 🌟 CREATE NEW BUTTON 🌟 */}
-                        <button
-                          type="button"
-                          onClick={() => setRecordForCreateNew(record)}
-                          className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-600 hover:to-purple-600 text-indigo-700 hover:text-white border border-indigo-200/90 hover:border-indigo-600 font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 text-xs shadow-2xs group/new"
-                          title={
-                            lang === "en"
-                              ? "Create New Certificate from this Card"
-                              : lang === "ur"
-                              ? "اس کارڈ سے نیا سرٹیفکیٹ بنائیں"
-                              : "إنشاء وثيقة جديدة من هذا السجل"
-                          }
-                        >
-                          <span className="text-xs group-hover/new:rotate-12 transition-transform">✨</span>
-                          <span>Create New</span>
-                        </button>
-
-                        {/* 4. Load into Editor Button */}
+                        {/* 3. Load into Editor Button */}
                         <button
                           type="button"
                           onClick={() => onLoadRecordIntoEditor(record)}
@@ -816,24 +795,8 @@ export function FirebaseRecordsModal({
             </button>
           </div>
         </div>
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 6. DEDICATED CREATE NEW FROM RECORD DIALOG                     */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {recordForCreateNew && (
-          <CreateNewFromRecordModal
-            open={Boolean(recordForCreateNew)}
-            onClose={() => setRecordForCreateNew(null)}
-            sourceRecord={recordForCreateNew}
-            onSaveAsNew={async (newRec) => {
-              if (onSaveAsNewRecord) {
-                return await onSaveAsNewRecord(newRec);
-              }
-            }}
-            lang={lang}
-            t={t}
-          />
-        )}
       </div>
     </div>
   );
 }
+

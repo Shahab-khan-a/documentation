@@ -428,70 +428,6 @@ export default function AdminDashboard() {
     }
   }, [fetchSavedRecords, lang, showToast]);
 
-  const handleSaveAsNewRecord = useCallback(
-    async (newRecord: PortalRecord) => {
-      try {
-        setLoadingRecords(true);
-
-        const cleanNewRecord: PortalRecord = {
-          ...newRecord,
-        };
-        delete (cleanNewRecord as any).currentRecordId;
-
-        // Instant Optimistic UI Update: Prepend new card immediately to records list
-        setSavedRecords((prev) => [cleanNewRecord, ...prev.filter((r) => r.id !== cleanNewRecord.id)]);
-
-        // 1. Direct Firebase save on client (WITHOUT currentRecordId to guarantee source record remains untouched)
-        try {
-          await savePortalRecordToFirebase(cleanNewRecord);
-        } catch (fbErr) {
-          console.warn("Direct Firebase save notice:", fbErr);
-        }
-
-        // 2. Server API save & in-memory cache update
-        const res = await fetch("/api/records", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cleanNewRecord),
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          const publicUrl = getPublicLink(cleanNewRecord);
-          const fullUrl =
-            typeof window !== "undefined" ? `${window.location.origin}${publicUrl}` : publicUrl;
-
-          showToast(
-            lang === "en"
-              ? `New certificate #${newRecord.serialNumber} created successfully!`
-              : lang === "ur"
-              ? `نیا سرٹیفکیٹ #${newRecord.serialNumber} کامیابی سے بن گیا! پرانا کارڈ محفوظ ہے۔`
-              : `تم حفظ وإنشاء البطاقة الجديدة #${newRecord.serialNumber} بنجاح! السجل الأصلي لم يتغير.`,
-            "success",
-            fullUrl,
-            t.open_link_btn
-          );
-
-          await fetchSavedRecords();
-          return true;
-        } else {
-          showToast(data.error || "Failed to create new record", "error");
-          return false;
-        }
-      } catch (err) {
-        console.error("Error creating new record:", err);
-        showToast(
-          lang === "en" ? "Failed to create new record" : "خطأ أثناء حفظ السجل الجديد",
-          "error"
-        );
-        return false;
-      } finally {
-        setLoadingRecords(false);
-      }
-    },
-    [fetchSavedRecords, getPublicLink, lang, showToast, t.open_link_btn]
-  );
-
   const confirmDeleteDriveFile = async (file: DriveItem) => {
     setDeletingFileId(file.id);
     try {
@@ -1521,7 +1457,6 @@ export default function AdminDashboard() {
         onCopyRecordLink={handleCopyRecordLink}
         onLoadRecordIntoEditor={handleLoadRecordIntoEditor}
         onCreateSampleRecord={handleCreateSampleRecord}
-        onSaveAsNewRecord={handleSaveAsNewRecord}
         deletingRecordId={deletingRecordId}
         copiedRecordId={copiedRecordId}
         lang={lang}
