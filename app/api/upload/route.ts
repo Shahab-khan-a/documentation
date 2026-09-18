@@ -100,8 +100,8 @@ export async function POST(req: Request) {
             // Non-critical if permissions already inherited from parent folder
           }
 
-          // 🌟 Auto-mirror to Secondary Google Drive (Dildar Ali Swati account)
-          mirrorFileToSecondaryDrive(driveResId, originalName).catch(() => {});
+          // 🌟 Auto-mirror to Secondary Google Drive (Dildar Ali Swati account - Real independent duplicate file)
+          mirrorFileToSecondaryDrive(driveResId, originalName, buffer, mimeType).catch(() => {});
 
           const driveDownloadUrl = `/api/drive/download?fileId=${driveResId}&name=${encodeURIComponent(originalName)}`;
           const directDownloadUrl = getPublicDriveDownloadUrl(driveResId);
@@ -150,8 +150,8 @@ export async function POST(req: Request) {
         }
 
         if (gasData && gasData.success && gasData.fileId) {
-          // 🌟 Auto-mirror to Secondary Google Drive (Dildar Ali Swati account)
-          mirrorFileToSecondaryDrive(gasData.fileId, originalName).catch(() => {});
+          // 🌟 Auto-mirror to Secondary Google Drive (Dildar Ali Swati account - Real independent duplicate file)
+          mirrorFileToSecondaryDrive(gasData.fileId, originalName, buffer, mimeType).catch(() => {});
 
           const driveDownloadUrl = `/api/drive/download?fileId=${gasData.fileId}&name=${encodeURIComponent(originalName)}`;
           return NextResponse.json({
