@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs";
-import { getGoogleDriveClient, getPublicDriveDownloadUrl } from "@/lib/googleDrive";
+import {
+  getGoogleDriveClient,
+  getPublicDriveDownloadUrl,
+  clearDriveFilesCache,
+} from "@/lib/googleDrive";
+
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 // 1. Fetch files from Google Drive (GET route)
 export async function GET(req: Request) {
@@ -20,6 +26,24 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const folderIdParam = searchParams.get("folderId");
     const activeFolderId = folderIdParam || folderId;
+    const forceRefresh =
+      searchParams.get("refresh") === "true" ||
+      searchParams.get("force") === "true" ||
+      searchParams.get("refresh") === "1";
+
+    // ── Check in-memory cache if not forcing refresh ──
+    const cacheMap = globalThis.__drive_files_cache__;
+    if (!forceRefresh && cacheMap && cacheMap[activeFolderId]) {
+      const cached = cacheMap[activeFolderId];
+      if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return NextResponse.json({
+          success: true,
+          configured: true,
+          files: cached.files,
+          cached: true,
+        });
+      }
+    }
 
     let query = "trashed = false";
     if (activeFolderId && activeFolderId !== "YOUR_SHARED_FOLDER_ID_HERE") {
@@ -41,7 +65,16 @@ export async function GET(req: Request) {
       directDownloadUrl: f.id ? getPublicDriveDownloadUrl(f.id) : undefined,
     }));
 
-    return NextResponse.json({ success: true, configured: true, files });
+    // Update in-memory cache
+    if (!globalThis.__drive_files_cache__) {
+      globalThis.__drive_files_cache__ = {};
+    }
+    globalThis.__drive_files_cache__[activeFolderId] = {
+      files,
+      timestamp: Date.now(),
+    };
+
+    return NextResponse.json({ success: true, configured: true, files, cached: false });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : String(error);
     console.error("Drive API Error:", error);
@@ -127,6 +160,9 @@ export async function DELETE(req: Request) {
         // non-critical
       }
     }
+
+    // Invalidate drive files cache so UI gets fresh list
+    clearDriveFilesCache();
 
     return NextResponse.json({
       success: true,

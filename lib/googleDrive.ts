@@ -52,6 +52,26 @@ function parseCredentialsString(raw: string): GoogleServiceAccountCredentials | 
   return null;
 }
 
+interface DriveClientCache {
+  drive: drive_v3.Drive | null;
+  auth: InstanceType<typeof google.auth.GoogleAuth> | null;
+  folderId: string;
+  isConfigured: boolean;
+  source: string;
+  error?: string;
+}
+
+let cachedDriveClient: DriveClientCache | null = null;
+
+// Global cache for Drive file listing to make repeated calls near-instantaneous
+declare global {
+  var __drive_files_cache__: { [folderId: string]: { files: any[]; timestamp: number } } | undefined;
+}
+
+export function clearDriveFilesCache() {
+  globalThis.__drive_files_cache__ = {};
+}
+
 /**
  * Returns an authenticated Google Drive client instance with multi-tier credentials resolution:
  * 1. process.env.GOOGLE_CREDENTIALS (Raw JSON or Base64 encoded JSON)
@@ -59,14 +79,11 @@ function parseCredentialsString(raw: string): GoogleServiceAccountCredentials | 
  * 3. Individual env vars: GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY
  * 4. Local file: credentials.json (for local development)
  */
-export function getGoogleDriveClient(): {
-  drive: drive_v3.Drive | null;
-  auth: InstanceType<typeof google.auth.GoogleAuth> | null;
-  folderId: string;
-  isConfigured: boolean;
-  source: string;
-  error?: string;
-} {
+export function getGoogleDriveClient(): DriveClientCache {
+  if (cachedDriveClient && cachedDriveClient.isConfigured) {
+    return cachedDriveClient;
+  }
+
   const folderId = GOOGLE_DRIVE_FOLDER_ID;
 
   // Tier 1: GOOGLE_CREDENTIALS environment variable
@@ -81,13 +98,14 @@ export function getGoogleDriveClient(): {
         },
         scopes: SCOPES,
       });
-      return {
+      cachedDriveClient = {
         drive: google.drive({ version: "v3", auth }),
         auth,
         folderId,
         isConfigured: true,
         source: "env_GOOGLE_CREDENTIALS",
       };
+      return cachedDriveClient;
     }
   }
 
@@ -103,13 +121,14 @@ export function getGoogleDriveClient(): {
         },
         scopes: SCOPES,
       });
-      return {
+      cachedDriveClient = {
         drive: google.drive({ version: "v3", auth }),
         auth,
         folderId,
         isConfigured: true,
         source: "env_GOOGLE_SERVICE_ACCOUNT_KEY",
       };
+      return cachedDriveClient;
     }
   }
 
@@ -123,13 +142,14 @@ export function getGoogleDriveClient(): {
       },
       scopes: SCOPES,
     });
-    return {
+    cachedDriveClient = {
       drive: google.drive({ version: "v3", auth }),
       auth,
       folderId,
       isConfigured: true,
       source: "env_separate_keys",
     };
+    return cachedDriveClient;
   }
 
   // Tier 4: Local credentials.json file
@@ -147,13 +167,14 @@ export function getGoogleDriveClient(): {
           },
           scopes: SCOPES,
         });
-        return {
+        cachedDriveClient = {
           drive: google.drive({ version: "v3", auth }),
           auth,
           folderId,
           isConfigured: true,
           source: "local_credentials_json",
         };
+        return cachedDriveClient;
       }
     } catch (e) {
       console.warn("Failed reading local credentials.json:", e);

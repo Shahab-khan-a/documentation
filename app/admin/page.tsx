@@ -138,10 +138,11 @@ export default function AdminDashboard() {
     buttonTitle?: string;
   } | null>(null);
 
-  const fetchDriveFiles = useCallback(async () => {
+  const fetchDriveFiles = useCallback(async (forceRefresh = false) => {
     setLoadingDriveFiles(true);
     try {
-      const res = await fetch("/api/drive");
+      const url = forceRefresh ? "/api/drive?refresh=true" : "/api/drive";
+      const res = await fetch(url);
       const data = await res.json();
       if (data.configured !== undefined) {
         setDriveConfigured(Boolean(data.configured));
@@ -237,24 +238,14 @@ export default function AdminDashboard() {
       }
 
       try {
-        const [configRes, driveRes, recordsRes] = await Promise.all([
+        const [configRes, recordsRes] = await Promise.all([
           fetch("/api/config", { cache: "no-store" }),
-          fetch("/api/drive"),
           fetch("/api/records", { cache: "no-store" }),
         ]);
         if (active && configRes.ok) {
           const cfg = await configRes.json();
           setConfig(cfg);
           setInitialConfig(cfg);
-        }
-        if (active && driveRes.ok) {
-          const driveData = await driveRes.json();
-          if (driveData.configured !== undefined) {
-            setDriveConfigured(Boolean(driveData.configured));
-          }
-          if (driveData.success && Array.isArray(driveData.files)) {
-            setDriveFiles(driveData.files);
-          }
         }
         if (active && recordsRes.ok) {
           const recData = await recordsRes.json();
@@ -267,9 +258,29 @@ export default function AdminDashboard() {
       } finally {
         if (active) {
           setLoading(false);
-          setLoadingDriveFiles(false);
         }
       }
+
+      // ── Non-blocking background prefetch for Google Drive (does not block dashboard loading) ──
+      fetch("/api/drive")
+        .then((r) => r.json())
+        .then((driveData) => {
+          if (!active) return;
+          if (driveData.configured !== undefined) {
+            setDriveConfigured(Boolean(driveData.configured));
+          }
+          if (driveData.success && Array.isArray(driveData.files)) {
+            setDriveFiles(driveData.files);
+          }
+        })
+        .catch((err) => {
+          console.warn("Background drive prefetch notice:", err);
+        })
+        .finally(() => {
+          if (active) {
+            setLoadingDriveFiles(false);
+          }
+        });
     }
     init();
     return () => {
@@ -1439,7 +1450,7 @@ export default function AdminDashboard() {
           setDrivePickerTarget(null);
           setDriveModalOpen(false);
         }}
-        onRefresh={fetchDriveFiles}
+        onRefresh={() => fetchDriveFiles(true)}
         onUploadDirect={handleUploadDirectToDrive}
         onUpdateFile={handleUpdateDriveFile}
         onSelectForTarget={async (target, file) => {

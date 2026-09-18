@@ -6,6 +6,7 @@ import {
   getPublicDriveDownloadUrl,
   getDirectDriveViewUrl,
   mirrorFileToSecondaryDrive,
+  clearDriveFilesCache,
 } from "@/lib/googleDrive";
 
 const APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || "";
@@ -103,6 +104,9 @@ export async function POST(req: Request) {
           // 🌟 Auto-mirror to Secondary Google Drive (Dildar Ali Swati account - Real independent duplicate file)
           mirrorFileToSecondaryDrive(driveResId, originalName, buffer, mimeType).catch(() => {});
 
+          // Invalidate Drive cache so subsequent queries see the new file
+          clearDriveFilesCache();
+
           const driveDownloadUrl = `/api/drive/download?fileId=${driveResId}&name=${encodeURIComponent(originalName)}`;
           const directDownloadUrl = getPublicDriveDownloadUrl(driveResId);
           const finalViewLink = driveViewLink || getDirectDriveViewUrl(driveResId);
@@ -152,6 +156,8 @@ export async function POST(req: Request) {
         if (gasData && gasData.success && gasData.fileId) {
           // 🌟 Auto-mirror to Secondary Google Drive (Dildar Ali Swati account - Real independent duplicate file)
           mirrorFileToSecondaryDrive(gasData.fileId, originalName, buffer, mimeType).catch(() => {});
+
+          clearDriveFilesCache();
 
           const driveDownloadUrl = `/api/drive/download?fileId=${gasData.fileId}&name=${encodeURIComponent(originalName)}`;
           return NextResponse.json({
