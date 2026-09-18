@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { PortalConfig } from "@/types/portal";
 import { AdminLanguage, TranslationStrings } from "@/constants/translations";
 import { IconDocument, IconCheck, IconTrash } from "@/components/icons/AdminIcons";
@@ -44,6 +44,40 @@ export function DocumentDetailsTab({
   handleUpdateCustomField,
   handleRemoveCustomField,
 }: DocumentDetailsTabProps) {
+  // Track if user manually typed or changed Commercial Reg No independently
+  const [isCommercialOverridden, setIsCommercialOverridden] = useState(false);
+
+  // Smart Sync: typing in Unified Number automatically copies to Commercial Reg No
+  // unless the user has manually edited Commercial Reg No
+  const handleUnifiedNumberChange = (val: string) => {
+    setUnifiedError(null);
+    const shouldSync =
+      !isCommercialOverridden &&
+      (!config.commercialRegNo || config.commercialRegNo === config.unifiedNumber);
+
+    if (shouldSync) {
+      setConfig((prev) => ({
+        ...prev,
+        unifiedNumber: val,
+        commercialRegNo: val,
+      }));
+    } else {
+      setConfig((prev) => ({
+        ...prev,
+        unifiedNumber: val,
+      }));
+    }
+  };
+
+  // Manual change in Commercial Reg No breaks the auto-sync link
+  const handleCommercialRegChange = (val: string) => {
+    // If user completely clears it, allow re-syncing; otherwise mark as overridden
+    setIsCommercialOverridden(Boolean(val.trim()));
+    setConfig((prev) => ({
+      ...prev,
+      commercialRegNo: val,
+    }));
+  };
   return (
     <div className="space-y-6">
       {/* Header description banner */}
@@ -250,10 +284,7 @@ export function DocumentDetailsTab({
               type="text"
               dir="ltr"
               value={config.unifiedNumber}
-              onChange={(e) => {
-                setUnifiedError(null);
-                setConfig({ ...config, unifiedNumber: e.target.value });
-              }}
+              onChange={(e) => handleUnifiedNumberChange(e.target.value)}
               className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono focus:outline-none transition-all ${
                 unifiedError
                   ? "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-400 focus:ring-rose-500"
@@ -285,7 +316,7 @@ export function DocumentDetailsTab({
               type="text"
               dir="ltr"
               value={config.commercialRegNo}
-              onChange={(e) => setConfig({ ...config, commercialRegNo: e.target.value })}
+              onChange={(e) => handleCommercialRegChange(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
             />
           </div>
