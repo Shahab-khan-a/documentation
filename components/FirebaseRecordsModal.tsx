@@ -744,18 +744,7 @@ export function FirebaseRecordsModal({
                           </span>
                         </button>
 
-                        {/* 3. Open Public Link Button */}
-                        <Link
-                          href={path}
-                          target="_blank"
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all flex items-center gap-1 no-underline active:scale-95 text-xs border border-slate-200/60"
-                          title={t.open_link_btn}
-                        >
-                          <IconExternalLink className="w-3.5 h-3.5 text-slate-600" />
-                          <span className="hidden sm:inline">{t.open_link_btn || "فتح"}</span>
-                        </Link>
-
-                        {/* 4. Load into Editor Button */}
+                        {/* 3. Load into Editor Button */}
                         <button
                           type="button"
                           onClick={() => onLoadRecordIntoEditor(record)}
@@ -765,6 +754,17 @@ export function FirebaseRecordsModal({
                           <IconEdit className="w-3.5 h-3.5 text-slate-600" />
                           <span className="hidden sm:inline">{t.edit_in_editor || "تعديل"}</span>
                         </button>
+
+                        {/* 4. Open Public Link Button */}
+                        <Link
+                          href={path}
+                          target="_blank"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all flex items-center gap-1 no-underline active:scale-95 text-xs border border-slate-200/60"
+                          title={t.open_link_btn}
+                        >
+                          <IconExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                          <span className="hidden sm:inline">{t.open_link_btn || "فتح"}</span>
+                        </Link>
                       </div>
 
                       {/* 4. 🌟 CRYSTAL-CLEAR VIBRANT DIRECT DELETE BUTTON 🌟 */}
