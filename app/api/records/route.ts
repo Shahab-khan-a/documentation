@@ -5,6 +5,7 @@ import {
   savePortalRecordToFirebase,
   deletePortalRecordFromFirebase,
 } from "@/lib/firebase";
+import { backupRecordsToGoogleDrive } from "@/lib/firebase-drive-backup";
 
 // Transient in-memory cache
 declare global {
@@ -117,6 +118,11 @@ export async function POST(req: Request) {
     }
     globalThis.__portal_records_memory__ = current;
 
+    // 🌟 Automatic background sync to Primary & Secondary Google Drive
+    backupRecordsToGoogleDrive(current).catch((err) =>
+      console.warn("[Auto-Backup] Background Drive backup warning:", err)
+    );
+
     return NextResponse.json(
       { success: true, data: recordData, record: recordData, source: "firebase" },
       {
@@ -167,6 +173,11 @@ export async function DELETE(req: Request) {
         return true;
       });
     }
+
+    // 🌟 Automatic background sync to Primary & Secondary Google Drive
+    backupRecordsToGoogleDrive(globalThis.__portal_records_memory__).catch((err) =>
+      console.warn("[Auto-Backup] Background Drive backup warning:", err)
+    );
 
     return NextResponse.json({
       success: true,

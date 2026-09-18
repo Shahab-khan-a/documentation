@@ -131,6 +131,8 @@ export function FirebaseRecordsModal({
   const [recordToDelete, setRecordToDelete] = useState<PortalRecord | null>(null);
   const [isCreatingSample, setIsCreatingSample] = useState(false);
   const [internalCopiedKey, setInternalCopiedKey] = useState<string | null>(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [backupSuccessMsg, setBackupSuccessMsg] = useState<string | null>(null);
 
 
   const isRtl = lang === "ar" || lang === "ur";
@@ -204,6 +206,32 @@ export function FirebaseRecordsModal({
       await onCreateSampleRecord();
     } finally {
       setIsCreatingSample(false);
+    }
+  };
+
+  const handleBackupToDrive = async () => {
+    setIsBackingUp(true);
+    setBackupSuccessMsg(null);
+    try {
+      const res = await fetch("/api/backup", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        const count = data.data?.totalRecords || savedRecords.length;
+        const msg =
+          lang === "en"
+            ? `Backed up ${count} records to Primary & Secondary Google Drive!`
+            : lang === "ur"
+            ? `${count} ریکارڈز گوگل ڈرائیو میں محفوظ کر دیے گئے!`
+            : `تم نسخ ${count} سجل احتياطياً إلى Google Drive بنجاح!`;
+        setBackupSuccessMsg(msg);
+        setTimeout(() => setBackupSuccessMsg(null), 5000);
+      } else {
+        alert(data.error || "Backup failed");
+      }
+    } catch {
+      alert("Error triggering Drive backup");
+    } finally {
+      setIsBackingUp(false);
     }
   };
 
@@ -288,6 +316,38 @@ export function FirebaseRecordsModal({
                 </button>
               )}
 
+              {/* 🌟 Google Drive Master Backup Button */}
+              <button
+                type="button"
+                onClick={handleBackupToDrive}
+                disabled={isBackingUp || loadingRecords}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 border border-emerald-400/30"
+                title={
+                  lang === "en"
+                    ? "Backup all Firebase records to Google Drive"
+                    : lang === "ur"
+                    ? "گوگل ڈرائیو میں تمام ریکارڈز بیک اپ کریں"
+                    : "نسخ احتياطي لكل السجلات إلى Google Drive"
+                }
+              >
+                <span className={`text-sm leading-none ${isBackingUp ? "animate-spin" : ""}`}>
+                  {isBackingUp ? "⏳" : "💾"}
+                </span>
+                <span className="hidden sm:inline">
+                  {isBackingUp
+                    ? lang === "en"
+                      ? "Backing up..."
+                      : lang === "ur"
+                      ? "بیک اپ ہو رہا ہے..."
+                      : "جاري النسخ..."
+                    : lang === "en"
+                    ? "Drive Backup"
+                    : lang === "ur"
+                    ? "ڈرائیو بیک اپ"
+                    : "نسخ احتياطي"}
+                </span>
+              </button>
+
               <button
                 type="button"
                 onClick={onRefresh}
@@ -324,6 +384,23 @@ export function FirebaseRecordsModal({
             </div>
           </div>
         </div>
+
+        {/* 🌟 Backup Success Notification Banner */}
+        {backupSuccessMsg && (
+          <div className="bg-emerald-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between animate-in slide-in-from-top duration-200 shadow-inner shrink-0">
+            <div className="flex items-center gap-2">
+              <span>✅</span>
+              <span>{backupSuccessMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBackupSuccessMsg(null)}
+              className="text-white/80 hover:text-white text-sm cursor-pointer ps-2"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* 2. SEARCH & CHAMBER FILTER TOOLBAR                              */}
