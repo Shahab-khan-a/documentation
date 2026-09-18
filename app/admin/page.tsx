@@ -540,6 +540,12 @@ export default function AdminDashboard() {
       if (cleanSerial) {
         saveConfigToFirebase(sanitized).catch(() => {});
         savePortalRecordToFirebase(sanitized, recId).catch(() => {});
+        // 🌟 Direct Parallel Google Drive Save (Zero waiting for Firebase)
+        fetch("/api/backup?action=save_record", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sanitized),
+        }).catch(() => {});
       }
       await fetch("/api/config", {
         method: "POST",
@@ -919,7 +925,7 @@ export default function AdminDashboard() {
         setUploadPercentage(55);
       }
 
-      // 3. Server API route saves (syncs both /api/config and /api/records)
+      // 3. Server API route saves (Parallel save: Firebase and Google Drive simultaneously)
       const [res] = await Promise.all([
         fetch("/api/config", {
           method: "POST",
@@ -932,6 +938,15 @@ export default function AdminDashboard() {
           body: JSON.stringify(payload),
         }).catch((err) => {
           console.warn("Server records save warning:", err);
+          return null;
+        }),
+        // 🌟 Direct Parallel Google Drive Save (Zero waiting for Firebase)
+        fetch("/api/backup?action=save_record", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch((err) => {
+          console.warn("Direct Drive record save warning:", err);
           return null;
         }),
       ]);

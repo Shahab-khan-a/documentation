@@ -223,3 +223,232 @@ export async function restoreRecordsToFirebase(
     return { success: false, restoredCount: 0, error: msg };
   }
 }
+
+export interface CleanFormData {
+  serialNumber: string;
+  unifiedNumber: string;
+  requestNumber: string;
+  requestType: string;
+  requestStatus: string;
+  statusColor?: string;
+  chamberName: string;
+  facilityName: string;
+  facilitySubName: string;
+  commercialRegNo: string;
+  applicantName: string;
+  creationDate: string;
+  creationTime: string;
+  expiryDate: string;
+  expiryTime: string;
+  amount: string;
+  customFields: Array<{ id: string; label: string; value: string }>;
+  buttons: {
+    downloadButton: {
+      label: string;
+      actionType: string;
+      fileUrl?: string;
+      fileName?: string;
+      url?: string;
+      fileSize?: number;
+    };
+    verifyAgainButton: {
+      label: string;
+      actionType: string;
+      url: string;
+    };
+    backButton: {
+      label: string;
+      actionType: string;
+      url: string;
+    };
+  };
+  footer: {
+    companyNameAr: string;
+    companyNameEn: string;
+    supportPhone: string;
+    devLabel: string;
+    copyrightText: string;
+  };
+  savedAt: string;
+}
+
+/**
+ * Extracts ONLY the actual fields visible in the Admin Panel form,
+ * stripping out all internal Firebase flags, cache tokens, composite keys, and system variables.
+ */
+export function extractCleanFormData(raw: any): CleanFormData {
+  return {
+    serialNumber: (raw?.serialNumber || "").trim(),
+    unifiedNumber: (raw?.unifiedNumber || "").trim(),
+    requestNumber: (raw?.requestNumber || "").trim(),
+    requestType: raw?.requestType || "",
+    requestStatus: raw?.requestStatus || "",
+    statusColor: raw?.statusColor || "",
+    chamberName: raw?.chamberName || "",
+    facilityName: raw?.facilityName || "",
+    facilitySubName: raw?.facilitySubName || "",
+    commercialRegNo: raw?.commercialRegNo || "",
+    applicantName: raw?.applicantName || "",
+    creationDate: raw?.creationDate || "",
+    creationTime: raw?.creationTime || "",
+    expiryDate: raw?.expiryDate || "",
+    expiryTime: raw?.expiryTime || "",
+    amount: raw?.amount || "",
+    customFields: Array.isArray(raw?.customFields)
+      ? raw.customFields.map((f: any) => ({
+          id: String(f?.id || ""),
+          label: String(f?.label || ""),
+          value: String(f?.value || ""),
+        }))
+      : [],
+    buttons: {
+      downloadButton: {
+        label: raw?.downloadButton?.label || "",
+        actionType: raw?.downloadButton?.actionType || "file",
+        fileUrl: raw?.downloadButton?.fileUrl || "",
+        fileName: raw?.downloadButton?.fileName || "",
+        url: raw?.downloadButton?.url || "",
+        fileSize: raw?.downloadButton?.fileSize,
+      },
+      verifyAgainButton: {
+        label: raw?.verifyAgainButton?.label || "",
+        actionType: raw?.verifyAgainButton?.actionType || "link",
+        url: raw?.verifyAgainButton?.url || "",
+      },
+      backButton: {
+        label: raw?.backButton?.label || "",
+        actionType: raw?.backButton?.actionType || "link",
+        url: raw?.backButton?.url || "",
+      },
+    },
+    footer: {
+      companyNameAr: raw?.companyNameAr || "",
+      companyNameEn: raw?.companyNameEn || "",
+      supportPhone: raw?.supportPhone || "",
+      devLabel: raw?.devLabel || "",
+      copyrightText: raw?.copyrightText || "",
+    },
+    savedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Saves this clean form record directly and immediately into both Google Drive accounts.
+ * Google Drive does NOT wait for Firebase — saves direct to:
+ * - Primary Drive (kms475531k)
+ * - Secondary Drive (dildaraliswati720)
+ * File Name: record_<serialNumber>.json
+ */
+export async function saveCleanRecordDirectToDrive(
+  formData: any
+): Promise<{ success: boolean; fileName: string; primaryFileId?: string; secondaryFileId?: string; error?: string }> {
+  const cleanData = extractCleanFormData(formData);
+  const serial = cleanData.serialNumber;
+  if (!serial) {
+    return { success: false, fileName: "", error: "Missing serial number" };
+  }
+
+  const fileName = `record_${serial}.json`;
+  const jsonContent = JSON.stringify(cleanData, null, 2);
+  const buffer = Buffer.from(jsonContent, "utf-8");
+  const mimeType = "application/json";
+
+  let primaryFileId: string | undefined;
+
+  // 1. Save directly to Primary Google Drive
+  const { drive, folderId, isConfigured } = getGoogleDriveClient();
+  const effectiveFolderId = folderId || GOOGLE_DRIVE_FOLDER_ID;
+
+  if (isConfigured && drive) {
+    try {
+      const searchRes = await drive.files.list({
+        q: `'${effectiveFolderId}' in parents and name = '${fileName}' and trashed = false`,
+        fields: "files(id, name)",
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      });
+
+      const existing = searchRes.data.files?.[0];
+
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null);
+
+      if (existing?.id) {
+        const updateRes = await drive.files.update({
+          fileId: existing.id,
+          supportsAllDrives: true,
+          media: { mimeType, body: stream },
+          fields: "id, name",
+        });
+        primaryFileId = updateRes.data.id || existing.id;
+        console.log(`[Direct Drive Save] Updated clean record in Primary Drive: ${fileName}`);
+      } else {
+        const createRes = await drive.files.create({
+          supportsAllDrives: true,
+          requestBody: {
+            name: fileName,
+            parents: [effectiveFolderId],
+          },
+          media: { mimeType, body: stream },
+          fields: "id, name",
+        });
+        primaryFileId = createRes.data.id || undefined;
+        if (primaryFileId) {
+          drive.permissions.create({
+            fileId: primaryFileId,
+            supportsAllDrives: true,
+            requestBody: { role: "reader", type: "anyone" },
+          }).catch(() => {});
+        }
+        console.log(`[Direct Drive Save] Created clean record in Primary Drive: ${fileName}`);
+      }
+    } catch (driveErr) {
+      console.warn("[Direct Drive Save] Primary Drive save notice:", driveErr);
+    }
+  }
+
+  // Fallback if service account not available: Primary Apps Script
+  if (!primaryFileId && process.env.GOOGLE_APPS_SCRIPT_URL) {
+    try {
+      const gasRes = await fetch(process.env.GOOGLE_APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          base64: buffer.toString("base64"),
+          fileName,
+          mimeType,
+        }),
+      });
+      const data = JSON.parse(await gasRes.text());
+      if (data.success && data.fileId) primaryFileId = data.fileId;
+    } catch (gasErr) {
+      console.warn("[Direct Drive Save] Primary Apps Script fallback notice:", gasErr);
+    }
+  }
+
+  // 2. Save directly to Secondary Google Drive (dildaraliswati720)
+  let secondaryFileId: string | undefined;
+  try {
+    const mirrorRes = await mirrorFileToSecondaryDrive(
+      primaryFileId || "record",
+      fileName,
+      buffer,
+      mimeType
+    );
+    if (mirrorRes.success) {
+      secondaryFileId = mirrorRes.secondaryFileId;
+      console.log(`[Direct Drive Save] Saved clean record to Secondary Drive: ${fileName} (${secondaryFileId})`);
+    }
+  } catch (mirrorErr) {
+    console.warn("[Direct Drive Save] Secondary Drive save warning:", mirrorErr);
+  }
+
+  return {
+    success: Boolean(primaryFileId || secondaryFileId),
+    fileName,
+    primaryFileId,
+    secondaryFileId,
+  };
+}
+

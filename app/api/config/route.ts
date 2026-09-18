@@ -8,6 +8,7 @@ import {
   getPortalRecordBySerialUnified,
   getPortalRecordById,
 } from "@/lib/firebase";
+import { backupRecordsToGoogleDrive } from "@/lib/firebase-drive-backup";
 
 // In-memory cache fallback for fast response
 declare global {
@@ -155,6 +156,11 @@ export async function POST(req: Request) {
     } catch (fbErr: any) {
       console.warn("Notice while saving to Firebase Firestore in API route:", fbErr);
     }
+
+    // 🌟 Automatic background sync to Primary & Secondary Google Drive
+    backupRecordsToGoogleDrive().catch((err) =>
+      console.warn("[Auto-Backup] Background Drive backup warning:", err)
+    );
 
     return NextResponse.json(
       { success: true, data: updated, source: "firebase" },

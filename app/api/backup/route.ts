@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   backupRecordsToGoogleDrive,
   restoreRecordsToFirebase,
+  saveCleanRecordDirectToDrive,
   MASTER_BACKUP_FILENAME,
 } from "@/lib/firebase-drive-backup";
 import { getAllPortalRecordsFromFirebase } from "@/lib/firebase";
@@ -29,11 +30,21 @@ export async function GET() {
 /**
  * POST /api/backup - Trigger backup of all Firebase records to Google Drive
  * Optional query parameter: ?action=restore (with JSON body to restore)
+ * Optional query parameter: ?action=save_record (with JSON body to save single clean record directly to Drive)
  */
 export async function POST(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
+
+    // 🌟 Direct immediate save of clean form record to Google Drive (Zero Firebase waiting)
+    if (action === "save_record") {
+      const body = await req.json();
+      const saveResult = await saveCleanRecordDirectToDrive(body);
+      return NextResponse.json(saveResult, {
+        status: saveResult.success ? 200 : 400,
+      });
+    }
 
     // Optional restore functionality
     if (action === "restore") {
