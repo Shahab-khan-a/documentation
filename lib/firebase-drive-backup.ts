@@ -20,6 +20,7 @@ export interface DriveBackupResult {
   primaryFileId?: string;
   secondaryFileId?: string;
   primaryDriveUrl?: string;
+  records?: PortalRecord[];
   error?: string;
 }
 
@@ -99,6 +100,7 @@ export async function backupRecordsToGoogleDrive(
             requestBody: {
               name: MASTER_BACKUP_FILENAME,
               parents: [effectiveFolderId],
+              mimeType,
             },
             media: {
               mimeType,
@@ -109,23 +111,10 @@ export async function backupRecordsToGoogleDrive(
 
           primaryFileId = createRes.data.id || undefined;
           primaryDriveUrl = createRes.data.webViewLink || undefined;
-
-          // Set public read permission for easy inspection
-          if (primaryFileId) {
-            try {
-              await drive.permissions.create({
-                fileId: primaryFileId,
-                supportsAllDrives: true,
-                requestBody: { role: "reader", type: "anyone" },
-              });
-            } catch {
-              // Ignore if inherited
-            }
-          }
           console.log(`[Drive Backup] Created new master backup in Primary Drive: ${primaryFileId}`);
         }
-      } catch (driveErr) {
-        console.warn("[Drive Backup] Primary Service Account upload failed, checking fallback:", driveErr);
+      } catch (primaryErr) {
+        console.warn("[Drive Backup] Primary Drive backup warning:", primaryErr);
       }
     }
 
@@ -152,11 +141,11 @@ export async function backupRecordsToGoogleDrive(
       }
     }
 
-    // 3. Upload / Update in Secondary Google Drive (dildaraliswati720@gmail.com)
+    // 3. Mirror directly and independently to Secondary Google Drive (dildaraliswati720)
     let secondaryFileId: string | undefined;
     try {
       const mirrorRes = await mirrorFileToSecondaryDrive(
-        primaryFileId || "backup",
+        primaryFileId || "master_backup_payload",
         MASTER_BACKUP_FILENAME,
         buffer,
         mimeType
@@ -177,6 +166,7 @@ export async function backupRecordsToGoogleDrive(
       primaryFileId,
       secondaryFileId,
       primaryDriveUrl,
+      records,
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -191,16 +181,25 @@ export async function backupRecordsToGoogleDrive(
   }
 }
 
+export { convertRecordToMainPageArabic } from "@/lib/arabic-format";
+
 /**
  * Restores records from a JSON string or buffer into Firebase Firestore.
+ * Supports BOTH standard format AND Main Page Arabic format!
  */
 export async function restoreRecordsToFirebase(
   jsonString: string
 ): Promise<{ success: boolean; restoredCount: number; error?: string }> {
   try {
     const parsed = JSON.parse(jsonString);
-    const recordsList: PortalRecord[] = Array.isArray(parsed)
+    const recordsList: any[] = Array.isArray(parsed)
       ? parsed
+      : Array.isArray(parsed["الوثائق"])
+      ? parsed["الوثائق"]
+      : Array.isArray(parsed["الوثائق_المعتمدة"])
+      ? parsed["الوثائق_المعتمدة"]
+      : Array.isArray(parsed["السجلات"])
+      ? parsed["السجلات"]
       : Array.isArray(parsed.records)
       ? parsed.records
       : [];
@@ -210,11 +209,100 @@ export async function restoreRecordsToFirebase(
     }
 
     let restored = 0;
-    for (const rec of recordsList) {
-      if (rec && (rec.serialNumber || (rec as any).id)) {
-        await savePortalRecordToFirebase(rec);
-        restored++;
-      }
+    for (const raw of recordsList) {
+      if (!raw) continue;
+      const serialNumber =
+        raw["الرقم التسلسلي للوثيقة"] ||
+        raw["الرقم التسلسلي"] ||
+        raw.serialNumber ||
+        raw.id;
+
+      if (!serialNumber) continue;
+
+      const id = String(raw.id || `${serialNumber}_${raw["الرقم الموحد (700)"] || raw.unifiedNumber || "doc"}`);
+      const recordToSave: PortalRecord = {
+        id,
+        serialNumber: String(serialNumber).trim(),
+        chamberName: raw["إسم الغرفة"] || raw.chamberName || "",
+        facilityName: raw["إسم المنشأة"] || raw.facilityName || "",
+        facilitySubName: raw["نوع المنشأة"] || raw.facilitySubName || "",
+        unifiedNumber: raw["الرقم الموحد (700)"] || raw.unifiedNumber || "",
+        requestNumber: raw["رقم الطلب"] || raw.requestNumber || "",
+        requestType: raw["نوع الطلب"] || raw.requestType || "",
+        applicantName: raw["إسم مقدم الطلب"] || raw.applicantName || "",
+        creationDate:
+          raw["تاريخ الإنشاء"] ||
+          raw["تاريخ ووقت إنشاء الطلب"]?.split(" ")?.[0] ||
+          raw.creationDate ||
+          "",
+        creationTime:
+          raw["وقت الإنشاء"] ||
+          raw["تاريخ ووقت إنشاء الطلب"]?.split(" ")?.[1] ||
+          raw.creationTime ||
+          "",
+        amount: raw["مبلغ الطلب"] || raw.amount || "",
+        expiryDate:
+          raw["تاريخ الإنتهاء"] ||
+          raw["تاريخ صلاحية الطلب"]?.split(" ")?.[0] ||
+          raw.expiryDate ||
+          "",
+        expiryTime:
+          raw["وقت الإنتهاء"] ||
+          raw["تاريخ صلاحية الطلب"]?.split(" ")?.[1] ||
+          raw.expiryTime ||
+          "",
+        commercialRegNo: raw["رقم السجل التجاري"] || raw.commercialRegNo || "",
+        requestStatus: raw["حالة الطلب"] || raw.requestStatus || "معتمد",
+        portalTitle: raw.portalTitle || "بوابة خدمات المشتركين",
+        pageTitle: raw.pageTitle || "التحقق من الوثائق",
+        devLabel: raw.devLabel || "",
+        companyNameAr: raw.companyNameAr || "",
+        companyNameEn: raw.companyNameEn || "",
+        supportPhone: raw.supportPhone || "",
+        socialLinks: raw.socialLinks || {},
+        loaderGifUrl: raw.loaderGifUrl || "",
+        buttonLoaderGifUrl: raw.buttonLoaderGifUrl || "",
+        loaderDurationMs: raw.loaderDurationMs || 0,
+        buttonLoaderDurationMs: raw.buttonLoaderDurationMs || 0,
+        enableInitialLoader: Boolean(raw.enableInitialLoader),
+        downloadButton: {
+          label: "تحميل",
+          actionType: "file",
+          fileUrl:
+            raw["أزرار ومرفقات الوثيقة"]?.["رابط ملف الوثيقة (PDF)"] ||
+            raw.downloadButton?.fileUrl ||
+            "",
+          fileName:
+            raw["أزرار ومرفقات الوثيقة"]?.["إسم ملف الوثيقة"] ||
+            raw.downloadButton?.fileName ||
+            "",
+          url:
+            raw["أزرار ومرفقات الوثيقة"]?.["رابط ملف الوثيقة (PDF)"] ||
+            raw.downloadButton?.url ||
+            "",
+        },
+        verifyAgainButton: {
+          label: "التحقق مرة آخرى",
+          actionType: "link",
+          url:
+            raw["أزرار ومرفقات الوثيقة"]?.["رابط التحقق مرة آخرى"] ||
+            raw.verifyAgainButton?.url ||
+            "",
+        },
+        backButton: {
+          label: "العودة",
+          actionType: "link",
+          url:
+            raw["أزرار ومرفقات الوثيقة"]?.["رابط زر العودة"] ||
+            raw.backButton?.url ||
+            "",
+        },
+        createdAt: raw["تاريخ التوثيق والتحديث"] || raw.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await savePortalRecordToFirebase(recordToSave);
+      restored++;
     }
 
     return { success: true, restoredCount: restored };
