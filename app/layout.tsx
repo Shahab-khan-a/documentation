@@ -28,6 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning className={`${cairo.variable} h-full antialiased`}>
+      <head>
+        <link rel="preload" as="image" href="/loader.gif" type="image/gif" />
+      </head>
       <body suppressHydrationWarning className="min-h-full flex flex-col font-sans bg-[#fbfbfb] text-slate-800">
         <DevIndicatorRemover />
         <FirebaseAnalytics />

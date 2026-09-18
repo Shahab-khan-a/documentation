@@ -289,31 +289,43 @@ export function usePortalConfig() {
 
   // Synchronize browser URL bar to display '/sa/#/DocumentVerify/[requestNumber]/mem/[serialNumber]' (without unified number)
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const currentPath = window.location.pathname;
+    // Do not rewrite if inside admin or api
+    if (currentPath.startsWith("/admin") || currentPath.startsWith("/api")) {
+      return;
+    }
+
+    const { serial: urlSerial, requestNumber: urlReq } = extractParamsFromUrl(params);
+
+    // If the active URL already has specific serial/request parameters, don't prematurely overwrite with fallback default config
+    if (
+      (urlSerial || urlReq) &&
+      config.serialNumber === DEFAULT_PORTAL_CONFIG.serialNumber &&
+      config.requestNumber === DEFAULT_PORTAL_CONFIG.requestNumber &&
+      (urlSerial !== DEFAULT_PORTAL_CONFIG.serialNumber || urlReq !== DEFAULT_PORTAL_CONFIG.requestNumber)
+    ) {
+      return;
+    }
+
     const cleanSerial = config.serialNumber?.trim();
     const cleanReq = config.requestNumber?.trim() || "13255887";
     if (!cleanSerial) return;
 
     const targetPath = `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}`;
 
-    if (typeof window !== "undefined") {
-      const currentPath = window.location.pathname;
-      // Do not rewrite if inside admin or api
-      if (currentPath.startsWith("/admin") || currentPath.startsWith("/api")) {
-        return;
-      }
-      const currentFull = `${window.location.pathname}${window.location.hash}`;
-      try {
-        if (
-          decodeURIComponent(currentFull) !== decodeURIComponent(targetPath) &&
-          decodeURIComponent(currentFull) !== decodeURIComponent(`/sa${targetPath.replace("/sa", "")}`)
-        ) {
-          window.history.replaceState(null, "", targetPath);
-        }
-      } catch {
+    const currentFull = `${window.location.pathname}${window.location.hash}`;
+    try {
+      if (
+        decodeURIComponent(currentFull) !== decodeURIComponent(targetPath) &&
+        decodeURIComponent(currentFull) !== decodeURIComponent(`/sa${targetPath.replace("/sa", "")}`)
+      ) {
         window.history.replaceState(null, "", targetPath);
       }
+    } catch {
+      window.history.replaceState(null, "", targetPath);
     }
-  }, [config.serialNumber, config.requestNumber]);
+  }, [config.serialNumber, config.requestNumber, params]);
 
   return { config, setConfig };
 }

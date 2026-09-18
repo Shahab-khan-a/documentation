@@ -18,17 +18,28 @@ export function LoaderScreen({
 }: LoaderScreenProps) {
   const [fadeOut, setFadeOut] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [gifSrc, setGifSrc] = useState<string>(() => gifUrl || DEFAULT_FALLBACK_GIF);
+  const [gifSrc, setGifSrc] = useState<string>(() => {
+    const base = gifUrl || DEFAULT_FALLBACK_GIF;
+    return restartKey ? `${base}?t=${restartKey}` : base;
+  });
+  const imgRef = React.useRef<HTMLImageElement>(null);
 
-  // Client-side only: update src with timestamp/restartKey so the GIF plays from frame 1 without SSR hydration mismatch
+  // Only update src with cache-busting timestamp if explicitly requested via restartKey (e.g. button re-click)
   useEffect(() => {
     const base = gifUrl || DEFAULT_FALLBACK_GIF;
     if (restartKey) {
       setGifSrc(`${base}?t=${restartKey}`);
     } else {
-      setGifSrc(`${base}?t=${Date.now()}`);
+      setGifSrc(base);
     }
   }, [gifUrl, restartKey]);
+
+  // Mark loaded immediately if browser already has the image ready in cache
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setImgLoaded(true);
+    }
+  }, [gifSrc]);
 
   useEffect(() => {
     const fadeDuration = 500;
@@ -79,8 +90,9 @@ export function LoaderScreen({
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imgRef}
         suppressHydrationWarning
-        key={gifSrc}
+        key={restartKey ? String(restartKey) : "initial-loader"}
         src={gifSrc}
         alt="بوابة خدمات الغرفة"
         loading="eager"
