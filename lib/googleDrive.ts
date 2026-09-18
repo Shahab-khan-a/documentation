@@ -5,6 +5,9 @@ import fs from "fs";
 export const GOOGLE_DRIVE_FOLDER_ID =
   process.env.GOOGLE_DRIVE_FOLDER_ID || "1x_l6AuXh8rhOTWPrtOS0muxJr-y8zwtl";
 
+export const GOOGLE_DRIVE_FOLDER_ID_SECONDARY =
+  process.env.GOOGLE_DRIVE_FOLDER_ID_SECONDARY || "1CGdhBWgVVLRRFVbkXLfy1bKBzB4N0h6D";
+
 const SCOPES = ["https://www.googleapis.com/auth/drive"];
 
 interface GoogleServiceAccountCredentials {
@@ -175,4 +178,42 @@ export function getPublicDriveDownloadUrl(fileId: string): string {
  */
 export function getDirectDriveViewUrl(fileId: string): string {
   return `https://drive.google.com/file/d/${fileId}/view`;
+}
+
+/**
+ * Automatically mirrors an uploaded file into the secondary Google Drive folder (Dildar Ali Swati account).
+ * Creates a Google Drive shortcut pointing directly to the target file.
+ * Safe execution with error handling so it never interrupts the main upload flow.
+ */
+export async function mirrorFileToSecondaryDrive(
+  fileId: string,
+  fileName: string
+): Promise<boolean> {
+  const secondaryFolderId =
+    process.env.GOOGLE_DRIVE_FOLDER_ID_SECONDARY || GOOGLE_DRIVE_FOLDER_ID_SECONDARY;
+
+  if (!secondaryFolderId || !fileId) return false;
+
+  try {
+    const { drive, isConfigured } = getGoogleDriveClient();
+    if (!drive || !isConfigured) return false;
+
+    await drive.files.create({
+      supportsAllDrives: true,
+      requestBody: {
+        name: fileName,
+        mimeType: "application/vnd.google-apps.shortcut",
+        parents: [secondaryFolderId],
+        shortcutDetails: {
+          targetId: fileId,
+        },
+      },
+      fields: "id, name",
+    });
+    console.log(`[Secondary Drive] File "${fileName}" mirrored to folder ${secondaryFolderId}`);
+    return true;
+  } catch (err) {
+    console.warn("[Secondary Drive] Mirroring warning:", err);
+    return false;
+  }
 }
