@@ -67,20 +67,20 @@ export function LoaderScreen({
         position: "fixed",
         inset: 0,
         zIndex: 99999,
-        background: "#ffffff",
+        background: "transparent",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         transition: "opacity 0.5s ease",
         opacity: fadeOut ? 0 : 1,
-        pointerEvents: fadeOut ? "none" : "auto",
+        pointerEvents: "none",
         fontFamily: "'Cairo','Segoe UI',Arial,sans-serif",
       }}
     >
       {/* Graceful placeholder spinner while GIF decodes */}
       {!imgLoaded && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none bg-white z-0">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none bg-white/70 backdrop-blur-xs z-0">
           <div className="w-11 h-11 rounded-full border-3 border-blue-600 border-t-transparent animate-spin" />
           <span className="text-xs font-bold text-slate-600 tracking-wide">
             جاري التحقق من الوثيقة...
@@ -97,6 +97,7 @@ export function LoaderScreen({
         alt="بوابة خدمات الغرفة"
         loading="eager"
         decoding="sync"
+        draggable={false}
         onLoad={() => setImgLoaded(true)}
         onError={(e) => {
           setImgLoaded(true);
@@ -108,6 +109,8 @@ export function LoaderScreen({
           objectFit: "contain",
           position: "relative",
           zIndex: 1,
+          pointerEvents: "none",
+          userSelect: "none",
         }}
       />
     </div>

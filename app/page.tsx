@@ -37,20 +37,26 @@ function ResultsPage({
       className="min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
       style={{
         fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
-        opacity: revealed ? 1 : 0,
-        pointerEvents: revealed ? "auto" : "none",
+        opacity: 1,
+        pointerEvents: "auto",
         transition: "opacity 0.25s ease",
       }}
     >
-      <PublicHeader portalTitle={config.portalTitle} />
-      <DocumentDetailsCard
-        config={config}
-        isDownloading={isDownloading}
-        onDownload={onDownload}
-        onVerifyAgain={onVerifyAgain}
-        onBack={onBack}
-      />
-      <PublicFooter config={config} />
+      <div
+        style={{
+          pointerEvents: revealed ? "auto" : "none",
+        }}
+      >
+        <PublicHeader portalTitle={config.portalTitle} />
+        <DocumentDetailsCard
+          config={config}
+          isDownloading={isDownloading}
+          onDownload={onDownload}
+          onVerifyAgain={onVerifyAgain}
+          onBack={onBack}
+        />
+        <PublicFooter config={config} />
+      </div>
     </div>
   );
 }
