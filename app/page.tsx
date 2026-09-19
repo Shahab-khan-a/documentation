@@ -37,8 +37,9 @@ function ResultsPage({
       className="min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
       style={{
         fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
-        opacity: 1,
-        pointerEvents: "auto",
+        opacity: revealed ? 1 : 0,
+        visibility: revealed ? "visible" : "hidden",
+        pointerEvents: revealed ? "auto" : "none",
         transition: "opacity 0.25s ease",
       }}
     >
@@ -102,6 +103,9 @@ export default function DocumentVerificationPage() {
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   const handleLoaderDone = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
     setInitialLoaderDone(true);
   }, []);
 

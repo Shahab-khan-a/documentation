@@ -67,7 +67,7 @@ export function LoaderScreen({
         position: "fixed",
         inset: 0,
         zIndex: 99999,
-        background: "transparent",
+        background: "#f9f8ff",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
