@@ -77,6 +77,23 @@ export function LoaderScreen({
         </div>
       )}
 
+      {/* Top blur overlay: Covers and blurs the top area during animation and scroll */}
+      <div
+        className="absolute top-0 left-0 right-0 pointer-events-none"
+        style={{
+          height: "155px",
+          zIndex: 2,
+          background:
+            "linear-gradient(to bottom, rgba(249, 248, 255, 0.85) 0%, rgba(249, 248, 255, 0.5) 75%, rgba(249, 248, 255, 0) 100%)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          maskImage:
+            "linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%)",
+        }}
+      />
+
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
