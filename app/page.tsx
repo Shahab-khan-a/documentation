@@ -37,9 +37,6 @@ function ResultsPage({
       className="min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
       style={{
         fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
-        opacity: revealed ? 1 : 0,
-        visibility: revealed ? "visible" : "hidden",
-        pointerEvents: revealed ? "auto" : "none",
       }}
     >
       <div
@@ -102,9 +99,6 @@ export default function DocumentVerificationPage() {
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   const handleLoaderDone = useCallback(() => {
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "instant" });
-    }
     setInitialLoaderDone(true);
   }, []);
 
@@ -237,34 +231,17 @@ export default function DocumentVerificationPage() {
 
   return (
     <>
-      {/* 1. Scrollable background canvas during initial loader: only the faint background picture scrolls */}
-      {!initialLoaderDone && (
-        <div
-          className="min-h-[250vh] w-full relative select-none"
-          style={{
-            backgroundImage: "url('/full-background.png')",
-            backgroundRepeat: "repeat-y",
-            backgroundPosition: "top center",
-            backgroundSize: "1440px auto",
-            backgroundColor: "#f9f8ff",
-          }}
-          aria-hidden="true"
-        />
-      )}
+      {/* 1. Real Main Results Page: always rendered in DOM, visible in background, and immediately scrollable */}
+      <ResultsPage
+        config={config}
+        revealed={initialLoaderDone}
+        isDownloading={isDownloading}
+        onDownload={handleDownloadClick}
+        onVerifyAgain={handleVerifyAgainClick}
+        onBack={handleBackClick}
+      />
 
-      {/* 2. Results page - only revealed AFTER the initial loader finishes */}
-      {initialLoaderDone && (
-        <ResultsPage
-          config={config}
-          revealed={initialLoaderDone}
-          isDownloading={isDownloading}
-          onDownload={handleDownloadClick}
-          onVerifyAgain={handleVerifyAgainClick}
-          onBack={handleBackClick}
-        />
-      )}
-
-      {/* 1. FIRST: Show loader for 10 seconds */}
+      {/* 2. FIRST: Show loader for initial load */}
       {!initialLoaderDone && (
         <LoaderScreen
           onDone={handleLoaderDone}
