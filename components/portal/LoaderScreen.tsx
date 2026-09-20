@@ -16,7 +16,6 @@ export function LoaderScreen({
   gifUrl,
   restartKey,
 }: LoaderScreenProps) {
-  const [fadeOut, setFadeOut] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [gifSrc, setGifSrc] = useState<string>(() => {
     const base = gifUrl || DEFAULT_FALLBACK_GIF;
@@ -42,19 +41,11 @@ export function LoaderScreen({
   }, [gifSrc]);
 
   useEffect(() => {
-    const fadeDuration = 500;
-    const activeDuration = Math.max(durationMs - fadeDuration, 500);
-
-    const fadeTimer = setTimeout(() => {
-      setFadeOut(true);
-    }, activeDuration);
-
     const doneTimer = setTimeout(() => {
       onDone();
     }, durationMs);
 
     return () => {
-      clearTimeout(fadeTimer);
       clearTimeout(doneTimer);
     };
   }, [onDone, durationMs]);
@@ -67,13 +58,13 @@ export function LoaderScreen({
         position: "fixed",
         inset: 0,
         zIndex: 99999,
-        background: "#f9f8ff",
+        background: "rgba(249, 248, 255, 0.7)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        transition: "opacity 0.5s ease",
-        opacity: fadeOut ? 0 : 1,
         pointerEvents: "none",
         fontFamily: "'Cairo','Segoe UI',Arial,sans-serif",
       }}

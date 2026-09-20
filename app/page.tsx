@@ -40,7 +40,6 @@ function ResultsPage({
         opacity: revealed ? 1 : 0,
         visibility: revealed ? "visible" : "hidden",
         pointerEvents: revealed ? "auto" : "none",
-        transition: "opacity 0.25s ease",
       }}
     >
       <div
@@ -238,15 +237,32 @@ export default function DocumentVerificationPage() {
 
   return (
     <>
-      {/* Results page - only revealed AFTER the initial loader finishes */}
-      <ResultsPage
-        config={config}
-        revealed={initialLoaderDone}
-        isDownloading={isDownloading}
-        onDownload={handleDownloadClick}
-        onVerifyAgain={handleVerifyAgainClick}
-        onBack={handleBackClick}
-      />
+      {/* 1. Scrollable background canvas during initial loader: only the faint background picture scrolls */}
+      {!initialLoaderDone && (
+        <div
+          className="min-h-[250vh] w-full relative select-none"
+          style={{
+            backgroundImage: "url('/full-background.png')",
+            backgroundRepeat: "repeat-y",
+            backgroundPosition: "top center",
+            backgroundSize: "1440px auto",
+            backgroundColor: "#f9f8ff",
+          }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* 2. Results page - only revealed AFTER the initial loader finishes */}
+      {initialLoaderDone && (
+        <ResultsPage
+          config={config}
+          revealed={initialLoaderDone}
+          isDownloading={isDownloading}
+          onDownload={handleDownloadClick}
+          onVerifyAgain={handleVerifyAgainClick}
+          onBack={handleBackClick}
+        />
+      )}
 
       {/* 1. FIRST: Show loader for 10 seconds */}
       {!initialLoaderDone && (
