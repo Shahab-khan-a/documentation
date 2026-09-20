@@ -37,8 +37,8 @@ function ResultsPage({
       className="min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
       style={{
         fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
+        display: revealed ? "block" : "none",
         opacity: revealed ? 1 : 0,
-        visibility: revealed ? "visible" : "hidden",
         pointerEvents: revealed ? "auto" : "none",
         transition: "opacity 0.25s ease",
       }}
@@ -238,6 +238,21 @@ export default function DocumentVerificationPage() {
 
   return (
     <>
+      {/* Scrollable background container during loader: only the faint background picture scrolls */}
+      {!initialLoaderDone && (
+        <div
+          className="min-h-[160vh] w-full relative select-none"
+          style={{
+            backgroundImage: "url('/full-background.png')",
+            backgroundRepeat: "repeat-y",
+            backgroundPosition: "top center",
+            backgroundSize: "1440px auto",
+            backgroundColor: "#f9f8ff",
+          }}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Results page - only revealed AFTER the initial loader finishes */}
       <ResultsPage
         config={config}
