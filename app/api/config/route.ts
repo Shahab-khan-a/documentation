@@ -41,6 +41,44 @@ function mergeWithDefaults(parsed: Partial<PortalConfig>): PortalConfig {
   };
 }
 
+function mergeWithGlobal(parsed: Partial<PortalConfig>, globalConfig: PortalConfig): PortalConfig {
+  const allPlatforms = ["skype", "instagram", "youtube", "twitter", "facebook"] as const;
+  const mergedSocial: Record<string, string> = {};
+
+  for (const p of allPlatforms) {
+    const recordVal = parsed.socialLinks?.[p]?.trim();
+    const globalVal = globalConfig.socialLinks?.[p]?.trim();
+    if (recordVal && recordVal !== `#${p}` && recordVal !== "#") {
+      mergedSocial[p] = recordVal;
+    } else if (globalVal && globalVal !== `#${p}` && globalVal !== "#") {
+      mergedSocial[p] = globalVal;
+    } else {
+      mergedSocial[p] = recordVal || globalVal || `#${p}`;
+    }
+  }
+
+  return {
+    ...DEFAULT_PORTAL_CONFIG,
+    ...globalConfig,
+    ...parsed,
+    portalTitle: cleanPortalTitle(parsed.portalTitle || globalConfig.portalTitle),
+    customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
+    backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(globalConfig.backButton || {}), ...(parsed.backButton || {}) },
+    verifyAgainButton: { ...DEFAULT_PORTAL_CONFIG.verifyAgainButton, ...(globalConfig.verifyAgainButton || {}), ...(parsed.verifyAgainButton || {}) },
+    downloadButton: { ...DEFAULT_PORTAL_CONFIG.downloadButton, ...(globalConfig.downloadButton || {}), ...(parsed.downloadButton || {}) },
+    supportPhone: parsed.supportPhone || globalConfig.supportPhone || DEFAULT_PORTAL_CONFIG.supportPhone,
+    companyNameAr: parsed.companyNameAr || globalConfig.companyNameAr || DEFAULT_PORTAL_CONFIG.companyNameAr,
+    companyNameEn: parsed.companyNameEn || globalConfig.companyNameEn || DEFAULT_PORTAL_CONFIG.companyNameEn,
+    devLabel: parsed.devLabel || globalConfig.devLabel || DEFAULT_PORTAL_CONFIG.devLabel,
+    copyrightText: parsed.copyrightText || globalConfig.copyrightText || DEFAULT_PORTAL_CONFIG.copyrightText,
+    socialLinks: {
+      ...DEFAULT_PORTAL_CONFIG.socialLinks,
+      ...(globalConfig.socialLinks || {}),
+      ...mergedSocial,
+    },
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -60,12 +98,29 @@ export async function GET(req: Request) {
       "Expires": "0",
     };
 
+    // Load active global config first to provide up-to-date organization & social media defaults
+    let globalConfig = globalThis.__portal_config_memory__;
+    if (!globalConfig) {
+      try {
+        const fbConfig = await getConfigFromFirebase();
+        if (fbConfig) {
+          globalConfig = mergeWithDefaults(fbConfig);
+          globalThis.__portal_config_memory__ = globalConfig;
+        }
+      } catch (err) {
+        console.warn("Could not retrieve current global config from Firebase:", err);
+      }
+    }
+    if (!globalConfig) {
+      globalConfig = DEFAULT_PORTAL_CONFIG;
+    }
+
     // 0. If recordId is provided, query specific document directly by ID
     if (recordId) {
       try {
         const specific = await getPortalRecordById(recordId);
         if (specific) {
-          const mergedSpecific = mergeWithDefaults(specific);
+          const mergedSpecific = mergeWithGlobal(specific, globalConfig);
           return NextResponse.json(mergedSpecific, { headers: responseHeaders });
         }
       } catch (err) {
@@ -78,7 +133,7 @@ export async function GET(req: Request) {
       try {
         const specific = await getPortalRecordBySerialUnified(serial, unified, requestNumber, recordId);
         if (specific) {
-          const mergedSpecific = mergeWithDefaults(specific);
+          const mergedSpecific = mergeWithGlobal(specific, globalConfig);
           return NextResponse.json(mergedSpecific, { headers: responseHeaders });
         }
       } catch (err) {
@@ -87,20 +142,7 @@ export async function GET(req: Request) {
     }
 
     // 2. Fetch active 'current' config directly from Firebase Firestore
-    try {
-      const fbConfig = await getConfigFromFirebase(serial, unified, requestNumber);
-      if (fbConfig) {
-        const mergedFb = mergeWithDefaults(fbConfig);
-        globalThis.__portal_config_memory__ = mergedFb;
-        return NextResponse.json(mergedFb, { headers: responseHeaders });
-      }
-    } catch (err) {
-      console.warn("Could not retrieve current config from Firebase:", err);
-    }
-
-    // 3. In-memory or default fallback
-    const config = globalThis.__portal_config_memory__ || DEFAULT_PORTAL_CONFIG;
-    return NextResponse.json(config, { headers: responseHeaders });
+    return NextResponse.json(globalConfig, { headers: responseHeaders });
   } catch (error) {
     console.error("GET /api/config error:", error);
     return NextResponse.json(DEFAULT_PORTAL_CONFIG, { status: 500 });

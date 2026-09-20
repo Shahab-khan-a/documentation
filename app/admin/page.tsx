@@ -465,6 +465,13 @@ export default function AdminDashboard() {
       commercialRegNo: "",
       requestStatus: "تم قبول الطلب وساري",
       statusColor: "#32c5cb",
+      // Automatically inherit organization & footer settings from currently active config
+      supportPhone: config.supportPhone || DEFAULT_PORTAL_CONFIG.supportPhone,
+      companyNameAr: config.companyNameAr || DEFAULT_PORTAL_CONFIG.companyNameAr,
+      companyNameEn: config.companyNameEn || DEFAULT_PORTAL_CONFIG.companyNameEn,
+      devLabel: config.devLabel || DEFAULT_PORTAL_CONFIG.devLabel,
+      copyrightText: config.copyrightText || DEFAULT_PORTAL_CONFIG.copyrightText,
+      socialLinks: config.socialLinks ? { ...config.socialLinks } : { ...DEFAULT_PORTAL_CONFIG.socialLinks },
       // Automatically inherit the 3 buttons data and attached files from currently active config
       backButton: config.backButton ? { ...config.backButton } : DEFAULT_PORTAL_CONFIG.backButton,
       verifyAgainButton: config.verifyAgainButton ? { ...config.verifyAgainButton } : DEFAULT_PORTAL_CONFIG.verifyAgainButton,
