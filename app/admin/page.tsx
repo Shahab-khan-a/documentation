@@ -398,8 +398,38 @@ export default function AdminDashboard() {
   };
 
   const handleLoadRecordIntoEditor = (record: PortalRecord) => {
-    setConfig(record);
-    setInitialConfig(record);
+    // Preserve existing active buttons and files if the loaded record doesn't have custom ones
+    const hasCustomBack =
+      (record.backButton?.fileUrl && record.backButton.fileUrl.trim() !== "") ||
+      (record.backButton?.url && record.backButton.url.trim() !== "" && record.backButton.url !== "#");
+    const hasCustomVerify =
+      (record.verifyAgainButton?.fileUrl && record.verifyAgainButton.fileUrl.trim() !== "") ||
+      (record.verifyAgainButton?.url && record.verifyAgainButton.url.trim() !== "" && record.verifyAgainButton.url !== "#");
+    const hasCustomDownload =
+      (record.downloadButton?.fileUrl && record.downloadButton.fileUrl.trim() !== "") ||
+      (record.downloadButton?.url && record.downloadButton.url.trim() !== "" && record.downloadButton.url !== "#");
+
+    const mergedRecord: PortalRecord = {
+      ...record,
+      backButton: hasCustomBack
+        ? record.backButton
+        : config.backButton
+        ? { ...config.backButton }
+        : record.backButton,
+      verifyAgainButton: hasCustomVerify
+        ? record.verifyAgainButton
+        : config.verifyAgainButton
+        ? { ...config.verifyAgainButton }
+        : record.verifyAgainButton,
+      downloadButton: hasCustomDownload
+        ? record.downloadButton
+        : config.downloadButton
+        ? { ...config.downloadButton }
+        : record.downloadButton,
+    };
+
+    setConfig(mergedRecord);
+    setInitialConfig(mergedRecord);
     setEditingRecordId(record.id);
     try {
       localStorage.setItem("admin_editing_record_id", record.id);
@@ -424,7 +454,7 @@ export default function AdminDashboard() {
 
     const newSample: PortalConfig = {
       ...DEFAULT_PORTAL_CONFIG,
-      chamberName: "ينبع",
+      chamberName: config.chamberName || "ينبع",
       facilityName: "",
       facilitySubName: "",
       serialNumber: randomSerial,
@@ -435,6 +465,10 @@ export default function AdminDashboard() {
       commercialRegNo: "",
       requestStatus: "تم قبول الطلب وساري",
       statusColor: "#32c5cb",
+      // Automatically inherit the 3 buttons data and attached files from currently active config
+      backButton: config.backButton ? { ...config.backButton } : DEFAULT_PORTAL_CONFIG.backButton,
+      verifyAgainButton: config.verifyAgainButton ? { ...config.verifyAgainButton } : DEFAULT_PORTAL_CONFIG.verifyAgainButton,
+      downloadButton: config.downloadButton ? { ...config.downloadButton } : DEFAULT_PORTAL_CONFIG.downloadButton,
     };
 
     try {
@@ -469,7 +503,7 @@ export default function AdminDashboard() {
     } finally {
       setLoadingRecords(false);
     }
-  }, [fetchSavedRecords, lang, showToast]);
+  }, [config, fetchSavedRecords, lang, showToast]);
 
   const confirmDeleteDriveFile = async (file: DriveItem) => {
     setDeletingFileId(file.id);
