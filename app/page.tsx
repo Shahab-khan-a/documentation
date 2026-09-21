@@ -39,21 +39,34 @@ function ResultsPage({
         fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
       }}
     >
-      <div
-        style={{
-          pointerEvents: revealed ? "auto" : "none",
-        }}
-      >
-        <PublicHeader portalTitle={config.portalTitle} />
-        <DocumentDetailsCard
-          config={config}
-          isDownloading={isDownloading}
-          onDownload={onDownload}
-          onVerifyAgain={onVerifyAgain}
-          onBack={onBack}
-        />
-        <PublicFooter config={config} />
-      </div>
+      {revealed ? (
+        <div>
+          <PublicHeader portalTitle={config.portalTitle} />
+          <DocumentDetailsCard
+            config={config}
+            isDownloading={isDownloading}
+            onDownload={onDownload}
+            onVerifyAgain={onVerifyAgain}
+            onBack={onBack}
+          />
+          <PublicFooter config={config} />
+        </div>
+      ) : (
+        /* During animation: Hide middle document details & action buttons; show ONLY the bottom footer card */
+        <div className="flex flex-col min-h-screen">
+          {/* Responsive spacer to align the top of PublicFooter in the clear area below the loader GIF */}
+          <div
+            style={{
+              height: "calc(100vh - 175px)",
+              minHeight: "calc(100dvh - 175px)",
+              flexShrink: 0,
+            }}
+          />
+          <div className="relative z-10">
+            <PublicFooter config={config} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -100,6 +113,9 @@ export default function DocumentVerificationPage() {
 
   const handleLoaderDone = useCallback(() => {
     setInitialLoaderDone(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   }, []);
 
   // Helper to normalize URLs (adds https:// if protocol is missing)
@@ -152,6 +168,9 @@ export default function DocumentVerificationPage() {
 
   const handleButtonLoaderDone = useCallback(() => {
     setButtonLoaderKey(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
     if (pendingAction) {
       pendingAction();
       setPendingAction(null);
@@ -234,7 +253,7 @@ export default function DocumentVerificationPage() {
       {/* 1. Real Main Results Page: always rendered in DOM, visible in background, and immediately scrollable */}
       <ResultsPage
         config={config}
-        revealed={initialLoaderDone}
+        revealed={initialLoaderDone && buttonLoaderKey === null}
         isDownloading={isDownloading}
         onDownload={handleDownloadClick}
         onVerifyAgain={handleVerifyAgainClick}
