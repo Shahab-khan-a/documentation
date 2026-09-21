@@ -39,34 +39,21 @@ function ResultsPage({
         fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
       }}
     >
-      {revealed ? (
-        <div>
-          <PublicHeader portalTitle={config.portalTitle} />
-          <DocumentDetailsCard
-            config={config}
-            isDownloading={isDownloading}
-            onDownload={onDownload}
-            onVerifyAgain={onVerifyAgain}
-            onBack={onBack}
-          />
-          <PublicFooter config={config} />
-        </div>
-      ) : (
-        /* During animation: Hide middle document details & action buttons; show ONLY the bottom footer card */
-        <div className="flex flex-col min-h-screen">
-          {/* Responsive spacer to align the top of PublicFooter in the clear area below the loader GIF */}
-          <div
-            style={{
-              height: "calc(100vh - 175px)",
-              minHeight: "calc(100dvh - 175px)",
-              flexShrink: 0,
-            }}
-          />
-          <div className="relative z-10">
-            <PublicFooter config={config} />
-          </div>
-        </div>
-      )}
+      <div
+        style={{
+          pointerEvents: revealed ? "auto" : "none",
+        }}
+      >
+        <PublicHeader portalTitle={config.portalTitle} />
+        <DocumentDetailsCard
+          config={config}
+          isDownloading={isDownloading}
+          onDownload={onDownload}
+          onVerifyAgain={onVerifyAgain}
+          onBack={onBack}
+        />
+        <PublicFooter config={config} />
+      </div>
     </div>
   );
 }
