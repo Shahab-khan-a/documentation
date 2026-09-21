@@ -409,6 +409,11 @@ export default function AdminDashboard() {
       (record.downloadButton?.fileUrl && record.downloadButton.fileUrl.trim() !== "") ||
       (record.downloadButton?.url && record.downloadButton.url.trim() !== "" && record.downloadButton.url !== "#");
 
+    const isSample = Boolean(
+      record.isSample ||
+      (!record.facilityName && !record.applicantName)
+    );
+
     const mergedRecord: PortalRecord = {
       ...record,
       backButton: hasCustomBack
@@ -421,11 +426,33 @@ export default function AdminDashboard() {
         : config.verifyAgainButton
         ? { ...config.verifyAgainButton }
         : record.verifyAgainButton,
-      downloadButton: hasCustomDownload
-        ? record.downloadButton
-        : config.downloadButton
-        ? { ...config.downloadButton }
-        : record.downloadButton,
+      // Download button for new samples or records without custom file is always clean and empty (never inherit previous uploaded file)
+      downloadButton: isSample
+        ? {
+            label: record.downloadButton?.label || "تحميل",
+            actionType: "file",
+            url: "#",
+            fileUrl: "",
+            fileName: "",
+            fileSize: undefined,
+            openInNewTab: false,
+            showLoader: true,
+          }
+        : hasCustomDownload
+        ? {
+            ...record.downloadButton,
+            actionType: record.downloadButton?.actionType || "file",
+          }
+        : {
+            label: record.downloadButton?.label || "تحميل",
+            actionType: "file",
+            url: "#",
+            fileUrl: "",
+            fileName: "",
+            fileSize: undefined,
+            openInNewTab: false,
+            showLoader: true,
+          },
     };
 
     setConfig(mergedRecord);
@@ -465,6 +492,7 @@ export default function AdminDashboard() {
       commercialRegNo: "",
       requestStatus: "تم قبول الطلب وساري",
       statusColor: "#32c5cb",
+      isSample: true,
       // Automatically inherit organization & footer settings from currently active config
       supportPhone: config.supportPhone || DEFAULT_PORTAL_CONFIG.supportPhone,
       companyNameAr: config.companyNameAr || DEFAULT_PORTAL_CONFIG.companyNameAr,
@@ -472,10 +500,20 @@ export default function AdminDashboard() {
       devLabel: config.devLabel || DEFAULT_PORTAL_CONFIG.devLabel,
       copyrightText: config.copyrightText || DEFAULT_PORTAL_CONFIG.copyrightText,
       socialLinks: config.socialLinks ? { ...config.socialLinks } : { ...DEFAULT_PORTAL_CONFIG.socialLinks },
-      // Automatically inherit the 3 buttons data and attached files from currently active config
+      // Automatically inherit backButton and verifyAgainButton
       backButton: config.backButton ? { ...config.backButton } : DEFAULT_PORTAL_CONFIG.backButton,
       verifyAgainButton: config.verifyAgainButton ? { ...config.verifyAgainButton } : DEFAULT_PORTAL_CONFIG.verifyAgainButton,
-      downloadButton: config.downloadButton ? { ...config.downloadButton } : DEFAULT_PORTAL_CONFIG.downloadButton,
+      // Download button must always be clean and empty for new samples (never carry over previous uploaded file)
+      downloadButton: {
+        label: "تحميل",
+        actionType: "file",
+        url: "#",
+        fileUrl: "",
+        fileName: "",
+        fileSize: undefined,
+        openInNewTab: false,
+        showLoader: true,
+      },
     };
 
     try {
@@ -962,6 +1000,9 @@ export default function AdminDashboard() {
         updatedAt: new Date().toISOString(),
         createdAt: (config as any).createdAt || (initialConfig as any).createdAt || new Date().toISOString(),
       };
+      if (payload.isSample && (cleanSerial || config.facilityName)) {
+        delete payload.isSample;
+      }
 
       // 2. Direct Firebase Cloud Firestore save from client
       try {

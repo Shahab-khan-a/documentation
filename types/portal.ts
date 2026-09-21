@@ -68,6 +68,7 @@ export interface PortalConfig {
   buttonLoaderDurationMs: number;
   enableInitialLoader: boolean;
   currentRecordId?: string;
+  isSample?: boolean;
 }
 
 export interface PortalRecord extends PortalConfig {
