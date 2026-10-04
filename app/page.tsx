@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { PortalConfig } from "@/types/portal";
 import { DEFAULT_PORTAL_CONFIG } from "@/constants/defaults";
@@ -11,6 +11,8 @@ import { PublicHeader } from "@/components/portal/PublicHeader";
 import { DocumentDetailsCard } from "@/components/portal/DocumentDetailsCard";
 import { PublicFooter } from "@/components/portal/PublicFooter";
 import { DownloadAnimationOverlay } from "@/components/portal/DownloadAnimationOverlay";
+import { TujarVerificationView } from "@/components/tujar/TujarVerificationView";
+import { TujarLoader } from "@/components/tujar/TujarLoader";
 
 // ─────────────────────────────────────────────────────────
 //  VERIFICATION RESULTS PAGE
@@ -34,7 +36,7 @@ function ResultsPage({
     <div
       suppressHydrationWarning
       dir="rtl"
-      className="min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
+      className="yanbu-results-page min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
       style={{
         fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
       }}
@@ -91,6 +93,50 @@ export default function DocumentVerificationPage() {
     checkAdminRedirect();
     window.addEventListener("hashchange", checkAdminRedirect);
     return () => window.removeEventListener("hashchange", checkAdminRedirect);
+  }, []);
+
+  // Detect Tujar platform mode: if url ends with "/." or query params or hash includes tujar
+  const isTujarRequested = () => {
+    if (typeof window === "undefined") return false;
+    if (typeof document !== "undefined" && document.documentElement.classList.contains("tujar-mode")) {
+      return true;
+    }
+    const href = (window.location.href || "").toLowerCase();
+    const pathname = (window.location.pathname || "").toLowerCase();
+    const search = (window.location.search || "").toLowerCase();
+    const hash = (window.location.hash || "").toLowerCase();
+
+    return Boolean(
+      pathname === "/." ||
+      pathname.endsWith("/.") ||
+      pathname.includes("/./") ||
+      href.endsWith("/.") ||
+      href.includes("/.?") ||
+      href.includes("/.#") ||
+      href.includes("/.") ||
+      hash.endsWith("/.") ||
+      hash.includes("/.") ||
+      hash.includes("tujar") ||
+      search.includes("documentnumber") ||
+      search.includes("subscriptionnumber") ||
+      pathname.includes("document-verification")
+    );
+  };
+
+  const [showTujar, setShowTujar] = useState<boolean>(() => isTujarRequested());
+
+  useEffect(() => {
+    const checkTujar = () => {
+      setShowTujar(isTujarRequested());
+    };
+
+    checkTujar();
+    window.addEventListener("hashchange", checkTujar);
+    window.addEventListener("popstate", checkTujar);
+    return () => {
+      window.removeEventListener("hashchange", checkTujar);
+      window.removeEventListener("popstate", checkTujar);
+    };
   }, []);
 
   // FIRST SHOW THE LOADER: initialLoaderDone starts false
@@ -234,6 +280,15 @@ export default function DocumentVerificationPage() {
       action();
     }
   };
+
+  // If URL ends with /. or query params include documentNumber/subscriptionNumber or path is document-verification
+  if (showTujar) {
+    return (
+      <Suspense fallback={<TujarLoader durationMs={1000} />}>
+        <TujarVerificationView />
+      </Suspense>
+    );
+  }
 
   return (
     <>

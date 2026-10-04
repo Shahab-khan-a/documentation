@@ -375,22 +375,23 @@ export default function AdminDashboard() {
 
   const handleCopyRecordLink = (
     record: PortalRecord,
-    domainType: "org" | "com" = "org",
+    domainType: "org" | "com" | "dot" = "org",
     customUrl?: string
   ) => {
     if (typeof window === "undefined") return;
     const path = getPublicLink(record);
-    const { orgUrl, comUrl } = getDualDomainUrls(path);
-    const fullUrl = customUrl || (domainType === "com" ? comUrl : orgUrl);
+    const { orgUrl, comUrl, dotUrl } = getDualDomainUrls(path);
+    const fullUrl = customUrl || (domainType === "dot" ? dotUrl : domainType === "com" ? comUrl : orgUrl);
     navigator.clipboard.writeText(fullUrl);
     setCopiedRecordId(record.id);
     setTimeout(() => setCopiedRecordId(null), 2500);
+    const label = domainType === "dot" ? "/." : domainType.toUpperCase();
     showToast(
       lang === "en"
-        ? `${domainType.toUpperCase()} Link copied!`
+        ? `${label} Link copied!`
         : lang === "ur"
-        ? `${domainType.toUpperCase()} لنک کاپی ہو گیا!`
-        : `تم نسخ رابط ${domainType.toUpperCase()} بنجاح!`,
+        ? `${label} لنک کاپی ہو گیا!`
+        : `تم نسخ رابط ${label} بنجاح!`,
       "success",
       fullUrl,
       t.open_link_btn

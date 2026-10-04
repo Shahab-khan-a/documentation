@@ -88,7 +88,7 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
       const parts = clean
         .split("/")
         .map((p) => decodeURIComponent(p).trim())
-        .filter(Boolean);
+        .filter((p) => Boolean(p) && p !== "." && p !== "#");
 
       // Check if any segment is "admin"
       if (parts.some((p) => p.toLowerCase() === "admin")) {
@@ -291,8 +291,17 @@ export function usePortalConfig() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const currentPath = window.location.pathname;
-    // Do not rewrite if inside admin or api
-    if (currentPath.startsWith("/admin") || currentPath.startsWith("/api")) {
+    // Do not rewrite if inside admin, api, or document-verification, or if URL is a /. link
+    if (
+      currentPath.startsWith("/admin") ||
+      currentPath.startsWith("/api") ||
+      currentPath.startsWith("/document-verification") ||
+      window.location.search.includes("documentNumber") ||
+      window.location.search.includes("subscriptionNumber") ||
+      window.location.href.includes("/.") ||
+      currentPath.endsWith("/.") ||
+      (window.location.hash && window.location.hash.includes("/."))
+    ) {
       return;
     }
 

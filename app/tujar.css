@@ -1,0 +1,806 @@
+/* ==========================================================================
+   TUJAR PLATFORM - PIXEL-PERFECT STYLESHEET
+   Accurately matches live Tujar mobile screenshots & desktop experience
+   ========================================================================== */
+
+:root {
+  --clr-primary: #137347;
+  --clr-primary-emerald: #00997b;
+  --clr-primary-hover: #0f5c38;
+  --clr-light-primary: #f2f4f7;
+  
+  --clr-display-text: #101828;
+  --clr-text-secondary: #667085;
+  --clr-text-muted: #6c737f;
+  
+  --clr-body-bg: #f8fafc;
+  --clr-card-bg: #ffffff;
+  --clr-border: #eaecf0;
+  
+  --clr-badge-bg: #ecfdf3;
+  --clr-badge-text: #027a48;
+}
+
+/* Base Wrapper */
+.tujar-wrapper {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  color: #101828;
+  font-family: var(--font-cairo), 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  direction: rtl;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   KEYFRAME ANIMATIONS
+   ========================================================================== */
+@keyframes rotate {
+  0% { transform: rotate(0); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes prixClipFix {
+  0% { clip-path: polygon(50% 50%, 0 0, 0 0, 0 0, 0 0, 0 0); }
+  50% { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 0, 100% 0, 100% 0); }
+  75%, to { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 100%); }
+}
+
+@keyframes landing-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes landing-fade {
+  0% { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==========================================================================
+   HEADER - MOBILE & DESKTOP (Matches Screenshots 1, 2, 3)
+   ========================================================================== */
+.tujar-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #ffffff;
+  border-bottom: 1px solid #f2f4f7;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+
+.tujar-header-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (min-width: 992px) {
+  .tujar-header-container {
+    height: 72px;
+    padding: 0 24px;
+  }
+}
+
+/* Mobile Header Layout */
+.tujar-mobile-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+@media (min-width: 992px) {
+  .tujar-mobile-nav {
+    display: none;
+  }
+}
+
+.tujar-mobile-menu-btn {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  color: #101828;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tujar-mobile-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tujar-mobile-lang-btn {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  color: #101828;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Desktop Header Layout */
+.tujar-desktop-nav {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+@media (min-width: 992px) {
+  .tujar-desktop-nav {
+    display: flex;
+  }
+}
+
+.tujar-nav-item {
+  padding: 8px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #344054;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.tujar-nav-item:hover {
+  background-color: #f2f4f7;
+  color: #101828;
+}
+
+.tujar-lang-btn-desktop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #344054;
+  cursor: pointer;
+}
+
+.tujar-login-btn-desktop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: #137347;
+  border: 1px solid #137347;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+/* Mobile Drawer */
+.tujar-mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 9998;
+  animation: landing-fade 0.2s ease-out;
+}
+
+.tujar-mobile-drawer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  animation: landing-fade 0.25s ease-out;
+}
+
+.tujar-drawer-header {
+  height: 60px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.tujar-drawer-close-btn {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  color: #101828;
+  cursor: pointer;
+}
+
+.tujar-drawer-body {
+  padding: 16px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.tujar-drawer-nav-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #101828;
+  text-decoration: none;
+  border-bottom: 1px solid #eaecf0;
+}
+
+/* ==========================================================================
+   GREEN HERO BANNER (Desktop Only - Hidden on Mobile per Screenshot 1)
+   ========================================================================== */
+.bread-crumb-with-bg-img {
+  display: none;
+}
+
+@media (min-width: 992px) {
+  .bread-crumb-with-bg-img {
+    display: block;
+    position: relative;
+    background-color: #00997b;
+    height: 227px;
+    width: 100%;
+    overflow: hidden;
+    z-index: 0;
+  }
+}
+
+.green-hero-img {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 80%;
+  object-fit: cover;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.bread-content {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  left: 0;
+  padding: 24px 24px 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.bread-crumb-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 6px 12px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.bread-crumb-page-title {
+  font-size: 40px;
+  color: #ffffff;
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+/* ==========================================================================
+   MAIN CONTAINER & GRID
+   ========================================================================== */
+.Document-Verify-layout {
+  position: relative;
+  z-index: 20;
+  max-width: 1280px;
+  margin: 16px auto 32px;
+  padding: 0 12px;
+  width: 100%;
+}
+
+@media (min-width: 992px) {
+  .Document-Verify-layout {
+    margin: -80px auto 48px;
+    padding: 0 24px;
+  }
+}
+
+.verification-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 992px) {
+  .verification-grid {
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+  }
+}
+
+/* ==========================================================================
+   VERIFICATION RESULT CARD (Matches Screenshot 1 & 2)
+   ========================================================================== */
+.steeper-content {
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 24px 20px;
+  border: 1px solid #f2f4f7;
+  box-shadow: 0 2px 12px rgba(16, 24, 40, 0.05);
+  animation: landing-rise 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (min-width: 768px) {
+  .steeper-content {
+    padding: 36px 32px;
+  }
+}
+
+/* Top Back Button + Title */
+.tujar-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 8px;
+  min-height: 40px;
+}
+
+.tujar-circle-back-btn {
+  position: absolute;
+  left: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: #f2f4f7;
+  color: #344054;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.tujar-circle-back-btn:hover {
+  background-color: #e4e7ec;
+  color: #101828;
+}
+
+.tujar-result-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #101828;
+  margin: 0;
+  text-align: center;
+}
+
+@media (max-width: 575px) {
+  .tujar-result-title {
+    font-size: 17px;
+  }
+}
+
+.tujar-result-desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #667085;
+  text-align: center;
+  margin: 12px auto 28px;
+  max-width: 540px;
+}
+
+/* Fields List (No borders, pure white background, circular icon) */
+.tujar-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+@media (min-width: 768px) {
+  .tujar-fields-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+.tujar-field-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tujar-field-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #101828;
+}
+
+.tujar-field-texts {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+  flex: 1;
+  min-width: 0;
+}
+
+.tujar-field-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: #6c737f;
+  margin-bottom: 2px;
+  text-align: right;
+}
+
+.tujar-field-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #101828;
+  word-break: break-word;
+  text-align: right;
+}
+
+/* Badges (مقبول, سارى) */
+.tujar-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tujar-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ecfdf3;
+  color: #027a48;
+  border-radius: 9999px;
+  padding: 3px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.tujar-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #027a48;
+  display: inline-block;
+}
+
+/* Action Buttons Row */
+.tujar-actions-buttons-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding-top: 16px;
+}
+
+.tujar-btn-download-green {
+  flex: 1;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #137347;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.3;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.tujar-btn-download-green:hover {
+  background-color: #0f5c38;
+}
+
+.tujar-btn-download-green:active {
+  transform: scale(0.98);
+}
+
+.tujar-btn-revalidate-gray {
+  flex: 1;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f2f4f7;
+  color: #101828;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.3;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.tujar-btn-revalidate-gray:hover {
+  background-color: #e4e7ec;
+}
+
+.tujar-btn-revalidate-gray:active {
+  transform: scale(0.98);
+}
+
+/* ==========================================================================
+   STEPPER CARD (Matches Screenshot 2 & 3)
+   ========================================================================== */
+.stepper-card-wrapper {
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 32px 24px 0;
+  border: 1px solid #f2f4f7;
+  box-shadow: 0 2px 12px rgba(16, 24, 40, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-height: 380px;
+  animation: landing-rise 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.tujar-stepper-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.tujar-timeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  position: relative;
+  padding-bottom: 48px;
+}
+
+.tujar-timeline-step:last-child {
+  padding-bottom: 24px;
+}
+
+.tujar-timeline-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 15px;
+  top: 32px;
+  width: 2px;
+  height: calc(100% - 32px);
+  background-color: #137347;
+  z-index: 1;
+}
+
+.tujar-step-circle-green {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #137347;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ffffff;
+  z-index: 2;
+  position: relative;
+}
+
+.tujar-step-info {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+  flex: 1;
+}
+
+.tujar-step-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #101828;
+  margin-bottom: 4px;
+}
+
+.tujar-step-subtitle {
+  font-size: 13px;
+  color: #667085;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Skyline illustration at bottom */
+.hero-skyline {
+  position: relative;
+  width: 100%;
+  margin-top: auto;
+  pointer-events: none;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+}
+
+.skyline-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   FOOTER (Matches Screenshot 2 & 3)
+   ========================================================================== */
+.tujar-mobile-footer {
+  background-color: #f8fafc;
+  padding: 32px 16px 40px;
+  margin-top: auto;
+}
+
+.tujar-footer-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #101828;
+  margin: 0 0 14px;
+}
+
+.tujar-footer-links-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tujar-footer-links-list a {
+  font-size: 14px;
+  color: #475467;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.tujar-footer-links-list a:hover {
+  color: #137347;
+}
+
+.tujar-footer-divider {
+  height: 1px;
+  background-color: #eaecf0;
+  margin: 20px 0;
+}
+
+.tujar-footer-logos-box {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 24px 0 20px;
+}
+
+.tujar-footer-logos-box img {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+}
+
+.tujar-footer-copy-text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #344054;
+  margin: 0 0 4px;
+}
+
+.tujar-footer-gov-note {
+  font-size: 12.5px;
+  color: #667085;
+  margin: 0;
+}
+
+/* Floating WhatsApp / Chat Button (Screenshot 1, 2, 3) */
+.tujar-floating-chat {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #16a34a;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tujar-floating-chat:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.5);
+}
+
+/* Loader Overlay */
+.tujar-loader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loader {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  position: relative;
+  animation: rotate 1s linear infinite;
+}
+
+.loader:before,
+.loader:after {
+  content: "";
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 5px solid #f3f4f6;
+  animation: prixClipFix 2s linear infinite;
+}
+
+.loader:after {
+  inset: 8px;
+  transform: rotate3d(90, 90, 0, 180deg);
+  border-color: #00997b;
+}

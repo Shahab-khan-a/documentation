@@ -141,7 +141,17 @@ script[data-nextjs-dev-overlay],
   max-height: 0 !important;
   overflow: hidden !important;
   clip: rect(0, 0, 0, 0) !important;
-  clip-path: inset(50%) !important;
   z-index: -999999 !important;
 }
+
+/* ═════════════════════════════════════════════════════════════ */
+/* 🌟 TUJAR MODE INSTANT SUPPRESSION (Zero Flash Guarantee)      */
+/* ═════════════════════════════════════════════════════════════ */
+html.tujar-mode .loader-screen-overlay,
+html.tujar-mode .yanbu-results-page {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 

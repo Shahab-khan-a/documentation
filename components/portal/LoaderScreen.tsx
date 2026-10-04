@@ -54,6 +54,7 @@ export function LoaderScreen({
     <div
       suppressHydrationWarning
       dir="rtl"
+      className="loader-screen-overlay"
       style={{
         position: "fixed",
         inset: 0,
