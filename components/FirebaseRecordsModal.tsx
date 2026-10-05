@@ -811,27 +811,28 @@ export function FirebaseRecordsModal({
                             </span>
                           </div>
                         </div>
-                        {/* 3. /. URL Strip (Right below .COM) - New Verification Page */}
+                        {/* 3. TUJAR NEW PAGE URL Strip (Highlighted in Emerald) */}
                         <div
                           onClick={() => handleCopyUrl(dotUrl, `${record.id}_dot`, record, "dot")}
                           className={`p-2 rounded-xl border font-mono text-[11px] flex items-center justify-between gap-2 cursor-pointer transition-all ${
                             isDotCopied
-                              ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs"
-                              : "bg-slate-50/90 hover:bg-emerald-50/70 border-slate-200/90 hover:border-emerald-300 text-slate-700"
+                              ? "bg-emerald-100/90 border-emerald-400 text-emerald-900 shadow-xs ring-2 ring-emerald-300"
+                              : "bg-emerald-50/70 hover:bg-emerald-100/80 border-emerald-200/90 hover:border-emerald-400 text-emerald-950 shadow-2xs"
                           }`}
                           title={
                             lang === "en"
-                              ? "Click to copy /. (Tujar) link"
+                              ? "Click to copy New Tujar Verification Page link"
                               : lang === "ur"
-                              ? "/. لنک کاپی کرنے کے لیے کلک کریں"
-                              : "انقر لنسخ رابط /."
+                              ? "منصة تجار (نیا پیج) لنک کاپی کرنے کیلئے کلک کریں"
+                              : "انقر لنسخ رابط منصة تجار (الصفحة الجديدة)"
                           }
                         >
                           <div className="flex items-center gap-2 truncate min-w-0">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200/90 shrink-0">
-                              /.
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-600 text-white shadow-2xs shrink-0 flex items-center gap-1">
+                              <span>🟢</span>
+                              <span>{lang === "en" ? "TUJAR NEW PAGE" : lang === "ur" ? "منصة تجار (نیا پیج)" : "منصة تجار (الجديدة)"}</span>
                             </span>
-                            <span className="truncate text-emerald-950 font-bold" dir="ltr">
+                            <span className="truncate text-emerald-900 font-bold" dir="ltr">
                               {dotUrl}
                             </span>
                           </div>
@@ -841,7 +842,7 @@ export function FirebaseRecordsModal({
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="p-1 rounded-lg hover:bg-slate-200/70 text-slate-500 hover:text-emerald-700 transition-colors"
+                              className="p-1 rounded-lg hover:bg-emerald-200/70 text-emerald-700 hover:text-emerald-900 transition-colors"
                               title={t.open_link_btn || "Open link"}
                             >
                               <IconExternalLink className="w-3.5 h-3.5" />
@@ -849,8 +850,8 @@ export function FirebaseRecordsModal({
                             <span
                               className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
                                 isDotCopied
-                                  ? "bg-emerald-600 text-white"
-                                  : "bg-white text-slate-600 border border-slate-200 group-hover:text-emerald-700"
+                                  ? "bg-emerald-700 text-white"
+                                  : "bg-white text-emerald-800 border border-emerald-300 group-hover:text-emerald-950"
                               }`}
                             >
                               {isDotCopied ? (

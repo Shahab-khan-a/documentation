@@ -203,6 +203,23 @@ export function AdminHeader({
                 />
               </svg>
             </Link>
+            <Link
+              href="/document-verification"
+              target="_blank"
+              className="h-7 sm:h-8 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/90 hover:border-emerald-600 transition-all cursor-pointer flex items-center gap-1 active:scale-95 hover:shadow-xs font-bold text-[11px]"
+              title={
+                lang === "en"
+                  ? "Open New Tujar Verification Page"
+                  : lang === "ur"
+                  ? "نیا منصة تجار پیج کھولیں"
+                  : "فتح منصة تجار الجديدة"
+              }
+            >
+              <span className="text-xs">🟢</span>
+              <span className="hidden xl:inline">
+                {lang === "en" ? "Tujar Page" : lang === "ur" ? "منصة تجار" : "منصة تجار"}
+              </span>
+            </Link>
           </div>
 
           {/* Firebase Saved Records Header Shortcut Button */}
