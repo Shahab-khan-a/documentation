@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
 import { PortalConfig } from "@/lib/portal-types";
+import { sanitizeDocNumber } from "@/constants/defaults";
 import {
   saveConfigToFirebase,
   getConfigFromFirebase,
@@ -29,9 +30,16 @@ function cleanPortalTitle(title?: string): string {
 }
 
 function mergeWithDefaults(parsed: Partial<PortalConfig>): PortalConfig {
+  const cleanSerial = sanitizeDocNumber(parsed.serialNumber);
+  const cleanUnified = sanitizeDocNumber(parsed.unifiedNumber);
+  const cleanReq = sanitizeDocNumber(parsed.requestNumber);
+
   return {
     ...DEFAULT_PORTAL_CONFIG,
     ...parsed,
+    serialNumber: cleanSerial || DEFAULT_PORTAL_CONFIG.serialNumber,
+    unifiedNumber: cleanUnified || DEFAULT_PORTAL_CONFIG.unifiedNumber,
+    requestNumber: cleanReq || DEFAULT_PORTAL_CONFIG.requestNumber,
     portalTitle: cleanPortalTitle(parsed.portalTitle),
     customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
     backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(parsed.backButton || {}) },
@@ -61,6 +69,9 @@ function mergeWithGlobal(parsed: Partial<PortalConfig>, globalConfig: PortalConf
     ...DEFAULT_PORTAL_CONFIG,
     ...globalConfig,
     ...parsed,
+    serialNumber: sanitizeDocNumber(parsed.serialNumber) || sanitizeDocNumber(globalConfig.serialNumber) || DEFAULT_PORTAL_CONFIG.serialNumber,
+    unifiedNumber: sanitizeDocNumber(parsed.unifiedNumber) || sanitizeDocNumber(globalConfig.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
+    requestNumber: sanitizeDocNumber(parsed.requestNumber) || sanitizeDocNumber(globalConfig.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
     portalTitle: cleanPortalTitle(parsed.portalTitle || globalConfig.portalTitle),
     customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
     backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(globalConfig.backButton || {}), ...(parsed.backButton || {}) },
@@ -113,6 +124,14 @@ export async function GET(req: Request) {
     }
     if (!globalConfig) {
       globalConfig = DEFAULT_PORTAL_CONFIG;
+    } else {
+      globalConfig = {
+        ...globalConfig,
+        serialNumber: sanitizeDocNumber(globalConfig.serialNumber) || DEFAULT_PORTAL_CONFIG.serialNumber,
+        unifiedNumber: sanitizeDocNumber(globalConfig.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
+        requestNumber: sanitizeDocNumber(globalConfig.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
+      };
+      globalThis.__portal_config_memory__ = globalConfig;
     }
 
     // 0. If recordId is provided, query specific document directly by ID
@@ -165,8 +184,12 @@ export async function POST(req: Request) {
       copyrightText: body.copyrightText !== undefined ? body.copyrightText : current.copyrightText,
     };
 
-    const cleanSerial = (updated.serialNumber || "").trim();
-    const cleanUnified = (updated.unifiedNumber || "").trim();
+    const cleanSerial = sanitizeDocNumber(updated.serialNumber);
+    const cleanUnified = sanitizeDocNumber(updated.unifiedNumber);
+    const cleanReq = sanitizeDocNumber(updated.requestNumber);
+    updated.serialNumber = cleanSerial;
+    updated.unifiedNumber = cleanUnified;
+    updated.requestNumber = cleanReq;
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
     const isRecCard = Boolean(body.id && typeof body.id === "string" && body.id.startsWith("rec_"));
     const recordId = isRecCard ? body.id : cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;

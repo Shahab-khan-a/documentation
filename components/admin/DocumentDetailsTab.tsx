@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { PortalConfig } from "@/types/portal";
 import { AdminLanguage, TranslationStrings } from "@/constants/translations";
 import { IconDocument, IconCheck, IconTrash } from "@/components/icons/AdminIcons";
+import { sanitizeDocNumber } from "@/constants/defaults";
 
 export interface DocumentDetailsTabProps {
   config: PortalConfig;
@@ -164,7 +165,7 @@ export function DocumentDetailsTab({
               value={config.serialNumber || ""}
               onChange={(e) => {
                 setSerialError(false);
-                setConfig({ ...config, serialNumber: e.target.value });
+                setConfig({ ...config, serialNumber: sanitizeDocNumber(e.target.value) });
               }}
               placeholder={
                 lang === "en"
@@ -305,7 +306,7 @@ export function DocumentDetailsTab({
               type="text"
               dir="ltr"
               value={config.requestNumber}
-              onChange={(e) => setConfig({ ...config, requestNumber: e.target.value })}
+              onChange={(e) => setConfig({ ...config, requestNumber: sanitizeDocNumber(e.target.value) })}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all font-bold"
             />
           </div>

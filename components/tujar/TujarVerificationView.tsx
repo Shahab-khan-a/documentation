@@ -15,12 +15,15 @@ import { TujarLoader } from "./TujarLoader";
 import { usePortalConfig } from "@/hooks/usePortalConfig";
 import { useFileDownload } from "@/hooks/useFileDownload";
 import { DownloadAnimationOverlay } from "@/components/portal/DownloadAnimationOverlay";
+import { sanitizeDocNumber } from "@/constants/defaults";
 import "@/app/tujar.css";
 
 export function TujarVerificationView() {
   const searchParams = useSearchParams();
-  const queryDoc = searchParams?.get("documentNumber") || "";
-  const querySub = searchParams?.get("subscriptionNumber") || "";
+  const rawQueryDoc = searchParams?.get("documentNumber") || "";
+  const rawQuerySub = searchParams?.get("subscriptionNumber") || "";
+  const queryDoc = sanitizeDocNumber(rawQueryDoc);
+  const querySub = sanitizeDocNumber(rawQuerySub);
   const { config } = usePortalConfig();
   const { isDownloading, downloadLoaderActive, downloadFileWithAnimation } = useFileDownload();
 
@@ -49,24 +52,24 @@ export function TujarVerificationView() {
       const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
       if (dvIndex !== -1) {
         const after = parts.slice(dvIndex + 1);
-        req = after[0] || "";
+        req = sanitizeDocNumber(after[0]) || "";
         if (after[1]?.toLowerCase() === "mem") {
-          s = after[2] || "";
+          s = sanitizeDocNumber(after[2]) || "";
         } else {
-          s = after[1] || "";
+          s = sanitizeDocNumber(after[1]) || "";
         }
       } else if (parts.length > 0) {
         const nonReserved = parts.filter(
           (p) => !["sa", "admin", "api", "documentverify"].includes(p.toLowerCase())
         );
-        if (nonReserved.length >= 1) s = nonReserved[0];
+        if (nonReserved.length >= 1) s = sanitizeDocNumber(nonReserved[0]);
       }
     }
 
     return {
-      doc: queryDoc || s || "",
-      sub: querySub || s || "",
-      req: req || "",
+      doc: sanitizeDocNumber(queryDoc || s || req || ""),
+      sub: sanitizeDocNumber(querySub || s || ""),
+      req: sanitizeDocNumber(req || ""),
     };
   }, [queryDoc, querySub]);
 
@@ -125,9 +128,14 @@ export function TujarVerificationView() {
   };
 
   // Build document details dynamically from config (updated in real-time from Admin Panel / Firebase)
+  const cleanSerial = sanitizeDocNumber(config?.serialNumber);
+  const cleanReq = sanitizeDocNumber(config?.requestNumber);
+  const cleanUnified = sanitizeDocNumber(config?.unifiedNumber);
+  const cleanComm = sanitizeDocNumber(config?.commercialRegNo);
+
   const isSampleQuery =
     (queryDoc === "205-178" && querySub === "205001150709") ||
-    (!queryDoc && !initialParams.doc && !config?.serialNumber);
+    (!queryDoc && !initialParams.doc && !cleanSerial);
 
   const details: TujarDocumentDetails = {
     chamberName: config?.chamberName || "ينبع",
@@ -137,12 +145,12 @@ export function TujarVerificationView() {
     documentNumber:
       queryDoc ||
       initialParams.doc ||
-      config?.serialNumber ||
+      cleanSerial ||
       documentNumber ||
       "205-178",
     orderNumber: isSampleQuery
       ? "205-154"
-      : (initialParams.req || config?.requestNumber || orderNumber || "205-154"),
+      : (initialParams.req || cleanReq || orderNumber || "205-154"),
     requestSubmitter: isSampleQuery
       ? "محمدايوب"
       : (config?.applicantName || "محمدايوب"),
@@ -152,13 +160,13 @@ export function TujarVerificationView() {
     subscriptionNumber:
       querySub ||
       initialParams.sub ||
-      config?.commercialRegNo ||
-      config?.serialNumber ||
+      cleanSerial ||
+      cleanComm ||
       subscriptionNumber ||
       "205001150709",
     unifiedNumber: isSampleQuery
       ? "7053747403"
-      : (config?.unifiedNumber || "7053747403"),
+      : (cleanUnified || "7053747403"),
     creationDateTime: isSampleQuery
       ? "2026/10/04 - 11:35 AM"
       : config?.creationDate

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { DEFAULT_PORTAL_CONFIG, normalizePortalConfig } from "@/constants/defaults";
+import { DEFAULT_PORTAL_CONFIG, normalizePortalConfig, sanitizeDocNumber } from "@/constants/defaults";
 import { PortalConfig } from "@/types/portal";
 import {
   getPortalRecordBySerialUnified,
@@ -36,9 +36,9 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
       ? params.requestNumber[0]
       : undefined;
 
-  let serial = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
-  let unified = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
-  let requestNumber = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
+  let serial = sanitizeDocNumber(rawSerial) || undefined;
+  let unified = sanitizeDocNumber(rawUnified) || undefined;
+  let requestNumber = sanitizeDocNumber(rawReq) || undefined;
   let recordId: string | undefined;
 
   if (typeof window !== "undefined") {
@@ -106,24 +106,24 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
       if (dvIndex !== -1) {
         const after = parts.slice(dvIndex + 1);
         if (!requestNumber && after[0]) {
-          requestNumber = after[0];
+          requestNumber = sanitizeDocNumber(after[0]);
         }
         if (after[1]?.toLowerCase() === "mem") {
-          if (!serial && after[2]) serial = after[2];
+          if (!serial && after[2]) serial = sanitizeDocNumber(after[2]);
           if (!unified && after[3]) {
             if (after[3].startsWith("rec_")) {
               if (!recordId) recordId = after[3];
             } else {
-              unified = after[3];
+              unified = sanitizeDocNumber(after[3]);
             }
           }
         } else {
-          if (!serial && after[1]) serial = after[1];
+          if (!serial && after[1]) serial = sanitizeDocNumber(after[1]);
           if (!unified && after[2]) {
             if (after[2].startsWith("rec_")) {
               if (!recordId) recordId = after[2];
             } else {
-              unified = after[2];
+              unified = sanitizeDocNumber(after[2]);
             }
           }
         }
@@ -132,9 +132,9 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
           (p) => !["sa", "admin", "api", "documentverify"].includes(p.toLowerCase())
         );
         if (!serial && nonReserved.length >= 1) {
-          serial = nonReserved[0];
+          serial = sanitizeDocNumber(nonReserved[0]);
           if (!unified && nonReserved.length >= 2) {
-            unified = nonReserved[1];
+            unified = sanitizeDocNumber(nonReserved[1]);
           }
         }
       }
@@ -148,7 +148,12 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
     return { serial: undefined, unified: undefined, requestNumber: undefined, recordId: undefined };
   }
 
-  return { serial, unified, requestNumber, recordId };
+  return {
+    serial: sanitizeDocNumber(serial) || undefined,
+    unified: sanitizeDocNumber(unified) || undefined,
+    requestNumber: sanitizeDocNumber(requestNumber) || undefined,
+    recordId,
+  };
 }
 
 export function usePortalConfig() {
@@ -287,20 +292,15 @@ export function usePortalConfig() {
     };
   }, [params]);
 
-  // Synchronize browser URL bar to display '/sa/#/DocumentVerify/[requestNumber]/mem/[serialNumber]' (without unified number)
+  // Synchronize browser URL bar to display clean '/sa#/DocumentVerify/[requestNumber]/mem/[serialNumber]' (without unified number)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const currentPath = window.location.pathname;
-    // Do not rewrite if inside admin, api, or document-verification, or if URL is a /. link
+    // Do not rewrite if inside admin, api, or document-verification
     if (
       currentPath.startsWith("/admin") ||
       currentPath.startsWith("/api") ||
-      currentPath.startsWith("/document-verification") ||
-      window.location.search.includes("documentNumber") ||
-      window.location.search.includes("subscriptionNumber") ||
-      window.location.href.includes("/.") ||
-      currentPath.endsWith("/.") ||
-      (window.location.hash && window.location.hash.includes("/."))
+      currentPath.startsWith("/document-verification")
     ) {
       return;
     }
@@ -317,17 +317,29 @@ export function usePortalConfig() {
       return;
     }
 
-    const cleanSerial = config.serialNumber?.trim();
-    const cleanReq = config.requestNumber?.trim() || "13255887";
+    const cleanSerial = sanitizeDocNumber(urlSerial || config.serialNumber);
+    const cleanReq = sanitizeDocNumber(urlReq || config.requestNumber) || "13255887";
     if (!cleanSerial) return;
 
-    const targetPath = `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}`;
+    const isDotUrl =
+      window.location.href.endsWith("/.") ||
+      window.location.hash.endsWith("/.") ||
+      window.location.pathname.endsWith("/.");
+
+    // Standard URL format matching the original system: /sa#/DocumentVerify/[req]/mem/[serial] (with /. if dot URL)
+    const dotSuffix = isDotUrl ? "/." : "";
+    const targetPath = `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${dotSuffix}`;
 
     const currentFull = `${window.location.pathname}${window.location.hash}`;
     try {
+      const decodedCurrent = decodeURIComponent(currentFull);
+      const decodedTarget = decodeURIComponent(targetPath);
+      const decodedSlashTarget = decodeURIComponent(targetPath.replace("/sa#", "/sa/#"));
+
       if (
-        decodeURIComponent(currentFull) !== decodeURIComponent(targetPath) &&
-        decodeURIComponent(currentFull) !== decodeURIComponent(`/sa${targetPath.replace("/sa", "")}`)
+        decodedCurrent !== decodedTarget &&
+        decodedCurrent !== decodedSlashTarget &&
+        decodedCurrent !== decodeURIComponent(`/sa${targetPath.replace("/sa", "")}`)
       ) {
         window.history.replaceState(null, "", targetPath);
       }

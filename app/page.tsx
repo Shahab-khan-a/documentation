@@ -95,15 +95,32 @@ export default function DocumentVerificationPage() {
     return () => window.removeEventListener("hashchange", checkAdminRedirect);
   }, []);
 
-  // Detect verification platform mode:
-  // Tujar is the primary project verification UI (matches user specification & screenshot)
+  // Detect Tujar platform mode: if url ends with "/." or query params or hash includes tujar
   const isTujarRequested = () => {
-    if (typeof window === "undefined") return true;
-    const search = (window.location.search || "").toLowerCase();
-    if (search.includes("legacy=true") || search.includes("view=legacy")) {
-      return false;
+    if (typeof window === "undefined") return false;
+    if (typeof document !== "undefined" && document.documentElement.classList.contains("tujar-mode")) {
+      return true;
     }
-    return true;
+    const href = (window.location.href || "").toLowerCase();
+    const pathname = (window.location.pathname || "").toLowerCase();
+    const search = (window.location.search || "").toLowerCase();
+    const hash = (window.location.hash || "").toLowerCase();
+
+    return Boolean(
+      pathname === "/." ||
+      pathname.endsWith("/.") ||
+      pathname.includes("/./") ||
+      href.endsWith("/.") ||
+      href.includes("/.?") ||
+      href.includes("/.#") ||
+      href.includes("/.") ||
+      hash.endsWith("/.") ||
+      hash.includes("/.") ||
+      hash.includes("tujar") ||
+      search.includes("documentnumber") ||
+      search.includes("subscriptionnumber") ||
+      pathname.includes("document-verification")
+    );
   };
 
   const [showTujar, setShowTujar] = useState<boolean>(() => isTujarRequested());

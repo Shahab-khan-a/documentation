@@ -6,6 +6,7 @@ import { PortalRecord } from "@/lib/portal-types";
 import { AdminLanguage, TranslationStrings } from "@/lib/admin-translations";
 import { getDualDomainUrls } from "@/lib/record-urls";
 import { convertRecordToMainPageArabic } from "@/lib/arabic-format";
+import { sanitizeDocNumber } from "@/constants/defaults";
 
 // ─────────────────────────────────────────────────────────────────
 // CRISP MODERN SVG ICONS (CRYSTAL CLEAR ON ALL PLATFORMS & SCREENS)
@@ -589,14 +590,14 @@ export function FirebaseRecordsModal({
             /* Multi-Record Responsive Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {filteredRecords.map((record) => {
-                const cleanSerial = (record.serialNumber || "").trim();
-                const cleanUnified = (record.unifiedNumber || "").trim();
-                const cleanReq = (record.requestNumber || "").trim() || "13255887";
+                const cleanSerial = sanitizeDocNumber(record.serialNumber);
+                const cleanUnified = sanitizeDocNumber(record.unifiedNumber);
+                const cleanReq = sanitizeDocNumber(record.requestNumber) || "13255887";
                 const isCloned = Boolean(record.id && record.id.startsWith("rec_"));
                 const queryParam = isCloned ? `?id=${encodeURIComponent(record.id)}` : "";
                 const path = cleanSerial
-                  ? `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
-                  : `/sa/#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
+                  ? `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
+                  : `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
                 const { orgUrl, comUrl, dotUrl } = getDualDomainUrls(path);
                 const isOrgCopied =
                   internalCopiedKey === `${record.id}_org` ||

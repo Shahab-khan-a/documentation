@@ -15,6 +15,7 @@ import {
 import { firebaseConfig } from "./config";
 import { PortalConfig, PortalRecord } from "../portal-types";
 import { DEFAULT_PORTAL_CONFIG } from "../default-config";
+import { sanitizeDocNumber } from "@/constants/defaults";
 
 // Singleton initialization: prevents "Firebase App already exists" error during Next.js hot-reload
 const app: FirebaseApp =
@@ -91,9 +92,9 @@ export function sanitizeFirestoreData<T>(data: T): T {
  */
 export async function saveConfigToFirebase(config: PortalConfig): Promise<boolean> {
   try {
-    const cleanSerial = (config.serialNumber || "").trim();
-    const cleanUnified = (config.unifiedNumber || "").trim();
-    const cleanReq = (config.requestNumber || "").trim();
+    const cleanSerial = sanitizeDocNumber(config.serialNumber);
+    const cleanUnified = sanitizeDocNumber(config.unifiedNumber);
+    const cleanReq = sanitizeDocNumber(config.requestNumber);
     const now = new Date().toISOString();
 
     // If this is a cloned card (starts with rec_), strictly do NOT overwrite global current or primary composite keys
@@ -158,9 +159,11 @@ export async function getConfigFromFirebase(
   requestNumber?: string
 ): Promise<PortalConfig | null> {
   try {
-    const cleanSerial = (serialNumber || "").trim();
-    const cleanUnified = (unifiedNumber || "").trim();
-    const cleanReq = (requestNumber || "").trim();
+    const cleanSerial = sanitizeDocNumber(serialNumber);
+    const cleanUnified = sanitizeDocNumber(unifiedNumber);
+    const cleanReq = sanitizeDocNumber(requestNumber);
+    const rawSerial = (serialNumber || "").trim();
+    const rawReq = (requestNumber || "").trim();
 
     // 1. Try DocumentVerify key: [req]_[serial]
     if (cleanReq && cleanSerial) {
@@ -169,6 +172,15 @@ export async function getConfigFromFirebase(
       if (reqSnap.exists()) {
         return reqSnap.data() as PortalConfig;
       }
+    }
+    if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) {
+      try {
+        const rawRef = doc(db, "portal_configs", `${rawReq}_${rawSerial}`);
+        const rawSnap = await getDoc(rawRef);
+        if (rawSnap.exists()) {
+          return rawSnap.data() as PortalConfig;
+        }
+      } catch {}
     }
 
     // 2. Try DocumentVerify full composite key: [req]_[serial]_[unified]
@@ -218,9 +230,9 @@ export async function savePortalRecordToFirebase(
   currentRecordId?: string
 ): Promise<PortalRecord | null> {
   try {
-    const cleanSerial = (config.serialNumber || "").trim();
-    const cleanUnified = (config.unifiedNumber || "").trim();
-    const cleanReq = (config.requestNumber || "").trim();
+    const cleanSerial = sanitizeDocNumber(config.serialNumber);
+    const cleanUnified = sanitizeDocNumber(config.unifiedNumber);
+    const cleanReq = sanitizeDocNumber(config.requestNumber);
     if (!cleanSerial) return null;
 
     const isNewRecCard = Boolean((config as any).id && (config as any).id.startsWith("rec_"));
@@ -597,19 +609,32 @@ export async function getPortalRecordBySerialUnified(
       if (rec) return rec;
     }
 
-    const cleanSerial = (serial || "").trim();
-    if (cleanSerial.startsWith("rec_")) {
-      const rec = await getPortalRecordById(cleanSerial);
+    const cleanSerial = sanitizeDocNumber(serial);
+    const rawSerial = (serial || "").trim();
+    if (rawSerial.startsWith("rec_")) {
+      const rec = await getPortalRecordById(rawSerial);
       if (rec) return rec;
     }
 
-    const cleanUnified = (unified || "").trim();
-    const cleanReq = (requestNumber || "").trim();
+    const cleanUnified = sanitizeDocNumber(unified);
+    const cleanReq = sanitizeDocNumber(requestNumber);
+    const rawReq = (requestNumber || "").trim();
 
     // 1. Try DocumentVerify key: [req]_[serial]
     if (cleanReq && cleanSerial) {
       try {
         const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
+        const reqSnap = await getDoc(reqRef);
+        if (reqSnap.exists()) {
+          return reqSnap.data() as PortalConfig;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) {
+      try {
+        const reqRef = doc(db, "portal_configs", `${rawReq}_${rawSerial}`);
         const reqSnap = await getDoc(reqRef);
         if (reqSnap.exists()) {
           return reqSnap.data() as PortalConfig;

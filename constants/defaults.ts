@@ -8,6 +8,26 @@ export const DEFAULT_ONLINE_FALLBACK_GIF =
   "https://lottie.host/73358927-6e0d-453a-9a9f-e0607ae61ad8/9sISJeaK1n.gif";
 
 /**
+ * Strips URL prefix leftovers (like &DocumentNumber=, ?DocumentNumber=, &&subscriptionNumber=, %26DocumentNumber%3D, etc.)
+ * returning only the clean alphanumeric/hyphenated identifier.
+ */
+export function sanitizeDocNumber(val?: string | null): string {
+  if (!val) return "";
+  let clean = String(val).trim();
+  try {
+    if (clean.includes("%")) {
+      clean = decodeURIComponent(clean).trim();
+    }
+  } catch {
+    // ignore
+  }
+  clean = clean.replace(/^[&?]+/g, "");
+  clean = clean.replace(/^(?:DocumentNumber|documentNumber|doc|orderNumber|requestNumber|subscriptionNumber|sub|serialNumber|serial)\s*=\s*/i, "");
+  clean = clean.replace(/^[&?]+/g, "");
+  return clean.trim();
+}
+
+/**
  * Bulletproof normalizer ensuring that all nested properties, action buttons,
  * social links, and fields are guaranteed to exist, preventing any runtime render crashes.
  */
@@ -15,6 +35,10 @@ export function normalizePortalConfig(raw?: Partial<PortalConfig> | null): Porta
   if (!raw || typeof raw !== "object") {
     return { ...DEFAULT_PORTAL_CONFIG };
   }
+
+  const cleanSerial = sanitizeDocNumber(raw.serialNumber);
+  const cleanUnified = sanitizeDocNumber(raw.unifiedNumber);
+  const cleanReq = sanitizeDocNumber(raw.requestNumber);
 
   return {
     ...DEFAULT_PORTAL_CONFIG,
@@ -33,9 +57,9 @@ export function normalizePortalConfig(raw?: Partial<PortalConfig> | null): Porta
       raw.facilitySubName !== undefined
         ? raw.facilitySubName
         : DEFAULT_PORTAL_CONFIG.facilitySubName,
-    serialNumber: raw.serialNumber || DEFAULT_PORTAL_CONFIG.serialNumber,
-    unifiedNumber: raw.unifiedNumber || DEFAULT_PORTAL_CONFIG.unifiedNumber,
-    requestNumber: raw.requestNumber || DEFAULT_PORTAL_CONFIG.requestNumber,
+    serialNumber: cleanSerial || DEFAULT_PORTAL_CONFIG.serialNumber,
+    unifiedNumber: cleanUnified || DEFAULT_PORTAL_CONFIG.unifiedNumber,
+    requestNumber: cleanReq || DEFAULT_PORTAL_CONFIG.requestNumber,
     requestType: raw.requestType || DEFAULT_PORTAL_CONFIG.requestType,
     applicantName: raw.applicantName || DEFAULT_PORTAL_CONFIG.applicantName,
     creationDate: raw.creationDate || DEFAULT_PORTAL_CONFIG.creationDate,

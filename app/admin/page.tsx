@@ -19,6 +19,7 @@ import { UploadSuccessModal } from "@/components/UploadSuccessModal";
 import { GoogleDriveManagerModal } from "@/components/admin/GoogleDriveManagerModal";
 import { QuickPreviewModal } from "@/components/admin/QuickPreviewModal";
 import { getDualDomainUrls } from "@/lib/record-urls";
+import { sanitizeDocNumber } from "@/constants/defaults";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebarDrawer } from "@/components/admin/AdminSidebarDrawer";
 import { ButtonsAndFilesTab } from "@/components/admin/ButtonsAndFilesTab";
@@ -300,14 +301,14 @@ export default function AdminDashboard() {
 
   // Helper to compute public URL with dynamic requestNumber and serial numbers (without unified number)
   const getPublicLink = useCallback((conf: PortalConfig | PortalRecord) => {
-    const req = conf.requestNumber?.trim() || "13255887";
-    const s = conf.serialNumber?.trim();
+    const req = sanitizeDocNumber(conf.requestNumber) || "13255887";
+    const s = sanitizeDocNumber(conf.serialNumber);
     const recId = (conf as any).id;
     const query = recId && typeof recId === "string" && recId.startsWith("rec_") ? `?id=${encodeURIComponent(recId)}` : "";
     if (s) {
-      return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}${query}`;
+      return `/sa#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(s)}${query}`;
     }
-    return `/sa/#/DocumentVerify/${encodeURIComponent(req)}/mem${query}`;
+    return `/sa#/DocumentVerify/${encodeURIComponent(req)}/mem${query}`;
   }, []);
 
   const handleDeleteRecord = async (record: PortalRecord) => {
