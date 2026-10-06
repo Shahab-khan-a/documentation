@@ -8,7 +8,7 @@ import {
   TujarUserListIcon,
   TujarDepartmentIcon,
   TujarDateIcon,
-  TujarFileEditIcon,
+  TujarStatusIcon,
 } from "@/lib/tujar-icons";
 
 export interface TujarDocumentDetails {
@@ -41,7 +41,7 @@ export function TujarVerificationResultCard({
 }: TujarVerificationResultCardProps) {
   return (
     <div className="steeper-content" suppressHydrationWarning>
-      {/* 1. Card Header with Circular Back Button (Matches Screenshot 1) */}
+      {/* 1. Card Header: Title & Description on Right, Back Circle on Left (Matches Screenshot) */}
       <div className="tujar-result-header">
         <button
           type="button"
@@ -56,7 +56,7 @@ export function TujarVerificationResultCard({
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
           >
@@ -64,21 +64,21 @@ export function TujarVerificationResultCard({
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
         </button>
-        <h2 className="tujar-result-title">نتيجة التحقق من الوثائق</h2>
+
+        <div className="tujar-result-header-text">
+          <h2 className="tujar-result-title">نتيجة التحقق من الوثائق</h2>
+          <p className="tujar-result-desc">
+            خدمة تتيح التحقق من الوثائق التي تم تصديقها إلكترونياً عبر بوابة خدمات المشتركين، وللتحقق من شهادة الاشتراك الرجاء إدخال الرقم المرجعي أو رقم الطلب الخاص بالوثيقة.
+          </p>
+        </div>
       </div>
 
-      {/* Description */}
-      <p className="tujar-result-desc">
-        خدمة تتيح التحقق من الوثائق التي تم تصديقها إلكترونيا عبر بوابة خدمات المشتركين.
-        وللتحقق من شهادة الاشتراك الرجاء ادخال الرقم المرجعي أو رقم الطلب الخاص بالوثيقة.
-      </p>
-
-      {/* 2. Fields List (Matches Screenshot 1 & 2: Clean white, circular icon, right aligned) */}
+      {/* 2. Fields List (Matches Screenshot 1 & 2: Clean white, circular icon on right, right-aligned texts) */}
       <div className="tujar-fields-list">
         {/* 1. اسم الغرفة */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarBuildIcon className="w-5 h-5 text-[#101828]" />
+            <TujarBuildIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">اسم الغرفة</span>
@@ -89,7 +89,7 @@ export function TujarVerificationResultCard({
         {/* 2. الخدمة */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarFileIcon className="w-5 h-5 text-[#101828]" />
+            <TujarFileIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">الخدمة</span>
@@ -100,29 +100,29 @@ export function TujarVerificationResultCard({
         {/* 3. رقم الوثيقة */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarListNumberIcon className="w-5 h-5 text-[#101828]" />
+            <TujarListNumberIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">رقم الوثيقة</span>
-            <span className="tujar-field-value font-mono" dir="ltr">{details.documentNumber}</span>
+            <span className="tujar-field-value" dir="ltr">{details.documentNumber}</span>
           </div>
         </div>
 
         {/* 4. رقم الطلب */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarListNumberIcon className="w-5 h-5 text-[#101828]" />
+            <TujarListNumberIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">رقم الطلب</span>
-            <span className="tujar-field-value font-mono" dir="ltr">{details.orderNumber}</span>
+            <span className="tujar-field-value" dir="ltr">{details.orderNumber}</span>
           </div>
         </div>
 
         {/* 5. مقدم الطلب */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarUserListIcon className="w-5 h-5 text-[#101828]" />
+            <TujarUserListIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">مقدم الطلب</span>
@@ -133,7 +133,7 @@ export function TujarVerificationResultCard({
         {/* 6. اسم المنشأة */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarDepartmentIcon className="w-5 h-5 text-[#101828]" />
+            <TujarDepartmentIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">اسم المنشأة</span>
@@ -144,29 +144,29 @@ export function TujarVerificationResultCard({
         {/* 7. رقم العضوية */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarListNumberIcon className="w-5 h-5 text-[#101828]" />
+            <TujarListNumberIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">رقم العضوية</span>
-            <span className="tujar-field-value font-mono" dir="ltr">{details.subscriptionNumber}</span>
+            <span className="tujar-field-value" dir="ltr">{details.subscriptionNumber}</span>
           </div>
         </div>
 
         {/* 8. الرقم الموحد */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarListNumberIcon className="w-5 h-5 text-[#101828]" />
+            <TujarListNumberIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">الرقم الموحد</span>
-            <span className="tujar-field-value font-mono" dir="ltr">{details.unifiedNumber}</span>
+            <span className="tujar-field-value" dir="ltr">{details.unifiedNumber}</span>
           </div>
         </div>
 
         {/* 9. تاريخ ووقت الإنشاء */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarDateIcon className="w-5 h-5 text-[#101828]" />
+            <TujarDateIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">تاريخ ووقت الإنشاء</span>
@@ -174,10 +174,10 @@ export function TujarVerificationResultCard({
           </div>
         </div>
 
-        {/* 10. حالة الوثيقة (Matches Screenshot 2 with مقبول and سارى pill badges) */}
+        {/* 10. حالة الوثيقة (Matches Screenshot with مقبول and ساري pill badges) */}
         <div className="tujar-field-item">
           <div className="tujar-field-circle">
-            <TujarFileEditIcon className="w-5 h-5 text-[#101828]" />
+            <TujarStatusIcon className="w-5 h-5 text-[#344054]" />
           </div>
           <div className="tujar-field-texts">
             <span className="tujar-field-label">حالة الوثيقة</span>
@@ -188,14 +188,14 @@ export function TujarVerificationResultCard({
               </span>
               <span className="tujar-pill-badge">
                 <span className="tujar-pill-dot" />
-                <span>{details.isValid ? "سارى" : "منتهي"}</span>
+                <span>{details.isValid ? "ساري" : "منتهي"}</span>
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Action Buttons (Matches Screenshot 2: Right: تحميل الوثيقة, Left: إعادة تحقق) */}
+      {/* 3. Action Buttons (Matches Screenshot: Right: تحميل الوثيقة, Left: إعادة تحقق) */}
       <div className="tujar-actions-buttons-row">
         <button
           type="button"

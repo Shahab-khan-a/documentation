@@ -35,18 +35,8 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var h = window.location.href || '';
-                  var p = window.location.pathname || '';
                   var s = window.location.search || '';
-                  var hash = window.location.hash || '';
-                  if (
-                    h.indexOf('/.') !== -1 ||
-                    hash.indexOf('/.') !== -1 ||
-                    p === '/.' || p.endsWith('/.') ||
-                    s.indexOf('documentNumber') !== -1 ||
-                    s.indexOf('subscriptionNumber') !== -1 ||
-                    p.indexOf('document-verification') !== -1
-                  ) {
+                  if (s.indexOf('legacy=true') === -1 && s.indexOf('view=legacy') === -1) {
                     document.documentElement.classList.add('tujar-mode');
                   }
                 } catch (e) {}

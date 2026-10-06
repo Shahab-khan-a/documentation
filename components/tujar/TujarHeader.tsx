@@ -56,20 +56,20 @@ export function TujarHeader() {
 
         {/* 2. Desktop Navigation Bar */}
         <div className="tujar-desktop-nav">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="inline-flex items-center" aria-label="الرئيسية">
-              <TujarLogo className="h-10 w-auto" />
+          <div className="flex items-center gap-7">
+            <Link href="/" className="inline-flex items-center" aria-label="منصة تجار">
+              <TujarLogo className="h-9 w-auto" fill="#00997b" />
             </Link>
 
-            <nav className="flex items-center gap-1">
-              <a href="/" className="tujar-nav-item">الرئيسية</a>
-              <a href="#about" className="tujar-nav-item">عن منصة تـُجّار</a>
-              <a href="#services" className="tujar-nav-item">خدماتنا</a>
-              <a href="#contact" className="tujar-nav-item">تواصل معنا</a>
+            <nav className="flex items-center gap-6">
+              <a href="#services" className="tujar-nav-item">الخدمات</a>
+              <a href="#for-whom" className="tujar-nav-item">لمن المنصة</a>
+              <a href="#how-to-start" className="tujar-nav-item">كيف تبدأ</a>
+              <a href="#about" className="tujar-nav-item">عن المنصة</a>
             </nav>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-5">
             <button
               type="button"
               className="tujar-lang-btn-desktop"
@@ -85,7 +85,7 @@ export function TujarHeader() {
               className="tujar-login-btn-desktop"
               onClick={() => {}}
             >
-              <TujarSignInUserIcon className="w-5 h-5 text-white" />
+              <TujarSignInUserIcon className="w-5 h-5 text-[#344054]" />
               <span>تسجيل الدخول</span>
             </button>
           </div>
@@ -104,9 +104,9 @@ export function TujarHeader() {
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                aria-label="الرئيسية"
+                aria-label="منصة تجار"
               >
-                <TujarLogo className="h-8 w-auto" />
+                <TujarLogo className="h-8 w-auto" fill="#00997b" />
               </Link>
               <button
                 type="button"
@@ -127,42 +127,42 @@ export function TujarHeader() {
             </div>
 
             <div className="tujar-drawer-body">
-              <Link
-                href="/"
-                className="tujar-drawer-nav-item"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                الرئيسية
-              </Link>
-              <a
-                href="#about"
-                className="tujar-drawer-nav-item"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                عن منصة تـُجّار
-              </a>
               <a
                 href="#services"
                 className="tujar-drawer-nav-item"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                خدماتنا
+                الخدمات
               </a>
               <a
-                href="#contact"
+                href="#for-whom"
                 className="tujar-drawer-nav-item"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                تواصل معنا
+                لمن المنصة
+              </a>
+              <a
+                href="#how-to-start"
+                className="tujar-drawer-nav-item"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                كيف تبدأ
+              </a>
+              <a
+                href="#about"
+                className="tujar-drawer-nav-item"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                عن المنصة
               </a>
 
               <div className="mt-8 pt-4">
                 <button
                   type="button"
-                  className="tujar-login-btn-desktop w-full justify-center py-3 text-base"
+                  className="tujar-login-btn-mobile w-full justify-center py-3 text-base"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <TujarSignInUserIcon className="w-5 h-5 text-white" />
+                  <TujarSignInUserIcon className="w-5 h-5 text-[#344054]" />
                   <span>تسجيل الدخول</span>
                 </button>
               </div>
