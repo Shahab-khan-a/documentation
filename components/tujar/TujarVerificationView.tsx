@@ -16,6 +16,7 @@ import { usePortalConfig } from "@/hooks/usePortalConfig";
 import { useFileDownload } from "@/hooks/useFileDownload";
 import { DownloadAnimationOverlay } from "@/components/portal/DownloadAnimationOverlay";
 import { sanitizeDocNumber } from "@/constants/defaults";
+import { TujarSupportChatIcon } from "@/lib/tujar-icons";
 import "@/app/tujar.css";
 
 export function TujarVerificationView() {
@@ -225,27 +226,42 @@ export function TujarVerificationView() {
         />
       </div>
 
-      {/* 5. Floating WhatsApp Button on Bottom-Left */}
-      <a
-        href="https://wa.me/"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="tujar-floating-whatsapp-btn"
-        aria-label="WhatsApp Support"
-        title="تواصل عبر واتساب"
-      >
-        <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.072-2.003-.47-1.579-.653-2.618-2.28-2.697-2.385-.078-.105-.639-.851-.639-1.624 0-.773.405-1.154.55-1.309.144-.155.314-.194.419-.194.105 0 .209.002.301.006.098.005.228-.037.357.272.131.314.446 1.087.485 1.166.039.078.065.17.013.274-.052.105-.078.17-.157.261-.078.092-.165.204-.236.274-.078.079-.16.165-.069.322.091.157.406.67 871 1.085.599.534 1.104.7 1.261.778.157.079.249.066.341-.039.092-.105.393-.458.498-.615.105-.157.209-.131.353-.078.144.052.916.432 1.073.511.157.078.262.118.301.183.039.066.039.38-.105.785z"/>
-          <path d="M12 2C6.486 2 2 6.486 2 12c0 1.846.505 3.578 1.382 5.064L2.057 22l5.053-1.326C8.547 21.523 10.224 22 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18c-1.61 0-3.116-.499-4.372-1.355l-.313-.213-3.003.788.801-2.928-.233-.371C3.963 14.62 3.5 13.344 3.5 12c0-4.687 3.813-8.5 8.5-8.5s8.5 3.813 8.5 8.5-3.813 8.5-8.5 8.5z"/>
-        </svg>
-      </a>
+      {/* 5. Official Tujar Footer (Matches User Screenshot) */}
+      <TujarFooter />
 
-      {/* 6. Floating Recaptcha / Security Badge on Bottom-Right */}
-      <div className="tujar-floating-security-badge" title="محمي ومتحقق منه">
-        <svg className="w-5 h-5 text-[#2563eb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-        </svg>
+      {/* 6. Floating Google reCAPTCHA Badge on Bottom-Right (Matches Screenshot) */}
+      <div className="tujar-recaptcha-badge" title="محمي بواسطة reCAPTCHA">
+        <div className="tujar-recaptcha-inner">
+          <div className="tujar-recaptcha-logo">
+            <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+              <path d="M24 4C12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20S35.05 4 24 4z" fill="#fff" />
+              <path d="M38 24c0-7.73-6.27-14-14-14-2.14 0-4.14.48-5.94 1.34L21.4 16.5c1.47-.64 3.09-1 4.8-1 6.35 0 11.5 5.15 11.5 11.5H38z" fill="#1A73E8" />
+              <path d="M10 24c0 7.73 6.27 14 14 14 2.14 0 4.14-.48 5.94-1.34L26.6 31.5c-1.47.64-3.09 1-4.8 1-6.35 0-11.5-5.15-11.5-11.5H10z" fill="#4285F4" />
+            </svg>
+          </div>
+          <div className="tujar-recaptcha-text">
+            <span className="tujar-recaptcha-title">محمي بواسطة</span>
+            <span className="tujar-recaptcha-brand">reCAPTCHA</span>
+            <div className="tujar-recaptcha-links">
+              <span>الخصوصية</span> - <span>البنود</span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* 7. Floating Tujar Support / Chat Button on Bottom-Right (Matches Screenshot) */}
+      <button
+        type="button"
+        className="tujar-floating-chat-btn"
+        aria-label="الدعم والمساعدة"
+        title="الدعم والمساعدة"
+        onClick={() => {}}
+      >
+        <div className="tujar-floating-chat-halo" />
+        <div className="tujar-floating-chat-inner">
+          <TujarSupportChatIcon className="w-7 h-7 text-white" />
+        </div>
+      </button>
 
       {/* Download In-Progress Animation */}
       <DownloadAnimationOverlay

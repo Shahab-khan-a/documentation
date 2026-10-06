@@ -62,10 +62,10 @@ export function TujarHeader() {
             </Link>
 
             <nav className="flex items-center gap-6">
-              <a href="#services" className="tujar-nav-item">الخدمات</a>
-              <a href="#for-whom" className="tujar-nav-item">لمن المنصة</a>
-              <a href="#how-to-start" className="tujar-nav-item">كيف تبدأ</a>
-              <a href="#about" className="tujar-nav-item">عن المنصة</a>
+              <a href="https://tujar.fsc.org.sa/#audience" className="tujar-nav-item">الخدمات</a>
+              <a href="https://tujar.fsc.org.sa/#how-to-start" className="tujar-nav-item">لمن المنصة</a>
+              <a href="https://tujar.fsc.org.sa/#about" className="tujar-nav-item">كيف تبدأ</a>
+              <a href="https://tujar.fsc.org.sa/faq" className="tujar-nav-item">عن المنصة</a>
             </nav>
           </div>
 
@@ -128,28 +128,28 @@ export function TujarHeader() {
 
             <div className="tujar-drawer-body">
               <a
-                href="#services"
+                href="https://tujar.fsc.org.sa/#audience"
                 className="tujar-drawer-nav-item"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 الخدمات
               </a>
               <a
-                href="#for-whom"
+                href="https://tujar.fsc.org.sa/#how-to-start"
                 className="tujar-drawer-nav-item"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 لمن المنصة
               </a>
               <a
-                href="#how-to-start"
+                href="https://tujar.fsc.org.sa/#about"
                 className="tujar-drawer-nav-item"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 كيف تبدأ
               </a>
               <a
-                href="#about"
+                href="https://tujar.fsc.org.sa/faq"
                 className="tujar-drawer-nav-item"
                 onClick={() => setMobileMenuOpen(false)}
               >

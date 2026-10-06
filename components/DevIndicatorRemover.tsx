@@ -9,8 +9,11 @@ export default function DevIndicatorRemover() {
       fetch("/__nextjs_disable_dev_indicator", { method: "POST" }).catch(() => {});
     }
 
-    // 2. Remove any existing Next.js portal or dev indicator badge
+    // 2. Remove any existing Next.js portal or dev indicator badge and extension attributes
     const cleanupPortals = () => {
+      document.querySelectorAll("[bis_skin_checked]").forEach((el) => {
+        el.removeAttribute("bis_skin_checked");
+      });
       const portals = document.querySelectorAll("nextjs-portal, [data-nextjs-dev-overlay], [data-nextjs-toast]");
       portals.forEach((el) => {
         try {
@@ -32,6 +35,13 @@ export default function DevIndicatorRemover() {
       for (const mutation of mutations) {
         for (const node of Array.from(mutation.addedNodes)) {
           if (node instanceof HTMLElement) {
+            if (node.hasAttribute("bis_skin_checked")) {
+              node.removeAttribute("bis_skin_checked");
+            }
+            node.querySelectorAll?.("[bis_skin_checked]").forEach((el) => {
+              el.removeAttribute("bis_skin_checked");
+            });
+
             const tag = node.tagName.toLowerCase();
             if (
               tag === "nextjs-portal" ||
@@ -57,7 +67,7 @@ export default function DevIndicatorRemover() {
     });
 
     try {
-      observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["bis_skin_checked"] });
     } catch {
       // ignore
     }
