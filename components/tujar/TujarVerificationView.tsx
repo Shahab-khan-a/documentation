@@ -78,6 +78,7 @@ export function TujarVerificationView() {
   const [documentNumber, setDocumentNumber] = useState(initialParams.doc || "205-178");
   const [subscriptionNumber, setSubscriptionNumber] = useState(initialParams.sub || "205001150789");
   const [orderNumber, setOrderNumber] = useState(initialParams.req || "205-154");
+  const [searchedDoc, setSearchedDoc] = useState<string | null>(null);
 
   // Step state: 1: Search Form, 2: Verification Result Card
   const [step, setStep] = useState<number>(2);
@@ -93,12 +94,21 @@ export function TujarVerificationView() {
     if (p.doc && p.sub) setStep(2);
   }, [queryDoc, querySub, parseUrlParams]);
 
+  // Sync documentNumber state when config.documentNumber loads from Firebase
+  useEffect(() => {
+    const cleanDoc = sanitizeDocNumber(config?.documentNumber);
+    if (cleanDoc && !searchedDoc && (!queryDoc || queryDoc === "205-178")) {
+      setDocumentNumber(cleanDoc);
+    }
+  }, [config?.documentNumber, queryDoc, searchedDoc]);
+
   const handleLoaderDone = useCallback(() => {
     setInitialLoading(false);
   }, []);
 
   const handleSearch = (docOrOrderNo: string, subOrUnifiedNo: string, searchField: number) => {
     setSearchLoading(true);
+    setSearchedDoc(docOrOrderNo);
     setDocumentNumber(docOrOrderNo);
     setSubscriptionNumber(subOrUnifiedNo);
 
@@ -130,6 +140,7 @@ export function TujarVerificationView() {
 
   // Build document details dynamically from config (updated in real-time from Admin Panel / Firebase)
   const cleanSerial = sanitizeDocNumber(config?.serialNumber);
+  const cleanDoc = sanitizeDocNumber(config?.documentNumber);
   const cleanReq = sanitizeDocNumber(config?.requestNumber);
   const cleanUnified = sanitizeDocNumber(config?.unifiedNumber);
   const cleanComm = sanitizeDocNumber(config?.commercialRegNo);
@@ -137,22 +148,18 @@ export function TujarVerificationView() {
     ? (config.facilitySubName ? `${config.facilityName} ${config.facilitySubName}` : config.facilityName)
     : "";
 
-  const is205Sample =
-    (queryDoc === "205-178" && (querySub === "205001150709" || querySub === "205001150789")) ||
-    (!queryDoc && !initialParams.doc && !cleanSerial && !cleanReq);
-
   const docNo =
+    searchedDoc ||
+    (queryDoc && queryDoc !== "205-178" ? queryDoc : undefined) ||
+    cleanDoc ||
     queryDoc ||
     initialParams.doc ||
-    cleanReq ||
-    cleanSerial ||
     documentNumber ||
     "205-178";
 
   const orderNo =
     initialParams.req ||
     cleanReq ||
-    queryDoc ||
     orderNumber ||
     "205-154";
 
@@ -164,6 +171,10 @@ export function TujarVerificationView() {
     cleanUnified ||
     subscriptionNumber ||
     "205001150789";
+
+  const is205Sample =
+    (docNo === "205-178" && (subNo === "205001150709" || subNo === "205001150789")) ||
+    (!queryDoc && !initialParams.doc && !cleanSerial && !cleanReq && !cleanDoc);
 
   const details: TujarDocumentDetails = {
     chamberName: config?.chamberName || "ينبع",

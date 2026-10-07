@@ -23,6 +23,7 @@ export function convertRecordToMainPageArabic(r: any): Record<string, any> {
 
   return {
     "الرقم التسلسلي للوثيقة": serial,
+    "رقم الوثيقة": r?.documentNumber || "",
     "إسم الغرفة": r?.chamberName || "",
     "إسم المنشأة": r?.facilityName || "",
     "نوع المنشأة": r?.facilitySubName || "",

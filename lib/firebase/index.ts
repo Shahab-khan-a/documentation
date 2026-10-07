@@ -104,12 +104,15 @@ export async function saveConfigToFirebase(config: PortalConfig): Promise<boolea
 
     const recordId = cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
 
+    const cleanDoc = sanitizeDocNumber(config.documentNumber) || config.documentNumber || "205-178";
+
     const rawData: PortalRecord = {
       ...config,
       id: recordId,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
       requestNumber: cleanReq,
+      documentNumber: cleanDoc,
       updatedAt: now,
       createdAt: (config as any).createdAt || now,
     };
@@ -247,12 +250,15 @@ export async function savePortalRecordToFirebase(
         : cleanSerial;
     const now = new Date().toISOString();
 
+    const cleanDoc = sanitizeDocNumber(config.documentNumber) || config.documentNumber || "205-178";
+
     const rawRecord: PortalRecord = {
       ...config,
       id: recordId,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
       requestNumber: cleanReq,
+      documentNumber: cleanDoc,
       createdAt: (config as any).createdAt || now,
       updatedAt: now,
     };

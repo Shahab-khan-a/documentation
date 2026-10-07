@@ -5,6 +5,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   pageTitle: "التحقق من الوثائق",
   
   serialNumber: "7032840279",
+  documentNumber: "205-178",
   chamberName: "ينبع",
   facilityName: "مؤسسة العنود سلمان شوعان",
   facilitySubName: "القحطاني للمقاولات العامة",

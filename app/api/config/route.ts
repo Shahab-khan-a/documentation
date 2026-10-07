@@ -33,11 +33,13 @@ function mergeWithDefaults(parsed: Partial<PortalConfig>): PortalConfig {
   const cleanSerial = sanitizeDocNumber(parsed.serialNumber);
   const cleanUnified = sanitizeDocNumber(parsed.unifiedNumber);
   const cleanReq = sanitizeDocNumber(parsed.requestNumber);
+  const cleanDoc = sanitizeDocNumber(parsed.documentNumber);
 
   return {
     ...DEFAULT_PORTAL_CONFIG,
     ...parsed,
     serialNumber: cleanSerial || DEFAULT_PORTAL_CONFIG.serialNumber,
+    documentNumber: cleanDoc || parsed.documentNumber || DEFAULT_PORTAL_CONFIG.documentNumber || "205-178",
     unifiedNumber: cleanUnified || DEFAULT_PORTAL_CONFIG.unifiedNumber,
     requestNumber: cleanReq || DEFAULT_PORTAL_CONFIG.requestNumber,
     portalTitle: cleanPortalTitle(parsed.portalTitle),
@@ -70,6 +72,7 @@ function mergeWithGlobal(parsed: Partial<PortalConfig>, globalConfig: PortalConf
     ...globalConfig,
     ...parsed,
     serialNumber: sanitizeDocNumber(parsed.serialNumber) || sanitizeDocNumber(globalConfig.serialNumber) || DEFAULT_PORTAL_CONFIG.serialNumber,
+    documentNumber: sanitizeDocNumber(parsed.documentNumber) || sanitizeDocNumber(globalConfig.documentNumber) || DEFAULT_PORTAL_CONFIG.documentNumber || "205-178",
     unifiedNumber: sanitizeDocNumber(parsed.unifiedNumber) || sanitizeDocNumber(globalConfig.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
     requestNumber: sanitizeDocNumber(parsed.requestNumber) || sanitizeDocNumber(globalConfig.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
     portalTitle: cleanPortalTitle(parsed.portalTitle || globalConfig.portalTitle),

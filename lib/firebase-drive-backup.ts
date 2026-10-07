@@ -314,6 +314,7 @@ export async function restoreRecordsToFirebase(
 
 export interface CleanFormData {
   serialNumber: string;
+  documentNumber?: string;
   unifiedNumber: string;
   requestNumber: string;
   requestType: string;
@@ -367,6 +368,7 @@ export interface CleanFormData {
 export function extractCleanFormData(raw: any): CleanFormData {
   return {
     serialNumber: (raw?.serialNumber || "").trim(),
+    documentNumber: (raw?.documentNumber || "").trim(),
     unifiedNumber: (raw?.unifiedNumber || "").trim(),
     requestNumber: (raw?.requestNumber || "").trim(),
     requestType: raw?.requestType || "",

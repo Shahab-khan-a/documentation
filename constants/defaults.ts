@@ -62,6 +62,7 @@ export function normalizePortalConfig(raw?: Partial<PortalConfig> | null): Porta
         ? raw.facilitySubName
         : DEFAULT_PORTAL_CONFIG.facilitySubName,
     serialNumber: cleanSerial || DEFAULT_PORTAL_CONFIG.serialNumber,
+    documentNumber: sanitizeDocNumber(raw.documentNumber) || raw.documentNumber || DEFAULT_PORTAL_CONFIG.documentNumber || "205-178",
     unifiedNumber: cleanUnified || DEFAULT_PORTAL_CONFIG.unifiedNumber,
     requestNumber: cleanReq || DEFAULT_PORTAL_CONFIG.requestNumber,
     requestType: raw.requestType || DEFAULT_PORTAL_CONFIG.requestType,

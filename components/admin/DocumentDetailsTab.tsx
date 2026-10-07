@@ -273,6 +273,45 @@ export function DocumentDetailsTab({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Yellow Input Card: رقم الوثيقة (Document Number - منصة تجار / Tujar) */}
+          <div className="md:col-span-3 p-4 rounded-2xl bg-amber-50/90 border-2 border-amber-400 ring-2 ring-amber-200/60 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="document-number-input" className="block text-xs font-black text-amber-950 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-amber-300 text-amber-900 flex items-center justify-center text-xs font-bold shadow-2xs">
+                  📄
+                </span>
+                <span>
+                  {lang === "en"
+                    ? "Document Number (Tujar Platform)"
+                    : lang === "ur"
+                    ? "دستاویز نمبر (منصۃ تجار)"
+                    : "رقم الوثيقة (منصة تجار)"}
+                </span>
+              </label>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-200 text-amber-900 border border-amber-300">
+                {lang === "en" ? "Tujar Card / documentNumber" : lang === "ur" ? "تجار کارڈ / documentNumber" : "بطاقة تجار / documentNumber"}
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                id="document-number-input"
+                type="text"
+                dir="ltr"
+                value={config.documentNumber ?? "205-178"}
+                onChange={(e) => setConfig({ ...config, documentNumber: sanitizeDocNumber(e.target.value) })}
+                placeholder="205-178"
+                className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-amber-100/70 text-amber-950 font-mono font-bold text-sm focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-400 focus:outline-none transition-all shadow-inner placeholder:text-amber-700/50"
+              />
+            </div>
+            <p className="text-[11px] font-medium text-amber-800 mt-2 leading-relaxed">
+              {lang === "en"
+                ? "This number is saved to Firebase & Google Drive, and specifically shows on the Tujar verification page (رقم الوثيقة)."
+                : lang === "ur"
+                ? "یہ نمبر فائر بیس اور گوگل ڈرائیو میں محفوظ ہوگا، اور منصۃ تجار کی تصدیق والے پیج پر (رقم الوثيقة) کے طور پر شو ہوگا۔"
+                : "يتم حفظ هذا الرقم في فايربيس وجوجل درايف، ويظهر حصرياً في صفحة منصة تجار كـ (رقم الوثيقة)."}
+            </p>
+          </div>
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-bold text-slate-700">{t.unified_number}</label>

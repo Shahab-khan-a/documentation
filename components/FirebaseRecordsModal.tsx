@@ -161,6 +161,7 @@ export function FirebaseRecordsModal({
       const q = searchQuery.trim().toLowerCase();
 
       const serial = (record.serialNumber || "").toLowerCase();
+      const docNum = (record.documentNumber || "").toLowerCase();
       const unified = (record.unifiedNumber || "").toLowerCase();
       const facility = (record.facilityName || "").toLowerCase();
       const facilitySub = (record.facilitySubName || "").toLowerCase();
@@ -172,6 +173,7 @@ export function FirebaseRecordsModal({
 
       return (
         serial.includes(q) ||
+        docNum.includes(q) ||
         unified.includes(q) ||
         facility.includes(q) ||
         facilitySub.includes(q) ||
@@ -636,6 +638,16 @@ export function FirebaseRecordsModal({
                               title="الرقم الموحد"
                             >
                               700: {cleanUnified}
+                            </span>
+                          )}
+
+                          {/* Document Number Pill */}
+                          {record.documentNumber && (
+                            <span
+                              className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-mono font-bold text-[11px] border border-amber-300"
+                              title="رقم الوثيقة (منصة تجار)"
+                            >
+                              📄 {record.documentNumber}
                             </span>
                           )}
 
