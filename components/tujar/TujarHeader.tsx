@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import {
   TujarLogo,
   TujarLanguageIcon,
@@ -39,9 +38,9 @@ export function TujarHeader() {
           </button>
 
           {/* Center: Tujar Logo */}
-          <Link href="/" className="tujar-mobile-logo" aria-label="الرئيسية">
+          <a href="https://tujar.fsc.org.sa/" className="tujar-mobile-logo" aria-label="الرئيسية">
             <TujarLogo className="h-8 w-auto" />
-          </Link>
+          </a>
 
           {/* Right: Language Switcher Icon [A 文] */}
           <button
@@ -57,9 +56,9 @@ export function TujarHeader() {
         {/* 2. Desktop Navigation Bar */}
         <div className="tujar-desktop-nav">
           <div className="flex items-center gap-7">
-            <Link href="/" className="inline-flex items-center" aria-label="منصة تجار">
+            <a href="https://tujar.fsc.org.sa/" className="inline-flex items-center" aria-label="منصة تجار">
               <TujarLogo className="h-9 w-auto" fill="#00997b" />
-            </Link>
+            </a>
 
             <nav className="flex items-center gap-6">
               <a href="https://tujar.fsc.org.sa/#audience" className="tujar-nav-item">الخدمات</a>
@@ -80,14 +79,13 @@ export function TujarHeader() {
               <span>English</span>
             </button>
 
-            <button
-              type="button"
+            <a
+              href="https://tujar.fsc.org.sa/"
               className="tujar-login-btn-desktop"
-              onClick={() => {}}
             >
               <TujarSignInUserIcon className="w-5 h-5 text-[#344054]" />
               <span>تسجيل الدخول</span>
-            </button>
+            </a>
           </div>
         </div>
       </div>
@@ -101,13 +99,13 @@ export function TujarHeader() {
           />
           <div className="tujar-mobile-drawer" dir="rtl">
             <div className="tujar-drawer-header">
-              <Link
-                href="/"
+              <a
+                href="https://tujar.fsc.org.sa/"
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="منصة تجار"
               >
                 <TujarLogo className="h-8 w-auto" fill="#00997b" />
-              </Link>
+              </a>
               <button
                 type="button"
                 className="tujar-drawer-close-btn"
@@ -157,14 +155,14 @@ export function TujarHeader() {
               </a>
 
               <div className="mt-8 pt-4">
-                <button
-                  type="button"
-                  className="tujar-login-btn-mobile w-full justify-center py-3 text-base"
+                <a
+                  href="https://tujar.fsc.org.sa/"
+                  className="tujar-login-btn-mobile w-full justify-center py-3 text-base no-underline"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <TujarSignInUserIcon className="w-5 h-5 text-[#344054]" />
                   <span>تسجيل الدخول</span>
-                </button>
+                </a>
               </div>
             </div>
           </div>

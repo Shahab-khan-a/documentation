@@ -51,7 +51,7 @@ export function TujarFooter() {
           <ul className="tujar-footer-links">
             <li>
               <a
-                href="https://fsc.org.sa/"
+                href="https://mc.gov.sa/ar/pages/default.aspx"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="tujar-footer-link"
@@ -108,7 +108,7 @@ export function TujarFooter() {
             />
           </a>
           <a
-            href="https://mc.gov.sa"
+            href="https://mc.gov.sa/ar/pages/default.aspx"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="وزارة التجارة"

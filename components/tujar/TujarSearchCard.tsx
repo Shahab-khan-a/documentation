@@ -32,7 +32,7 @@ export function TujarSearchCard({
       <div className="steeper-content__header">
         <h2 className="title">التحقق من الوثائق</h2>
         <a
-          href="/"
+          href="https://tujar.fsc.org.sa/"
           className="tujar-back-btn"
           title="الرئيسية"
           aria-label="العودة للرئيسية"
