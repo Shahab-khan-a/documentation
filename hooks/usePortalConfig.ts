@@ -48,9 +48,13 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
       const qId = searchParams.get("id");
       if (qId) recordId = decodeURIComponent(qId).trim();
 
-      const qDoc = searchParams.get("documentNumber") || searchParams.get("req");
-      const qSub = searchParams.get("subscriptionNumber") || searchParams.get("serial") || searchParams.get("unified");
-      if (qDoc && !requestNumber) requestNumber = sanitizeDocNumber(qDoc);
+      const qReq = searchParams.get("req") || searchParams.get("orderNumber");
+      const qSub =
+        searchParams.get("subscriptionNumber") ||
+        searchParams.get("SubscriptionNumber") ||
+        searchParams.get("serial") ||
+        searchParams.get("unified");
+      if (qReq && !requestNumber) requestNumber = sanitizeDocNumber(qReq);
       if (qSub && !serial) serial = sanitizeDocNumber(qSub);
       if (qSub && !unified) unified = sanitizeDocNumber(qSub);
 
@@ -60,9 +64,13 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
         const hId = hashParams.get("id");
         if (hId && !recordId) recordId = decodeURIComponent(hId).trim();
 
-        const hDoc = hashParams.get("documentNumber") || hashParams.get("req");
-        const hSub = hashParams.get("subscriptionNumber") || hashParams.get("serial") || hashParams.get("unified");
-        if (hDoc && !requestNumber) requestNumber = sanitizeDocNumber(hDoc);
+        const hReq = hashParams.get("req") || hashParams.get("orderNumber");
+        const hSub =
+          hashParams.get("subscriptionNumber") ||
+          hashParams.get("SubscriptionNumber") ||
+          hashParams.get("serial") ||
+          hashParams.get("unified");
+        if (hReq && !requestNumber) requestNumber = sanitizeDocNumber(hReq);
         if (hSub && !serial) serial = sanitizeDocNumber(hSub);
         if (hSub && !unified) unified = sanitizeDocNumber(hSub);
       }

@@ -223,6 +223,11 @@ export async function restoreRecordsToFirebase(
       const recordToSave: PortalRecord = {
         id,
         serialNumber: String(serialNumber).trim(),
+        documentNumber:
+          raw["رقم الوثيقة"] ||
+          raw["رقم الوثيقة (منصة تجار)"] ||
+          raw.documentNumber ||
+          "",
         chamberName: raw["إسم الغرفة"] || raw.chamberName || "",
         facilityName: raw["إسم المنشأة"] || raw.facilityName || "",
         facilitySubName: raw["نوع المنشأة"] || raw.facilitySubName || "",

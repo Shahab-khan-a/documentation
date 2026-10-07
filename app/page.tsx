@@ -150,7 +150,6 @@ export default function DocumentVerificationPage() {
           const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
           if (dvIndex !== -1) {
             const after = parts.slice(dvIndex + 1);
-            doc = sanitizeDocNumber(after[0]) || "";
             if (after[1]?.toLowerCase() === "mem") {
               sub = sanitizeDocNumber(after[2]) || "";
             } else {
@@ -159,8 +158,9 @@ export default function DocumentVerificationPage() {
           }
         }
 
-        const targetDoc = doc || "205-178";
-        const targetSub = sub || "205001150789";
+        const savedDoc = sanitizeDocNumber(config?.documentNumber);
+        const targetDoc = savedDoc || "205-178";
+        const targetSub = sub || sanitizeDocNumber(config?.serialNumber) || "205001150789";
         const targetUrl = `/document-verification?documentNumber=${targetDoc}&subscriptionNumber=${targetSub}`;
 
         const currentCombined = `${window.location.pathname}${window.location.search}`;

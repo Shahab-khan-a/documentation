@@ -298,7 +298,8 @@ export function DocumentDetailsTab({
                 type="text"
                 dir="ltr"
                 value={config.documentNumber ?? "205-178"}
-                onChange={(e) => setConfig({ ...config, documentNumber: sanitizeDocNumber(e.target.value) })}
+                onChange={(e) => setConfig({ ...config, documentNumber: e.target.value })}
+                onBlur={() => setConfig({ ...config, documentNumber: sanitizeDocNumber(config.documentNumber) || config.documentNumber || "205-178" })}
                 placeholder="205-178"
                 className="w-full px-4 py-3 rounded-xl border-2 border-amber-400 bg-amber-100/70 text-amber-950 font-mono font-bold text-sm focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-400 focus:outline-none transition-all shadow-inner placeholder:text-amber-700/50"
               />

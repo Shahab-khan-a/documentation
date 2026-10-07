@@ -622,27 +622,29 @@ export default function AdminDashboard() {
   // Helper to persist updated configuration immediately to server & disk & Firebase
   const autoSaveConfig = useCallback(async (newConfig: PortalConfig) => {
     const sanitized = sanitizeFirestoreData(newConfig);
-    setConfig(sanitized);
-    setInitialConfig(sanitized);
-    const cleanSerial = (sanitized.serialNumber || "").trim();
-    const cleanUnified = (sanitized.unifiedNumber || "").trim();
+    const cleanDoc = sanitizeDocNumber(sanitized.documentNumber) || (sanitized.documentNumber || "").trim() || "205-178";
+    const fullConfig = { ...sanitized, documentNumber: cleanDoc };
+    setConfig(fullConfig);
+    setInitialConfig(fullConfig);
+    const cleanSerial = (fullConfig.serialNumber || "").trim();
+    const cleanUnified = (fullConfig.unifiedNumber || "").trim();
     const recId = cleanSerial && cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
     try {
-      localStorage.setItem("portal_config_cache", JSON.stringify(sanitized));
+      localStorage.setItem("portal_config_cache", JSON.stringify(fullConfig));
       if (cleanSerial) {
-        saveConfigToFirebase(sanitized).catch(() => {});
-        savePortalRecordToFirebase(sanitized, recId).catch(() => {});
+        saveConfigToFirebase(fullConfig).catch(() => {});
+        savePortalRecordToFirebase(fullConfig, recId).catch(() => {});
         // 🌟 Direct Parallel Google Drive Save (Zero waiting for Firebase)
         fetch("/api/backup?action=save_record", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sanitized),
+          body: JSON.stringify(fullConfig),
         }).catch(() => {});
       }
       await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sanitized),
+        body: JSON.stringify(fullConfig),
       });
     } catch (err) {
       console.error("autoSaveConfig failed:", err);
@@ -992,10 +994,13 @@ export default function AdminDashboard() {
         }
       }
 
+      const cleanDoc = sanitizeDocNumber(config.documentNumber) || (config.documentNumber || "").trim() || "205-178";
+
       const payload: PortalRecord = {
         ...config,
         id: effectiveRecordId,
         serialNumber: cleanSerial,
+        documentNumber: cleanDoc,
         unifiedNumber: cleanUnified,
         requestNumber: cleanReq,
         currentRecordId: effectiveRecordId,

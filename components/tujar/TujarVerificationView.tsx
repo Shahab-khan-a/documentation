@@ -21,8 +21,17 @@ import "@/app/tujar.css";
 
 export function TujarVerificationView() {
   const searchParams = useSearchParams();
-  const rawQueryDoc = searchParams?.get("documentNumber") || "";
-  const rawQuerySub = searchParams?.get("subscriptionNumber") || "";
+  const rawQueryDoc =
+    searchParams?.get("documentNumber") ||
+    searchParams?.get("DocumentNumber") ||
+    searchParams?.get("doc") ||
+    "";
+  const rawQuerySub =
+    searchParams?.get("subscriptionNumber") ||
+    searchParams?.get("SubscriptionNumber") ||
+    searchParams?.get("sub") ||
+    searchParams?.get("serial") ||
+    "";
   const queryDoc = sanitizeDocNumber(rawQueryDoc);
   const querySub = sanitizeDocNumber(rawQuerySub);
   const { config } = usePortalConfig();
@@ -92,14 +101,16 @@ export function TujarVerificationView() {
     }
 
     return {
-      doc: sanitizeDocNumber(queryDoc || req || ""),
+      doc: sanitizeDocNumber(queryDoc || ""),
       sub: sanitizeDocNumber(querySub || s || ""),
-      req: sanitizeDocNumber(req || queryDoc || ""),
+      req: sanitizeDocNumber(req || ""),
     };
   }, [queryDoc, querySub]);
 
   const initialParams = parseUrlParams();
-  const [documentNumber, setDocumentNumber] = useState(initialParams.doc || "205-178");
+  const [documentNumber, setDocumentNumber] = useState(
+    sanitizeDocNumber(config?.documentNumber) || initialParams.doc || "205-178"
+  );
   const [subscriptionNumber, setSubscriptionNumber] = useState(initialParams.sub || "205001150789");
   const [orderNumber, setOrderNumber] = useState(initialParams.req || "205-154");
   const [searchedDoc, setSearchedDoc] = useState<string | null>(null);
@@ -118,13 +129,31 @@ export function TujarVerificationView() {
     if (p.doc && p.sub) setStep(2);
   }, [queryDoc, querySub, parseUrlParams]);
 
-  // Sync documentNumber state when config.documentNumber loads from Firebase
+  // Sync documentNumber state and update browser URL when config.documentNumber loads from Firebase / Drive
   useEffect(() => {
     const cleanDoc = sanitizeDocNumber(config?.documentNumber);
-    if (cleanDoc && !searchedDoc && (!queryDoc || queryDoc === "205-178")) {
+    if (!cleanDoc) return;
+
+    if (!searchedDoc) {
       setDocumentNumber(cleanDoc);
     }
-  }, [config?.documentNumber, queryDoc, searchedDoc]);
+
+    if (typeof window !== "undefined") {
+      try {
+        const currentUrl = new URL(window.location.href);
+        const currentDocParam =
+          currentUrl.searchParams.get("documentNumber") ||
+          currentUrl.searchParams.get("DocumentNumber");
+        if (currentDocParam !== cleanDoc) {
+          currentUrl.searchParams.set("documentNumber", cleanDoc);
+          currentUrl.searchParams.delete("DocumentNumber");
+          window.history.replaceState(null, "", currentUrl.toString());
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [config?.documentNumber, searchedDoc]);
 
   // Instant redirect to Admin Panel if /admin or #admin is typed in URL bar, query, or hash
   useEffect(() => {
@@ -212,10 +241,8 @@ export function TujarVerificationView() {
 
   const docNo =
     searchedDoc ||
-    (queryDoc && queryDoc !== "205-178" ? queryDoc : undefined) ||
     cleanDoc ||
-    queryDoc ||
-    initialParams.doc ||
+    (queryDoc && queryDoc !== cleanReq && queryDoc !== "13255887" && queryDoc !== "205-178" ? queryDoc : undefined) ||
     documentNumber ||
     "205-178";
 

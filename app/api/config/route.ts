@@ -190,9 +190,11 @@ export async function POST(req: Request) {
     const cleanSerial = sanitizeDocNumber(updated.serialNumber);
     const cleanUnified = sanitizeDocNumber(updated.unifiedNumber);
     const cleanReq = sanitizeDocNumber(updated.requestNumber);
+    const cleanDoc = sanitizeDocNumber(updated.documentNumber);
     updated.serialNumber = cleanSerial;
     updated.unifiedNumber = cleanUnified;
     updated.requestNumber = cleanReq;
+    updated.documentNumber = cleanDoc || updated.documentNumber || "205-178";
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
     const isRecCard = Boolean(body.id && typeof body.id === "string" && body.id.startsWith("rec_"));
     const recordId = isRecCard ? body.id : cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
