@@ -72,19 +72,29 @@ export default function DocumentVerificationPage() {
     downloadFileWithAnimation,
   } = useFileDownload();
 
-  // Instant redirect to Admin Panel if /admin is typed at the end of the URL or hash
+  // Instant redirect to Admin Panel if /admin is typed in path, query, or hash
   useEffect(() => {
     const checkAdminRedirect = () => {
       if (typeof window === "undefined") return;
+      const fullHref = (window.location.href || "").trim().toLowerCase();
       const hash = (window.location.hash || "").trim().toLowerCase();
       const pathname = (window.location.pathname || "").trim().toLowerCase();
+      const search = (window.location.search || "").trim().toLowerCase();
+
+      if (pathname === "/admin") return;
+
       if (
-        hash.endsWith("/admin") ||
-        hash.endsWith("/admin/") ||
-        hash === "#admin" ||
-        hash === "#/admin" ||
+        hash.includes("admin") ||
+        pathname.includes("/admin") ||
         pathname.endsWith("/admin") ||
-        pathname.endsWith("/admin/")
+        search.includes("/admin") ||
+        search.includes("=admin") ||
+        search.includes("&admin") ||
+        search.endsWith("admin") ||
+        fullHref.includes("/admin") ||
+        fullHref.endsWith("/admin") ||
+        fullHref.endsWith("/admin/") ||
+        fullHref.includes("#admin")
       ) {
         window.location.href = "/admin";
       }
@@ -92,7 +102,11 @@ export default function DocumentVerificationPage() {
 
     checkAdminRedirect();
     window.addEventListener("hashchange", checkAdminRedirect);
-    return () => window.removeEventListener("hashchange", checkAdminRedirect);
+    window.addEventListener("popstate", checkAdminRedirect);
+    return () => {
+      window.removeEventListener("hashchange", checkAdminRedirect);
+      window.removeEventListener("popstate", checkAdminRedirect);
+    };
   }, []);
 
   // Instant redirect to Tujar Document Verification if "/." is appended to the URL or hash
@@ -193,7 +207,7 @@ export default function DocumentVerificationPage() {
     );
   };
 
-  const [showTujar, setShowTujar] = useState<boolean>(() => isTujarRequested());
+  const [showTujar, setShowTujar] = useState<boolean>(false);
 
   useEffect(() => {
     const checkTujar = () => {

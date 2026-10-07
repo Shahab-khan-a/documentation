@@ -15,7 +15,7 @@ export function PublicFooter({ config }: PublicFooterProps) {
   return (
     <>
       {/* ══════════════════ FOOTER BLUE BANNER ══════════════════ */}
-      <div className="max-w-md mx-auto px-4 pt-4 pb-8">
+      <div suppressHydrationWarning className="max-w-md mx-auto px-4 pt-4 pb-8">
         <div
           className="relative overflow-hidden rounded-xl shadow-md"
           style={{

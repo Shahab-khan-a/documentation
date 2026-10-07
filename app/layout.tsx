@@ -34,6 +34,15 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  // 0. Neutralize bis_skin_checked injection from Bitdefender/Chrome extensions before React hydration
+                  if (typeof Element !== 'undefined' && Element.prototype) {
+                    var origSetAttr = Element.prototype.setAttribute;
+                    Element.prototype.setAttribute = function(name, value) {
+                      if (name === 'bis_skin_checked') return;
+                      return origSetAttr.apply(this, arguments);
+                    };
+                  }
+
                   // 1. Suppress noisy third-party browser extension unhandled rejections (e.g. content.js JSON.parse, Urban VPN 200.js M_ID)
                   window.addEventListener('unhandledrejection', function(event) {
                     try {
@@ -122,7 +131,31 @@ export default function RootLayout({
                     cleanBis();
                   }
 
-                  // 5. Tujar route detection
+                  // 5. Global Admin Route Interceptor (Instantly redirect to /admin if /admin or #admin is typed in URL)
+                  var fullHref = (window.location.href || '').toLowerCase();
+                  var pathName = (window.location.pathname || '').toLowerCase();
+                  var searchPart = (window.location.search || '').toLowerCase();
+                  var hashPart = (window.location.hash || '').toLowerCase();
+
+                  if (
+                    pathName !== '/admin' &&
+                    (
+                      pathName.endsWith('/admin') ||
+                      pathName.endsWith('/admin/') ||
+                      pathName.indexOf('/admin') !== -1 ||
+                      hashPart.indexOf('admin') !== -1 ||
+                      searchPart.indexOf('/admin') !== -1 ||
+                      searchPart.indexOf('admin') !== -1 ||
+                      fullHref.endsWith('/admin') ||
+                      fullHref.endsWith('/admin/') ||
+                      fullHref.indexOf('/admin') !== -1
+                    )
+                  ) {
+                    window.location.href = '/admin';
+                    return;
+                  }
+
+                  // 6. Tujar route detection
                   var h = window.location.href || '';
                   var p = window.location.pathname || '';
                   var s = window.location.search || '';

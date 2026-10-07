@@ -12,7 +12,7 @@ export function DownloadAnimationOverlay({
   active,
   buttonLoaderGifUrl,
 }: DownloadAnimationOverlayProps) {
-  const [cacheBustKey, setCacheBustKey] = useState<number>(() => Date.now());
+  const [cacheBustKey, setCacheBustKey] = useState<number>(0);
 
   useEffect(() => {
     if (active) {

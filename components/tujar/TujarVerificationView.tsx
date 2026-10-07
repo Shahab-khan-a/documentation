@@ -33,8 +33,32 @@ export function TujarVerificationView() {
     if (typeof window === "undefined") {
       return { doc: queryDoc || "", sub: querySub || "", req: "" };
     }
-    const hash = window.location.hash || "";
-    const pathname = window.location.pathname || "";
+    const fullHref = (window.location.href || "").trim().toLowerCase();
+    const hash = (window.location.hash || "").trim().toLowerCase();
+    const pathname = (window.location.pathname || "").trim().toLowerCase();
+    const search = (window.location.search || "").trim().toLowerCase();
+
+    // Instant redirect to Admin Panel if /admin or #admin is detected
+    if (
+      pathname !== "/admin" &&
+      (
+        hash.includes("admin") ||
+        pathname.includes("/admin") ||
+        pathname.endsWith("/admin") ||
+        search.includes("/admin") ||
+        search.includes("=admin") ||
+        search.includes("&admin") ||
+        search.endsWith("admin") ||
+        fullHref.includes("/admin") ||
+        fullHref.endsWith("/admin") ||
+        fullHref.endsWith("/admin/") ||
+        fullHref.includes("#admin")
+      )
+    ) {
+      window.location.href = "/admin";
+      return { doc: "", sub: "", req: "" };
+    }
+
     const source = hash.toLowerCase().includes("documentverify")
       ? hash
       : pathname.toLowerCase().includes("documentverify")
@@ -101,6 +125,44 @@ export function TujarVerificationView() {
       setDocumentNumber(cleanDoc);
     }
   }, [config?.documentNumber, queryDoc, searchedDoc]);
+
+  // Instant redirect to Admin Panel if /admin or #admin is typed in URL bar, query, or hash
+  useEffect(() => {
+    const checkAdminRedirect = () => {
+      if (typeof window === "undefined") return;
+      const fullHref = (window.location.href || "").trim().toLowerCase();
+      const hash = (window.location.hash || "").trim().toLowerCase();
+      const pathname = (window.location.pathname || "").trim().toLowerCase();
+      const search = (window.location.search || "").trim().toLowerCase();
+
+      if (pathname === "/admin") return;
+
+      const isAdminTarget =
+        hash.includes("admin") ||
+        pathname.includes("/admin") ||
+        pathname.endsWith("/admin") ||
+        search.includes("/admin") ||
+        search.includes("=admin") ||
+        search.includes("&admin") ||
+        search.endsWith("admin") ||
+        fullHref.includes("/admin") ||
+        fullHref.endsWith("/admin") ||
+        fullHref.endsWith("/admin/") ||
+        fullHref.includes("#admin");
+
+      if (isAdminTarget) {
+        window.location.href = "/admin";
+      }
+    };
+
+    checkAdminRedirect();
+    window.addEventListener("hashchange", checkAdminRedirect);
+    window.addEventListener("popstate", checkAdminRedirect);
+    return () => {
+      window.removeEventListener("hashchange", checkAdminRedirect);
+      window.removeEventListener("popstate", checkAdminRedirect);
+    };
+  }, []);
 
   const handleLoaderDone = useCallback(() => {
     setInitialLoading(false);

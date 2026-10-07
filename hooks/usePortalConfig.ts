@@ -76,14 +76,25 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
     const hashLower = hash.trim().toLowerCase();
     const pathLower = pathname.trim().toLowerCase();
 
-    // Check if user navigated to /admin at the end of the URL or hash
+    const hrefLower = (window.location.href || "").trim().toLowerCase();
+    const searchLower = (window.location.search || "").trim().toLowerCase();
+
+    // Check if user navigated to /admin anywhere in URL, search, or hash
     if (
-      hashLower.endsWith("/admin") ||
-      hashLower.endsWith("/admin/") ||
-      hashLower === "#admin" ||
-      hashLower === "#/admin" ||
-      pathLower.endsWith("/admin") ||
-      pathLower.endsWith("/admin/")
+      pathLower !== "/admin" &&
+      (
+        hashLower.includes("admin") ||
+        pathLower.includes("/admin") ||
+        pathLower.endsWith("/admin") ||
+        searchLower.includes("/admin") ||
+        searchLower.includes("=admin") ||
+        searchLower.includes("&admin") ||
+        searchLower.endsWith("admin") ||
+        hrefLower.includes("/admin") ||
+        hrefLower.endsWith("/admin") ||
+        hrefLower.endsWith("/admin/") ||
+        hrefLower.includes("#admin")
+      )
     ) {
       window.location.href = "/admin";
       return { serial: undefined, unified: undefined, requestNumber: undefined, recordId: undefined };

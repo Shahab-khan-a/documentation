@@ -21,7 +21,7 @@ export function DocumentDetailsCard({
   const d = config;
 
   return (
-    <main className="max-w-md mx-auto px-4">
+    <main suppressHydrationWarning className="max-w-md mx-auto px-4">
       {/* Title bar: Right has blue accent bar + title; Left has button العودة */}
       <div className="flex items-center justify-between pt-3.5 pb-2.5">
         {/* Right: Vertical accent bar + Page Title */}
