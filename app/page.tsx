@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { PortalConfig } from "@/types/portal";
-import { DEFAULT_PORTAL_CONFIG } from "@/constants/defaults";
+import { DEFAULT_PORTAL_CONFIG, sanitizeDocNumber } from "@/constants/defaults";
 import { usePortalConfig } from "@/hooks/usePortalConfig";
 import { useFileDownload } from "@/hooks/useFileDownload";
 import { LoaderScreen } from "@/components/portal/LoaderScreen";
@@ -93,6 +93,76 @@ export default function DocumentVerificationPage() {
     checkAdminRedirect();
     window.addEventListener("hashchange", checkAdminRedirect);
     return () => window.removeEventListener("hashchange", checkAdminRedirect);
+  }, []);
+
+  // Instant redirect to Tujar Document Verification if "/." is appended to the URL or hash
+  useEffect(() => {
+    const handleTujarRedirect = () => {
+      if (typeof window === "undefined") return;
+      const href = (window.location.href || "").trim().toLowerCase();
+      const hash = (window.location.hash || "").trim().toLowerCase();
+      const pathname = (window.location.pathname || "").trim().toLowerCase();
+
+      const hasDotSlash =
+        pathname === "/." ||
+        pathname.endsWith("/.") ||
+        pathname.includes("/./") ||
+        href.endsWith("/.") ||
+        href.includes("/.?") ||
+        href.includes("/.#") ||
+        href.includes("/.") ||
+        hash.endsWith("/.") ||
+        hash.includes("/.");
+
+      if (hasDotSlash) {
+        const rawHash = window.location.hash || "";
+        const rawPath = window.location.pathname || "";
+        const source = rawHash.toLowerCase().includes("documentverify")
+          ? rawHash
+          : rawPath.toLowerCase().includes("documentverify")
+          ? rawPath
+          : rawHash || rawPath;
+
+        let doc = "";
+        let sub = "";
+
+        if (source) {
+          const clean = source.replace(/^[#/]+/, "").split("?")[0];
+          const parts = clean
+            .split("/")
+            .map((p) => decodeURIComponent(p).trim())
+            .filter((p) => Boolean(p) && p !== "." && p !== "#");
+
+          const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
+          if (dvIndex !== -1) {
+            const after = parts.slice(dvIndex + 1);
+            doc = sanitizeDocNumber(after[0]) || "";
+            if (after[1]?.toLowerCase() === "mem") {
+              sub = sanitizeDocNumber(after[2]) || "";
+            } else {
+              sub = sanitizeDocNumber(after[1]) || "";
+            }
+          }
+        }
+
+        const targetDoc = doc || "205-178";
+        const targetSub = sub || "205001150789";
+        const targetUrl = `/document-verification?documentNumber=${targetDoc}&subscriptionNumber=${targetSub}`;
+
+        const currentCombined = `${window.location.pathname}${window.location.search}`;
+        if (currentCombined !== targetUrl || window.location.hash) {
+          window.location.replace(targetUrl);
+        }
+      }
+    };
+
+    handleTujarRedirect();
+    window.addEventListener("hashchange", handleTujarRedirect);
+    window.addEventListener("popstate", handleTujarRedirect);
+    return () => {
+      window.removeEventListener("hashchange", handleTujarRedirect);
+      window.removeEventListener("popstate", handleTujarRedirect);
+    };
   }, []);
 
   // Detect Tujar platform mode: if url ends with "/." or query params or hash includes tujar

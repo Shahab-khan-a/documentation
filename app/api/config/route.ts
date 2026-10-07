@@ -98,10 +98,10 @@ export async function GET(req: Request) {
     const rawUnified = searchParams.get("unified") || undefined;
     const rawReq = searchParams.get("req") || searchParams.get("requestNumber") || undefined;
 
-    const recordId = rawId ? decodeURIComponent(rawId).trim() : undefined;
-    const serial = rawSerial ? decodeURIComponent(rawSerial).trim() : undefined;
-    const unified = rawUnified ? decodeURIComponent(rawUnified).trim() : undefined;
-    const requestNumber = rawReq ? decodeURIComponent(rawReq).trim() : undefined;
+    const recordId = rawId ? sanitizeDocNumber(rawId) || undefined : undefined;
+    const serial = rawSerial ? sanitizeDocNumber(rawSerial) || undefined : undefined;
+    const unified = rawUnified ? sanitizeDocNumber(rawUnified) || undefined : undefined;
+    const requestNumber = rawReq ? sanitizeDocNumber(rawReq) || undefined : undefined;
 
     const responseHeaders = {
       "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",

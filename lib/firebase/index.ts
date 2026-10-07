@@ -174,13 +174,15 @@ export async function getConfigFromFirebase(
       }
     }
     if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) {
-      try {
-        const rawRef = doc(db, "portal_configs", `${rawReq}_${rawSerial}`);
-        const rawSnap = await getDoc(rawRef);
-        if (rawSnap.exists()) {
-          return rawSnap.data() as PortalConfig;
-        }
-      } catch {}
+      if (!rawReq.includes("/") && !rawSerial.includes("/") && !rawReq.includes("\\") && !rawSerial.includes("\\")) {
+        try {
+          const rawRef = doc(db, "portal_configs", `${rawReq}_${rawSerial}`);
+          const rawSnap = await getDoc(rawRef);
+          if (rawSnap.exists()) {
+            return rawSnap.data() as PortalConfig;
+          }
+        } catch {}
+      }
     }
 
     // 2. Try DocumentVerify full composite key: [req]_[serial]_[unified]
@@ -703,14 +705,18 @@ export function subscribeToPortalConfig(
   if (typeof window === "undefined" || !onUpdate) return null;
 
   try {
-    const cleanSerial = (serial || "").trim();
-    const cleanUnified = (unified || "").trim();
+    const cleanSerial = sanitizeDocNumber(serial);
+    const cleanUnified = sanitizeDocNumber(unified);
 
     let targetDocId = "current";
     if (cleanSerial && cleanUnified) {
       targetDocId = `${cleanSerial}_${cleanUnified}`;
     } else if (cleanSerial) {
       targetDocId = cleanSerial;
+    }
+
+    if (!targetDocId || targetDocId.includes("/") || targetDocId.includes("\\") || targetDocId.endsWith(".")) {
+      targetDocId = "current";
     }
 
     const docRef = doc(db, "portal_configs", targetDocId);

@@ -42,17 +42,29 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
   let recordId: string | undefined;
 
   if (typeof window !== "undefined") {
-    // 1. Check for ?id= in search params or hash query string
+    // 1. Check for ?id= or ?documentNumber= or ?subscriptionNumber= in search params or hash query string
     try {
       const searchParams = new URLSearchParams(window.location.search);
       const qId = searchParams.get("id");
       if (qId) recordId = decodeURIComponent(qId).trim();
 
-      if (!recordId && window.location.hash.includes("?")) {
+      const qDoc = searchParams.get("documentNumber") || searchParams.get("req");
+      const qSub = searchParams.get("subscriptionNumber") || searchParams.get("serial") || searchParams.get("unified");
+      if (qDoc && !requestNumber) requestNumber = sanitizeDocNumber(qDoc);
+      if (qSub && !serial) serial = sanitizeDocNumber(qSub);
+      if (qSub && !unified) unified = sanitizeDocNumber(qSub);
+
+      if (window.location.hash.includes("?")) {
         const hashQuery = window.location.hash.split("?")[1];
         const hashParams = new URLSearchParams(hashQuery);
         const hId = hashParams.get("id");
-        if (hId) recordId = decodeURIComponent(hId).trim();
+        if (hId && !recordId) recordId = decodeURIComponent(hId).trim();
+
+        const hDoc = hashParams.get("documentNumber") || hashParams.get("req");
+        const hSub = hashParams.get("subscriptionNumber") || hashParams.get("serial") || hashParams.get("unified");
+        if (hDoc && !requestNumber) requestNumber = sanitizeDocNumber(hDoc);
+        if (hSub && !serial) serial = sanitizeDocNumber(hSub);
+        if (hSub && !unified) unified = sanitizeDocNumber(hSub);
       }
     } catch {
       // ignore
@@ -148,10 +160,14 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
     return { serial: undefined, unified: undefined, requestNumber: undefined, recordId: undefined };
   }
 
+  const cleanSerial = sanitizeDocNumber(serial) || undefined;
+  const cleanUnified = sanitizeDocNumber(unified) || cleanSerial || undefined;
+  const cleanReq = sanitizeDocNumber(requestNumber) || undefined;
+
   return {
-    serial: sanitizeDocNumber(serial) || undefined,
-    unified: sanitizeDocNumber(unified) || undefined,
-    requestNumber: sanitizeDocNumber(requestNumber) || undefined,
+    serial: cleanSerial || cleanUnified,
+    unified: cleanUnified,
+    requestNumber: cleanReq,
     recordId,
   };
 }

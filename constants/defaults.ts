@@ -24,6 +24,10 @@ export function sanitizeDocNumber(val?: string | null): string {
   clean = clean.replace(/^[&?]+/g, "");
   clean = clean.replace(/^(?:DocumentNumber|documentNumber|doc|orderNumber|requestNumber|subscriptionNumber|sub|serialNumber|serial)\s*=\s*/i, "");
   clean = clean.replace(/^[&?]+/g, "");
+  // Strip trailing or leading slashes, dots, and trailing /., /./
+  clean = clean.replace(/[\/.]+$/g, "").replace(/^[\/.]+/g, "");
+  // Strip any remaining slashes or backslashes
+  clean = clean.replace(/[\/\\]+/g, "");
   return clean.trim();
 }
 

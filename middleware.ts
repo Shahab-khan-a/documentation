@@ -14,6 +14,16 @@ export function middleware(request: NextRequest) {
     request.url.includes("/.") ||
     hasDocQuery;
 
+  if (rawPath === "/.") {
+    const dest = url.clone();
+    dest.pathname = "/document-verification";
+    if (!hasDocQuery) {
+      dest.searchParams.set("documentNumber", "205-178");
+      dest.searchParams.set("subscriptionNumber", "205001150789");
+    }
+    return NextResponse.redirect(dest);
+  }
+
   if (isTujarPath) {
     if (rawPath.startsWith("/document-verification")) {
       return NextResponse.next();

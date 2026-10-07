@@ -68,15 +68,15 @@ export function TujarVerificationView() {
     }
 
     return {
-      doc: sanitizeDocNumber(queryDoc || s || req || ""),
+      doc: sanitizeDocNumber(queryDoc || req || ""),
       sub: sanitizeDocNumber(querySub || s || ""),
-      req: sanitizeDocNumber(req || ""),
+      req: sanitizeDocNumber(req || queryDoc || ""),
     };
   }, [queryDoc, querySub]);
 
   const initialParams = parseUrlParams();
   const [documentNumber, setDocumentNumber] = useState(initialParams.doc || "205-178");
-  const [subscriptionNumber, setSubscriptionNumber] = useState(initialParams.sub || "205001150709");
+  const [subscriptionNumber, setSubscriptionNumber] = useState(initialParams.sub || "205001150789");
   const [orderNumber, setOrderNumber] = useState(initialParams.req || "205-154");
 
   // Step state: 1: Search Form, 2: Verification Result Card
@@ -133,45 +133,59 @@ export function TujarVerificationView() {
   const cleanReq = sanitizeDocNumber(config?.requestNumber);
   const cleanUnified = sanitizeDocNumber(config?.unifiedNumber);
   const cleanComm = sanitizeDocNumber(config?.commercialRegNo);
+  const cleanFacility = config?.facilityName
+    ? (config.facilitySubName ? `${config.facilityName} ${config.facilitySubName}` : config.facilityName)
+    : "";
 
-  const isSampleQuery =
-    (queryDoc === "205-178" && querySub === "205001150709") ||
-    (!queryDoc && !initialParams.doc && !cleanSerial);
+  const is205Sample =
+    (queryDoc === "205-178" && (querySub === "205001150709" || querySub === "205001150789")) ||
+    (!queryDoc && !initialParams.doc && !cleanSerial && !cleanReq);
+
+  const docNo =
+    queryDoc ||
+    initialParams.doc ||
+    cleanReq ||
+    cleanSerial ||
+    documentNumber ||
+    "205-178";
+
+  const orderNo =
+    initialParams.req ||
+    cleanReq ||
+    queryDoc ||
+    orderNumber ||
+    "205-154";
+
+  const subNo =
+    querySub ||
+    initialParams.sub ||
+    cleanSerial ||
+    cleanComm ||
+    cleanUnified ||
+    subscriptionNumber ||
+    "205001150789";
 
   const details: TujarDocumentDetails = {
     chamberName: config?.chamberName || "ينبع",
-    serviceName: isSampleQuery
+    serviceName: is205Sample && !config?.requestType
       ? "تصديق المطبوعات الرسمية"
       : (config?.requestType || "تصديق المطبوعات الرسمية"),
-    documentNumber:
-      queryDoc ||
-      initialParams.doc ||
-      cleanSerial ||
-      documentNumber ||
-      "205-178",
-    orderNumber: isSampleQuery
-      ? "205-154"
-      : (initialParams.req || cleanReq || orderNumber || "205-154"),
-    requestSubmitter: isSampleQuery
+    documentNumber: docNo,
+    orderNumber: orderNo,
+    requestSubmitter: is205Sample && !config?.applicantName
       ? "محمدايوب"
       : (config?.applicantName || "محمدايوب"),
-    entityName: isSampleQuery
+    entityName: is205Sample && !cleanFacility
       ? "شركة سيفيل إليكتريكال آند مينتينانس"
-      : (config?.facilityName || "شركة سيفيل إليكتريكال آند مينتينانس"),
-    subscriptionNumber:
-      querySub ||
-      initialParams.sub ||
-      cleanSerial ||
-      cleanComm ||
-      subscriptionNumber ||
-      "205001150709",
-    unifiedNumber: isSampleQuery
+      : (cleanFacility || "شركة سيفيل إليكتريكال آند مينتينانس"),
+    subscriptionNumber: subNo,
+    unifiedNumber: is205Sample && !cleanUnified
       ? "7053747403"
-      : (cleanUnified || "7053747403"),
-    creationDateTime: isSampleQuery
+      : (cleanUnified || subNo || "7053747403"),
+    creationDateTime: is205Sample && !config?.creationDate
       ? "2026/10/04 - 11:35 AM"
       : config?.creationDate
-      ? `${config.creationDate} - ${config.creationTime || "11:35 AM"}`
+      ? `${config.creationDate}${config.creationTime ? ` - ${config.creationTime}` : ""}`
       : "2026/10/04 - 11:35 AM",
     serviceValidUntil: config?.expiryDate || "2027/10/04",
     documentStatus: config?.requestStatus
