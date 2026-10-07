@@ -87,36 +87,94 @@ export default function RootLayout({
                   // 3. Suppress browser extension hydration mismatch noise (e.g. Bitdefender bis_skin_checked attribute injection)
                   if (typeof console !== 'undefined') {
                     var origError = console.error;
-                    console.error = function() {
-                      var args = Array.prototype.slice.call(arguments);
-                      var str = args.map(function(a) { return String(a || ''); }).join(' ');
-                      if (
-                        str.indexOf('bis_skin_checked') !== -1 ||
-                        (str.indexOf('hydration') !== -1 && (str.indexOf('extension') !== -1 || str.indexOf('attributes') !== -1)) ||
-                        str.indexOf('content.js') !== -1 ||
-                        str.indexOf('Unexpected end of JSON input') !== -1 ||
-                        str.indexOf('M_ID') !== -1
-                      ) {
-                        return;
+                    var shouldFilter = function(args) {
+                      var str = '';
+                      for (var i = 0; i < args.length; i++) {
+                        try {
+                          str += ' ' + (typeof args[i] === 'object' ? (args[i] && (args[i].message || args[i].stack || JSON.stringify(args[i]))) : String(args[i] || ''));
+                        } catch (_) {
+                          str += ' ' + String(args[i] || '');
+                        }
                       }
-                      origError.apply(console, args);
+                      var s = str.toLowerCase();
+                      return (
+                        s.indexOf('bis_skin_checked') !== -1 ||
+                        s.indexOf('hydrat') !== -1 ||
+                        s.indexOf('browser extension') !== -1 ||
+                        s.indexOf('didn\'t match the client') !== -1 ||
+                        s.indexOf('won\'t be patched up') !== -1 ||
+                        s.indexOf('hydration-mismatch') !== -1 ||
+                        s.indexOf('content.js') !== -1 ||
+                        s.indexOf('unexpected end of json input') !== -1 ||
+                        s.indexOf('m_id') !== -1
+                      );
                     };
+
+                    try {
+                      Object.defineProperty(console, 'error', {
+                        configurable: true,
+                        enumerable: true,
+                        get: function() {
+                          return function() {
+                            var args = Array.prototype.slice.call(arguments);
+                            if (shouldFilter(args)) return;
+                            return origError.apply(console, args);
+                          };
+                        },
+                        set: function(fn) {
+                          origError = fn;
+                        }
+                      });
+                    } catch (_) {
+                      console.error = function() {
+                        var args = Array.prototype.slice.call(arguments);
+                        if (shouldFilter(args)) return;
+                        return origError.apply(console, args);
+                      };
+                    }
 
                     var origWarn = console.warn;
                     console.warn = function() {
                       var args = Array.prototype.slice.call(arguments);
-                      var str = args.map(function(a) { return String(a || ''); }).join(' ');
-                      if (
-                        str.indexOf('bis_skin_checked') !== -1 ||
-                        str.indexOf('preloaded using link preload but not used') !== -1
-                      ) {
-                        return;
-                      }
-                      origWarn.apply(console, args);
+                      if (shouldFilter(args)) return;
+                      return origWarn.apply(console, args);
                     };
                   }
 
-                  // 4. Strip Bitdefender bis_skin_checked attributes before/during hydration
+                  // 4. Live MutationObserver to strip Bitdefender bis_skin_checked attributes continuously before/during hydration
+                  try {
+                    var mo = new MutationObserver(function(muts) {
+                      for (var i = 0; i < muts.length; i++) {
+                        var m = muts[i];
+                        if (m.type === 'attributes' && m.attributeName === 'bis_skin_checked' && m.target && m.target.removeAttribute) {
+                          m.target.removeAttribute('bis_skin_checked');
+                        }
+                        if (m.addedNodes) {
+                          for (var j = 0; j < m.addedNodes.length; j++) {
+                            var n = m.addedNodes[j];
+                            if (n && n.nodeType === 1) {
+                              if (n.hasAttribute && n.hasAttribute('bis_skin_checked')) {
+                                n.removeAttribute('bis_skin_checked');
+                              }
+                              if (n.querySelectorAll) {
+                                var all = n.querySelectorAll('[bis_skin_checked]');
+                                for (var k = 0; k < all.length; k++) {
+                                  all[k].removeAttribute('bis_skin_checked');
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    });
+                    mo.observe(document.documentElement, {
+                      attributes: true,
+                      attributeFilter: ['bis_skin_checked'],
+                      childList: true,
+                      subtree: true
+                    });
+                  } catch (_) {}
+
                   var cleanBis = function() {
                     try {
                       var els = document.querySelectorAll('[bis_skin_checked]');
