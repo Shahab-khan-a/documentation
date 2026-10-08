@@ -76,13 +76,28 @@ export function AdminHeader({
 
           {/* Portal Title & Active Section Badge */}
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight truncate min-w-0">
-              {/* On small mobile (< sm): clean concise title, on desktop: full title */}
-              <span className="sm:hidden">
-                {lang === "en" ? "Portal Admin" : lang === "ur" ? "ایڈمن پینل" : "لوحة التحكم"}
-              </span>
-              <span className="hidden sm:inline">{t.title}</span>
-            </h1>
+            <a
+              href="https://admin-site-panel.vercel.app/admin"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer shrink-0 group"
+              title="أجير | التحقق من تصريح أجير"
+            >
+              <span>site</span>
+              <svg
+                className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+            </a>
             <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {activeTab === "buttons" && t.tab_buttons}
