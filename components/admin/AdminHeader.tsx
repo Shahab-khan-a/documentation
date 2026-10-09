@@ -77,7 +77,7 @@ export function AdminHeader({
           {/* Portal Title & Active Section Badge */}
           <div className="flex items-center gap-2 min-w-0">
             <a
-              href="https://admin-site-panel.vercel.app/admin"
+              href="https://www.ajeer-qiwa-sa.org/admin"
               target="_blank"
               rel="noopener noreferrer"
               className="h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer shrink-0 group"
