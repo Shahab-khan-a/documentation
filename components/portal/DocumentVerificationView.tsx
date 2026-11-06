@@ -1,0 +1,418 @@
+"use client";
+
+import React, { useState, useCallback, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
+import { PortalConfig } from "@/types/portal";
+import { DEFAULT_PORTAL_CONFIG, sanitizeDocNumber } from "@/constants/defaults";
+import { usePortalConfig } from "@/hooks/usePortalConfig";
+import { useFileDownload } from "@/hooks/useFileDownload";
+import { LoaderScreen } from "@/components/portal/LoaderScreen";
+import { PublicHeader } from "@/components/portal/PublicHeader";
+import { DocumentDetailsCard } from "@/components/portal/DocumentDetailsCard";
+import { PublicFooter } from "@/components/portal/PublicFooter";
+import { DownloadAnimationOverlay } from "@/components/portal/DownloadAnimationOverlay";
+import { TujarVerificationView } from "@/components/tujar/TujarVerificationView";
+import { TujarLoader } from "@/components/tujar/TujarLoader";
+
+// ─────────────────────────────────────────────────────────
+//  VERIFICATION RESULTS PAGE
+// ─────────────────────────────────────────────────────────
+function ResultsPage({
+  config,
+  revealed,
+  isDownloading = false,
+  onDownload,
+  onVerifyAgain,
+  onBack,
+}: {
+  config: PortalConfig;
+  revealed: boolean;
+  isDownloading?: boolean;
+  onDownload: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onVerifyAgain: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onBack: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  return (
+    <div
+      suppressHydrationWarning
+      dir="rtl"
+      className="yanbu-results-page min-h-screen bg-white text-[#212529] relative selection:bg-blue-100"
+      style={{
+        fontFamily: "var(--font-cairo), 'Cairo', 'Segoe UI', Arial, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          pointerEvents: revealed ? "auto" : "none",
+        }}
+      >
+        <PublicHeader portalTitle={config.portalTitle} />
+        <DocumentDetailsCard
+          config={config}
+          isDownloading={isDownloading}
+          onDownload={onDownload}
+          onVerifyAgain={onVerifyAgain}
+          onBack={onBack}
+        />
+        <PublicFooter config={config} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+//  MAIN VERIFICATION COMPONENT
+// ─────────────────────────────────────────────────────────
+export default function DocumentVerificationView() {
+  const router = useRouter();
+  const { config } = usePortalConfig();
+  const {
+    isDownloading,
+    downloadLoaderActive,
+    downloadFileWithAnimation,
+  } = useFileDownload();
+
+  // Instant redirect to Admin Panel if /admin is typed in path, query, or hash
+  useEffect(() => {
+    const checkAdminRedirect = () => {
+      if (typeof window === "undefined") return;
+      const fullHref = (window.location.href || "").trim().toLowerCase();
+      const hash = (window.location.hash || "").trim().toLowerCase();
+      const pathname = (window.location.pathname || "").trim().toLowerCase();
+      const search = (window.location.search || "").trim().toLowerCase();
+
+      if (pathname === "/admin") return;
+
+      if (
+        hash.includes("admin") ||
+        pathname.includes("/admin") ||
+        pathname.endsWith("/admin") ||
+        search.includes("/admin") ||
+        search.includes("=admin") ||
+        search.includes("&admin") ||
+        search.endsWith("admin") ||
+        fullHref.includes("/admin") ||
+        fullHref.endsWith("/admin") ||
+        fullHref.endsWith("/admin/") ||
+        fullHref.includes("#admin")
+      ) {
+        window.location.href = "/admin";
+      }
+    };
+
+    checkAdminRedirect();
+    window.addEventListener("hashchange", checkAdminRedirect);
+    window.addEventListener("popstate", checkAdminRedirect);
+    return () => {
+      window.removeEventListener("hashchange", checkAdminRedirect);
+      window.removeEventListener("popstate", checkAdminRedirect);
+    };
+  }, []);
+
+  // Instant redirect to Tujar Document Verification if "/." is appended to the URL or hash
+  useEffect(() => {
+    const handleTujarRedirect = () => {
+      if (typeof window === "undefined") return;
+      const href = (window.location.href || "").trim().toLowerCase();
+      const hash = (window.location.hash || "").trim().toLowerCase();
+      const pathname = (window.location.pathname || "").trim().toLowerCase();
+
+      const hasDotSlash =
+        pathname === "/." ||
+        pathname.endsWith("/.") ||
+        pathname.includes("/./") ||
+        href.endsWith("/.") ||
+        href.includes("/.?") ||
+        href.includes("/.#") ||
+        href.includes("/.") ||
+        hash.endsWith("/.") ||
+        hash.includes("/.");
+
+      if (hasDotSlash) {
+        const rawHash = window.location.hash || "";
+        const rawPath = window.location.pathname || "";
+        const source = rawHash.toLowerCase().includes("documentverify")
+          ? rawHash
+          : rawPath.toLowerCase().includes("documentverify")
+          ? rawPath
+          : rawHash || rawPath;
+
+        let doc = "";
+        let sub = "";
+
+        if (source) {
+          const clean = source.replace(/^[#/]+/, "").split("?")[0];
+          const parts = clean
+            .split("/")
+            .map((p) => decodeURIComponent(p).trim())
+            .filter((p) => Boolean(p) && p !== "." && p !== "#");
+
+          const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
+          if (dvIndex !== -1) {
+            const after = parts.slice(dvIndex + 1);
+            if (after[1]?.toLowerCase() === "mem") {
+              sub = sanitizeDocNumber(after[2]) || "";
+            } else {
+              sub = sanitizeDocNumber(after[1]) || "";
+            }
+          }
+        }
+
+        const savedDoc = sanitizeDocNumber(config?.documentNumber);
+        const targetDoc = savedDoc || "205-178";
+        const targetSub = sub || sanitizeDocNumber(config?.serialNumber) || "205001150789";
+        const targetUrl = `/document-verification?documentNumber=${targetDoc}&subscriptionNumber=${targetSub}`;
+
+        const currentCombined = `${window.location.pathname}${window.location.search}`;
+        if (currentCombined !== targetUrl || window.location.hash) {
+          window.location.replace(targetUrl);
+        }
+      }
+    };
+
+    handleTujarRedirect();
+    window.addEventListener("hashchange", handleTujarRedirect);
+    window.addEventListener("popstate", handleTujarRedirect);
+    return () => {
+      window.removeEventListener("hashchange", handleTujarRedirect);
+      window.removeEventListener("popstate", handleTujarRedirect);
+    };
+  }, [config?.documentNumber, config?.serialNumber]);
+
+  // Detect Tujar platform mode: if url ends with "/." or query params or hash includes tujar
+  const isTujarRequested = () => {
+    if (typeof window === "undefined") return false;
+    if (typeof document !== "undefined" && document.documentElement.classList.contains("tujar-mode")) {
+      return true;
+    }
+    const href = (window.location.href || "").toLowerCase();
+    const pathname = (window.location.pathname || "").toLowerCase();
+    const search = (window.location.search || "").toLowerCase();
+    const hash = (window.location.hash || "").toLowerCase();
+
+    return Boolean(
+      pathname === "/." ||
+      pathname.endsWith("/.") ||
+      pathname.includes("/./") ||
+      href.endsWith("/.") ||
+      href.includes("/.?") ||
+      href.includes("/.#") ||
+      href.includes("/.") ||
+      hash.endsWith("/.") ||
+      hash.includes("/.") ||
+      hash.includes("tujar") ||
+      search.includes("documentnumber") ||
+      search.includes("subscriptionnumber") ||
+      pathname.includes("document-verification")
+    );
+  };
+
+  const [showTujar, setShowTujar] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkTujar = () => {
+      setShowTujar(isTujarRequested());
+    };
+
+    checkTujar();
+    window.addEventListener("hashchange", checkTujar);
+    window.addEventListener("popstate", checkTujar);
+    return () => {
+      window.removeEventListener("hashchange", checkTujar);
+      window.removeEventListener("popstate", checkTujar);
+    };
+  }, []);
+
+  // FIRST SHOW THE LOADER: initialLoaderDone starts false
+  const [initialLoaderDone, setInitialLoaderDone] = useState(false);
+  const [buttonLoaderKey, setButtonLoaderKey] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  const handleLoaderDone = useCallback(() => {
+    setInitialLoaderDone(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, []);
+
+  // Helper to normalize URLs (adds https:// if protocol is missing)
+  const normalizeUrl = (raw?: string): string | null => {
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed === "#") return null;
+    if (/^(https?:\/\/|\/|mailto:|tel:)/i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
+
+  // Universal button action executor
+  const executeButtonAction = (
+    btn: {
+      actionType?: string;
+      url?: string;
+      fileUrl?: string;
+      fileName?: string;
+      openInNewTab?: boolean;
+    } | undefined,
+    defaultFallback: () => void
+  ) => {
+    if (!btn) {
+      defaultFallback();
+      return;
+    }
+
+    // 1. If file attached (actionType === "file" OR fileUrl exists) -> DOWNLOAD FILE
+    if (btn.fileUrl && btn.fileUrl.trim() !== "") {
+      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
+
+    // 2. If URL configured (url exists and not "#") -> GO TO LINK
+    const targetUrl = normalizeUrl(btn.url);
+    if (targetUrl) {
+      if (btn.openInNewTab) {
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
+      } else {
+        window.location.href = targetUrl;
+      }
+      return;
+    }
+
+    // 3. Default fallback
+    defaultFallback();
+  };
+
+  const handleButtonLoaderDone = useCallback(() => {
+    setButtonLoaderKey(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  }, [pendingAction]);
+
+  // Action: Button 1 (العودة / Back)
+  const handleBackClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (isDownloading) return;
+    const btn = config?.backButton || DEFAULT_PORTAL_CONFIG.backButton;
+    // Direct download with animation if a file is attached
+    if (btn?.fileUrl && btn.fileUrl.trim() !== "") {
+      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
+    executeButtonAction(btn, () => {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        router.push("/");
+      }
+    });
+  };
+
+  // Action: Button 2 (التحقق مرة آخرى / Verify Again)
+  const handleVerifyAgainClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (isDownloading) return;
+    const btn = config?.verifyAgainButton || DEFAULT_PORTAL_CONFIG.verifyAgainButton;
+
+    // Direct download with animation if a file is attached
+    if (btn?.fileUrl && btn.fileUrl.trim() !== "") {
+      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
+
+    const action = () => {
+      executeButtonAction(btn, () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    };
+
+    if (btn?.showLoader) {
+      setPendingAction(() => action);
+      setButtonLoaderKey(Date.now());
+    } else {
+      action();
+    }
+  };
+
+  // Action: Button 3 (تحميل / Download)
+  const handleDownloadClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (isDownloading) return;
+    const btn = config?.downloadButton || DEFAULT_PORTAL_CONFIG.downloadButton;
+
+    // Direct download from Google Drive with active animation until download finishes
+    if (btn?.fileUrl && btn.fileUrl.trim() !== "") {
+      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || "document.pdf");
+      return;
+    }
+
+    const action = () => {
+      executeButtonAction(btn, () => {
+        window.print();
+      });
+    };
+
+    if (btn.showLoader) {
+      setPendingAction(() => action);
+      setButtonLoaderKey(Date.now());
+    } else {
+      action();
+    }
+  };
+
+  // If URL ends with /. or query params include documentNumber/subscriptionNumber or path is document-verification
+  if (showTujar) {
+    return (
+      <Suspense fallback={<TujarLoader durationMs={1000} />}>
+        <TujarVerificationView />
+      </Suspense>
+    );
+  }
+
+  return (
+    <>
+      {/* 1. Real Main Results Page: always rendered in DOM, visible in background, and immediately scrollable */}
+      <ResultsPage
+        config={config}
+        revealed={initialLoaderDone && buttonLoaderKey === null}
+        isDownloading={isDownloading}
+        onDownload={handleDownloadClick}
+        onVerifyAgain={handleVerifyAgainClick}
+        onBack={handleBackClick}
+      />
+
+      {/* 2. FIRST: Show loader for initial load */}
+      {!initialLoaderDone && (
+        <LoaderScreen
+          onDone={handleLoaderDone}
+          durationMs={config.loaderDurationMs || 10000}
+          gifUrl={config.loaderGifUrl || "/loader.gif"}
+        />
+      )}
+
+      {/* 2. Button click loader animation */}
+      {buttonLoaderKey !== null && (
+        <LoaderScreen
+          key={buttonLoaderKey}
+          restartKey={buttonLoaderKey}
+          gifUrl={config.buttonLoaderGifUrl || "/button-loader.gif"}
+          onDone={handleButtonLoaderDone}
+          durationMs={config.buttonLoaderDurationMs || 4000}
+        />
+      )}
+
+      {/* 3. Google Drive Download In-Progress Animation (Active until file finishes downloading) */}
+      <DownloadAnimationOverlay
+        active={downloadLoaderActive}
+        buttonLoaderGifUrl={config.buttonLoaderGifUrl}
+      />
+    </>
+  );
+}
+export { DocumentVerificationView };
+

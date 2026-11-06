@@ -1,6 +1,6 @@
 "use client";
 
-import DocumentVerificationPage from "../../page";
+import DocumentVerificationView from "@/components/portal/DocumentVerificationView";
 
 /**
  * Dynamic route: /[serial]/[unified]
@@ -8,5 +8,5 @@ import DocumentVerificationPage from "../../page";
  * Renders the official Document Verification Page with the URL preserved.
  */
 export default function DynamicSerialUnifiedVerificationPage() {
-  return <DocumentVerificationPage />;
+  return <DocumentVerificationView />;
 }
