@@ -1,7 +1,7 @@
 "use client";
 
-import DocumentVerificationPage from "../page";
+import DocumentVerificationView from "@/components/portal/DocumentVerificationView";
 
 export default function DynamicSerialVerificationPage() {
-  return <DocumentVerificationPage />;
+  return <DocumentVerificationView />;
 }

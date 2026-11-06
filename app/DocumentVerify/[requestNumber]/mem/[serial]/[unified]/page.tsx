@@ -1,6 +1,6 @@
 "use client";
 
-import DocumentVerificationPage from "@/app/page";
+import DocumentVerificationView from "@/components/portal/DocumentVerificationView";
 
 /**
  * Dynamic route: /DocumentVerify/[requestNumber]/mem/[serial]/[unified]
@@ -8,5 +8,5 @@ import DocumentVerificationPage from "@/app/page";
  * Official Chamber of Commerce document verification URL.
  */
 export default function DocumentVerifyFullPage() {
-  return <DocumentVerificationPage />;
+  return <DocumentVerificationView />;
 }

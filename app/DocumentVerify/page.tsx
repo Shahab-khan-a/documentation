@@ -1,7 +1,7 @@
 "use client";
 
-import DocumentVerificationPage from "@/app/page";
+import DocumentVerificationView from "@/components/portal/DocumentVerificationView";
 
 export default function DocumentVerifyRootPage() {
-  return <DocumentVerificationPage />;
+  return <DocumentVerificationView />;
 }
