@@ -1,26 +1,63 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 export function TujarLoader({
   onDone,
   durationMs = 1200,
+  ready,
+  minDurationMs = 650,
+  maxDurationMs = 2500,
 }: {
   onDone?: () => void;
   durationMs?: number;
+  ready?: boolean;
+  minDurationMs?: number;
+  maxDurationMs?: number;
 }) {
   const [fadingOut, setFadingOut] = useState(false);
+  const doneRef = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let timer: NodeJS.Timeout | null = null;
+    let minTimer: NodeJS.Timeout | null = null;
+    let maxTimer: NodeJS.Timeout | null = null;
+    let minTimeElapsed = false;
+
+    const triggerDone = () => {
+      if (doneRef.current) return;
+      doneRef.current = true;
       setFadingOut(true);
       setTimeout(() => {
         onDone?.();
       }, 300);
-    }, durationMs);
+    };
 
-    return () => clearTimeout(timer);
-  }, [onDone, durationMs]);
+    if (ready === undefined) {
+      timer = setTimeout(triggerDone, durationMs);
+    } else {
+      minTimer = setTimeout(() => {
+        minTimeElapsed = true;
+        if (ready) {
+          triggerDone();
+        }
+      }, minDurationMs);
+
+      maxTimer = setTimeout(() => {
+        triggerDone();
+      }, maxDurationMs);
+
+      if (ready && minTimeElapsed) {
+        triggerDone();
+      }
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (minTimer) clearTimeout(minTimer);
+      if (maxTimer) clearTimeout(maxTimer);
+    };
+  }, [onDone, durationMs, ready, minDurationMs, maxDurationMs]);
 
   return (
     <div

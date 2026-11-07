@@ -21,7 +21,7 @@ import "@/app/tujar.css";
 
 export function TujarVerificationView() {
   const searchParams = useSearchParams();
-  const { config } = usePortalConfig();
+  const { config, isLoaded } = usePortalConfig();
   const { isDownloading, downloadLoaderActive, downloadFileWithAnimation } = useFileDownload();
 
   // Extract initial parameters from query params, window.location, or DocumentVerify URL hash/path
@@ -318,8 +318,15 @@ export function TujarVerificationView() {
 
   return (
     <div className="tujar-wrapper" suppressHydrationWarning dir="rtl">
-      {/* 1. Initial Tujar Dual-Ring Loader */}
-      {initialLoading && <TujarLoader onDone={handleLoaderDone} durationMs={1200} />}
+      {/* 1. Initial Tujar Dual-Ring Loader - synchronized with real data arrival */}
+      {initialLoading && (
+        <TujarLoader
+          onDone={handleLoaderDone}
+          ready={isLoaded}
+          minDurationMs={650}
+          maxDurationMs={2500}
+        />
+      )}
 
       {/* 2. Global Header with Mobile Nav & Clean Branding */}
       <TujarHeader />

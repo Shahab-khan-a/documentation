@@ -208,6 +208,7 @@ function extractParamsFromUrl(params?: ReturnType<typeof useParams>): {
 export function usePortalConfig() {
   const params = useParams();
   const [config, setConfig] = useState<PortalConfig>(() => ({ ...DEFAULT_PORTAL_CONFIG }));
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
@@ -227,6 +228,7 @@ export function usePortalConfig() {
           if (matchRecordId || matchSerial) {
             if (isMounted) {
               setConfig(normalizePortalConfig(parsed));
+              setIsLoaded(true);
             }
           }
         }
@@ -234,54 +236,69 @@ export function usePortalConfig() {
         // ignore
       }
 
-      // 2. Query Firebase directly on the client first
-      try {
-        let fbConfig: PortalConfig | null = null;
-        if (recordIdParam) {
-          fbConfig = await getPortalRecordById(recordIdParam);
-        }
-        if (!fbConfig && serialParam) {
-          fbConfig = await getPortalRecordBySerialUnified(serialParam, unifiedParam, reqParam, recordIdParam);
-        }
-        if (!fbConfig && !recordIdParam && !serialParam) {
-          fbConfig = await getConfigFromFirebase(serialParam, unifiedParam, reqParam);
-        }
-
-        if (fbConfig && isMounted) {
-          const safeConfig = normalizePortalConfig(fbConfig);
-          setConfig(safeConfig);
-          try {
-            localStorage.setItem("portal_config_cache", JSON.stringify(safeConfig));
-          } catch {
-            // ignore
+      // 2. Concurrently query Firebase client AND /api/config in parallel for sub-second load
+      const fetchClientFirebase = async (): Promise<PortalConfig | null> => {
+        try {
+          if (recordIdParam) {
+            return await getPortalRecordById(recordIdParam);
           }
-        }
-      } catch (fbErr) {
-        console.warn("Direct Firebase fetch notice:", fbErr);
-      }
-
-      // 3. Concurrent fetch via API route
-      try {
-        const query = new URLSearchParams();
-        if (recordIdParam) query.set("id", recordIdParam);
-        if (serialParam) query.set("serial", serialParam);
-        if (unifiedParam) query.set("unified", unifiedParam);
-        if (reqParam) query.set("req", reqParam);
-        query.set("_t", Date.now().toString());
-
-        const res = await fetch(`/api/config?${query.toString()}`, { cache: "no-store" });
-        if (res.ok && isMounted) {
-          const data: PortalConfig = await res.json();
-          const safeConfig = normalizePortalConfig(data);
-          setConfig(safeConfig);
-          try {
-            localStorage.setItem("portal_config_cache", JSON.stringify(safeConfig));
-          } catch {
-            // ignore
+          if (serialParam) {
+            return await getPortalRecordBySerialUnified(serialParam, unifiedParam, reqParam, recordIdParam);
           }
+          return await getConfigFromFirebase(serialParam, unifiedParam, reqParam);
+        } catch {
+          return null;
         }
+      };
+
+      const fetchApiRoute = async (): Promise<PortalConfig | null> => {
+        try {
+          const query = new URLSearchParams();
+          if (recordIdParam) query.set("id", recordIdParam);
+          if (serialParam) query.set("serial", serialParam);
+          if (unifiedParam) query.set("unified", unifiedParam);
+          if (reqParam) query.set("req", reqParam);
+          query.set("_t", Date.now().toString());
+
+          const res = await fetch(`/api/config?${query.toString()}`, { cache: "no-store" });
+          if (res.ok) {
+            return (await res.json()) as PortalConfig;
+          }
+        } catch {
+          // ignore
+        }
+        return null;
+      };
+
+      let firstLoaded = false;
+      const handleSuccess = (rawConfig: PortalConfig | null) => {
+        if (!rawConfig || !isMounted) return;
+        const safe = normalizePortalConfig(rawConfig);
+        setConfig(safe);
+        setIsLoaded(true);
+        firstLoaded = true;
+        try {
+          localStorage.setItem("portal_config_cache", JSON.stringify(safe));
+        } catch {
+          // ignore
+        }
+      };
+
+      try {
+        await Promise.all([
+          fetchClientFirebase().then((res) => {
+            if (res && (!firstLoaded || !res.isSample)) handleSuccess(res);
+          }),
+          fetchApiRoute().then((res) => {
+            if (res && (!firstLoaded || !res.isSample)) handleSuccess(res);
+          }),
+        ]);
       } catch (err) {
-        console.error("Error fetching live config from API:", err);
+        console.warn("Live config parallel fetch notice:", err);
+      } finally {
+        if (isMounted) {
+          setIsLoaded(true);
+        }
       }
     }
 
@@ -399,5 +416,5 @@ export function usePortalConfig() {
     }
   }, [config.serialNumber, config.requestNumber, params]);
 
-  return { config, setConfig };
+  return { config, setConfig, isLoaded };
 }

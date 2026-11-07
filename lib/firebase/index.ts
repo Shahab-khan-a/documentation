@@ -168,58 +168,35 @@ export async function getConfigFromFirebase(
     const rawSerial = (serialNumber || "").trim();
     const rawReq = (requestNumber || "").trim();
 
-    // 1. Try DocumentVerify key: [req]_[serial]
-    if (cleanReq && cleanSerial) {
-      const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
-      const reqSnap = await getDoc(reqRef);
-      if (reqSnap.exists()) {
-        return reqSnap.data() as PortalConfig;
-      }
-    }
-    if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) {
-      if (!rawReq.includes("/") && !rawSerial.includes("/") && !rawReq.includes("\\") && !rawSerial.includes("\\")) {
+    // Collect all candidate document IDs in priority order
+    const candidateIds: string[] = [];
+    if (cleanReq && cleanSerial) candidateIds.push(`${cleanReq}_${cleanSerial}`);
+    if (cleanReq && cleanSerial && cleanUnified) candidateIds.push(`${cleanReq}_${cleanSerial}_${cleanUnified}`);
+    if (cleanSerial && cleanUnified) candidateIds.push(`${cleanSerial}_${cleanUnified}`);
+    if (cleanSerial) candidateIds.push(cleanSerial);
+    if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) candidateIds.push(`${rawReq}_${rawSerial}`);
+    candidateIds.push("current");
+
+    // Fetch all candidates concurrently in parallel
+    const snaps = await Promise.all(
+      candidateIds.map(async (id) => {
         try {
-          const rawRef = doc(db, "portal_configs", `${rawReq}_${rawSerial}`);
-          const rawSnap = await getDoc(rawRef);
-          if (rawSnap.exists()) {
-            return rawSnap.data() as PortalConfig;
+          const snap = await getDoc(doc(db, "portal_configs", id));
+          if (snap.exists()) {
+            return { id, data: snap.data() as PortalConfig };
           }
-        } catch {}
-      }
-    }
+        } catch {
+          // ignore individual fetch errors
+        }
+        return null;
+      })
+    );
 
-    // 2. Try DocumentVerify full composite key: [req]_[serial]_[unified]
-    if (cleanReq && cleanSerial && cleanUnified) {
-      const reqDocRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
-      const reqSnap = await getDoc(reqDocRef);
-      if (reqSnap.exists()) {
-        return reqSnap.data() as PortalConfig;
+    // Pick first matching candidate in priority order
+    for (const res of snaps) {
+      if (res && res.data) {
+        return res.data;
       }
-    }
-
-    // 2. Try composite key: [serial]_[unified]
-    if (cleanSerial && cleanUnified) {
-      const compDocRef = doc(db, "portal_configs", `${cleanSerial}_${cleanUnified}`);
-      const compSnap = await getDoc(compDocRef);
-      if (compSnap.exists()) {
-        return compSnap.data() as PortalConfig;
-      }
-    }
-
-    // 3. Try single serial document in portal_configs
-    if (cleanSerial) {
-      const serialDocRef = doc(db, "portal_configs", cleanSerial);
-      const serialSnap = await getDoc(serialDocRef);
-      if (serialSnap.exists()) {
-        return serialSnap.data() as PortalConfig;
-      }
-    }
-
-    // 4. Fallback to active 'current' document
-    const currentDocRef = doc(db, "portal_configs", "current");
-    const snapshot = await getDoc(currentDocRef);
-    if (snapshot.exists()) {
-      return snapshot.data() as PortalConfig;
     }
   } catch (err) {
     console.warn("Could not retrieve config from Firebase:", err);
@@ -628,71 +605,38 @@ export async function getPortalRecordBySerialUnified(
     const cleanReq = sanitizeDocNumber(requestNumber);
     const rawReq = (requestNumber || "").trim();
 
-    // 1. Try DocumentVerify key: [req]_[serial]
-    if (cleanReq && cleanSerial) {
-      try {
-        const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}`);
-        const reqSnap = await getDoc(reqRef);
-        if (reqSnap.exists()) {
-          return reqSnap.data() as PortalConfig;
+    // Collect all candidate document IDs in priority order
+    const candidateIds: string[] = [];
+    if (cleanReq && cleanSerial) candidateIds.push(`${cleanReq}_${cleanSerial}`);
+    if (cleanReq && cleanSerial && cleanUnified) candidateIds.push(`${cleanReq}_${cleanSerial}_${cleanUnified}`);
+    if (cleanSerial && cleanUnified) candidateIds.push(`${cleanSerial}_${cleanUnified}`);
+    if (cleanSerial) candidateIds.push(cleanSerial);
+    if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) candidateIds.push(`${rawReq}_${rawSerial}`);
+    candidateIds.push("current");
+
+    // Fetch all candidates concurrently in parallel
+    const snaps = await Promise.all(
+      candidateIds.map(async (id) => {
+        try {
+          const snap = await getDoc(doc(db, "portal_configs", id));
+          if (snap.exists()) {
+            return { id, data: snap.data() as PortalConfig };
+          }
+        } catch {
+          // ignore individual fetch errors
         }
-      } catch {
-        // ignore
-      }
-    }
-    if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) {
-      try {
-        const reqRef = doc(db, "portal_configs", `${rawReq}_${rawSerial}`);
-        const reqSnap = await getDoc(reqRef);
-        if (reqSnap.exists()) {
-          return reqSnap.data() as PortalConfig;
-        }
-      } catch {
-        // ignore
+        return null;
+      })
+    );
+
+    // Pick first matching candidate in priority order
+    for (const res of snaps) {
+      if (res && res.data) {
+        return res.data;
       }
     }
 
-    // 2. Try DocumentVerify full composite key: [req]_[serial]_[unified]
-    if (cleanReq && cleanSerial && cleanUnified) {
-      try {
-        const reqRef = doc(db, "portal_configs", `${cleanReq}_${cleanSerial}_${cleanUnified}`);
-        const reqSnap = await getDoc(reqRef);
-        if (reqSnap.exists()) {
-          return reqSnap.data() as PortalConfig;
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    // 2. Try exact composite `[serial]_[unified]` in portal_configs
-    if (cleanSerial && cleanUnified) {
-      try {
-        const compRef = doc(db, "portal_configs", `${cleanSerial}_${cleanUnified}`);
-        const compSnap = await getDoc(compRef);
-        if (compSnap.exists()) {
-          return compSnap.data() as PortalConfig;
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    // 3. Try single serial in portal_configs
-    if (cleanSerial) {
-      try {
-        const serialRef = doc(db, "portal_configs", cleanSerial);
-        const serialSnap = await getDoc(serialRef);
-        if (serialSnap.exists()) {
-          return serialSnap.data() as PortalConfig;
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    // 4. Fallback to active 'current' document
-    return await getConfigFromFirebase(cleanSerial, cleanUnified, cleanReq);
+    return null;
   } catch (err) {
     console.warn("Could not get portal record by serial/unified/requestNumber:", err);
     return null;

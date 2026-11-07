@@ -14,6 +14,23 @@ import { backupRecordsToGoogleDrive } from "@/lib/firebase-drive-backup";
 // In-memory cache fallback for fast response
 declare global {
   var __portal_config_memory__: PortalConfig | undefined;
+  var __portal_records_cache__: Map<string, { data: PortalConfig; time: number }> | undefined;
+}
+
+if (!globalThis.__portal_records_cache__) {
+  globalThis.__portal_records_cache__ = new Map();
+}
+
+function getCachedRecord(key: string): PortalConfig | null {
+  const item = globalThis.__portal_records_cache__?.get(key);
+  if (item && Date.now() - item.time < 60000) {
+    return item.data;
+  }
+  return null;
+}
+
+function setCachedRecord(key: string, data: PortalConfig) {
+  globalThis.__portal_records_cache__?.set(key, { data, time: Date.now() });
 }
 
 function cleanPortalTitle(title?: string): string {
@@ -124,6 +141,12 @@ export async function GET(req: Request) {
       "Expires": "0",
     };
 
+    const cacheKey = `${recordId || ""}_${serial || ""}_${unified || ""}_${requestNumber || ""}`;
+    const cachedRecord = getCachedRecord(cacheKey);
+    if (cachedRecord) {
+      return NextResponse.json(cachedRecord, { headers: responseHeaders });
+    }
+
     // Load active global config first to provide up-to-date organization & social media defaults
     let globalConfig = globalThis.__portal_config_memory__;
     if (!globalConfig) {
@@ -155,6 +178,7 @@ export async function GET(req: Request) {
         const specific = await getPortalRecordById(recordId);
         if (specific) {
           const mergedSpecific = mergeWithGlobal(specific, globalConfig);
+          setCachedRecord(cacheKey, mergedSpecific);
           return NextResponse.json(mergedSpecific, { headers: responseHeaders });
         }
       } catch (err) {
@@ -168,6 +192,7 @@ export async function GET(req: Request) {
         const specific = await getPortalRecordBySerialUnified(serial, unified, requestNumber, recordId);
         if (specific) {
           const mergedSpecific = mergeWithGlobal(specific, globalConfig);
+          setCachedRecord(cacheKey, mergedSpecific);
           return NextResponse.json(mergedSpecific, { headers: responseHeaders });
         }
       } catch (err) {
@@ -176,6 +201,7 @@ export async function GET(req: Request) {
     }
 
     // 2. Fetch active 'current' config directly from Firebase Firestore
+    setCachedRecord(cacheKey, globalConfig);
     return NextResponse.json(globalConfig, { headers: responseHeaders });
   } catch (error) {
     console.error("GET /api/config error:", error);
@@ -212,6 +238,7 @@ export async function POST(req: Request) {
     const recordId = isRecCard ? body.id : cleanUnified ? `${cleanSerial}_${cleanUnified}` : cleanSerial;
 
     if (isRecCard) {
+      globalThis.__portal_records_cache__?.clear();
       // Cloned record: save directly to its own document in Firestore without clobbering active global config
       try {
         await savePortalRecordToFirebase({ ...updated, id: recordId } as any, currentRecordId || recordId);
@@ -230,6 +257,7 @@ export async function POST(req: Request) {
 
     // Update transient memory cache
     globalThis.__portal_config_memory__ = updated;
+    globalThis.__portal_records_cache__?.clear();
 
     // Persist directly to Firebase Cloud Firestore
     try {
