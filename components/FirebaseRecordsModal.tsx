@@ -597,15 +597,25 @@ export function FirebaseRecordsModal({
             /* Multi-Record Responsive Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {filteredRecords.map((record) => {
+                const cleanDoc = sanitizeDocNumber(record.documentNumber) || "205-178";
                 const cleanSerial = sanitizeDocNumber(record.serialNumber);
                 const cleanUnified = sanitizeDocNumber(record.unifiedNumber);
-                const cleanReq = sanitizeDocNumber(record.requestNumber) || "13255887";
+                const cleanReq = sanitizeDocNumber(record.requestNumber) || "13753812";
                 const isCloned = Boolean(record.id && record.id.startsWith("rec_"));
                 const queryParam = isCloned ? `?id=${encodeURIComponent(record.id)}` : "";
                 const path = cleanSerial
                   ? `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
                   : `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
-                const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path);
+
+                // Exact same path format after domain as .com upper link:
+                // /document-verification?documentNumber=205-178&subscriptionNumber=206322599666&req=...
+                const tujarDocParam = cleanDoc;
+                const tujarSubParam = cleanSerial || "206322599666";
+                const tujarReqParam = cleanReq || cleanDoc;
+                const tujarCloneParam = isCloned ? `&id=${encodeURIComponent(record.id)}` : "";
+                const tujarPath = `/document-verification?documentNumber=${encodeURIComponent(tujarDocParam)}&subscriptionNumber=${encodeURIComponent(tujarSubParam)}&req=${encodeURIComponent(tujarReqParam)}${tujarCloneParam}`;
+
+                const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path, { tujarPath });
                 const isOrgCopied =
                   internalCopiedKey === `${record.id}_org` ||
                   (copiedRecordId === record.id && !internalCopiedKey);

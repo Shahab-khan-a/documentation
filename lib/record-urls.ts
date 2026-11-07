@@ -26,7 +26,12 @@ export interface DualDomainUrls {
  * - /. URL:         https://eservices-ynbcci-org-sa.com/.../.
  * - TUJAR-FSC URL:  https://www.tujar-fsc.org/...
  */
-export function getDualDomainUrls(path: string): DualDomainUrls {
+export function getDualDomainUrls(
+  path: string,
+  options?: {
+    tujarPath?: string;
+  }
+): DualDomainUrls {
   const orgBase = DEFAULT_ORG_DOMAIN;
   const comBase = DEFAULT_COM_DOMAIN;
   const tujarBase = DEFAULT_TUJAR_FSC_DOMAIN;
@@ -35,11 +40,13 @@ export function getDualDomainUrls(path: string): DualDomainUrls {
   const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
   const dotPath = `${cleanPath}/.`;
 
+  const tujarFinalPath = options?.tujarPath || path;
+
   return {
     orgUrl: `${orgBase}${path}`,
     comUrl: `${comBase}${path}`,
     dotUrl: `${comBase}${dotPath}`,
-    tujarUrl: `${tujarBase}${path}`,
+    tujarUrl: `${tujarBase}${tujarFinalPath}`,
     path,
   };
 }
