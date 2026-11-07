@@ -73,7 +73,10 @@ export function normalizePortalConfig(raw?: Partial<PortalConfig> | null): Porta
     expiryDate: raw.expiryDate || DEFAULT_PORTAL_CONFIG.expiryDate,
     expiryTime: raw.expiryTime || DEFAULT_PORTAL_CONFIG.expiryTime,
     commercialRegNo: raw.commercialRegNo || DEFAULT_PORTAL_CONFIG.commercialRegNo,
-    requestStatus: raw.requestStatus || DEFAULT_PORTAL_CONFIG.requestStatus,
+    requestStatus:
+      raw.requestStatus === "تم قبول الطلب وساري"
+        ? "قبول"
+        : (raw.requestStatus || DEFAULT_PORTAL_CONFIG.requestStatus || "قبول"),
     statusColor: raw.statusColor || DEFAULT_PORTAL_CONFIG.statusColor,
     devLabel: raw.devLabel || DEFAULT_PORTAL_CONFIG.devLabel,
     companyNameAr: raw.companyNameAr || DEFAULT_PORTAL_CONFIG.companyNameAr,

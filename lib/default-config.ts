@@ -19,7 +19,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   expiryDate: "09/06/2027-",
   expiryTime: "6:00م",
   commercialRegNo: "7032840279",
-  requestStatus: "تم قبول الطلب وساري",
+  requestStatus: "قبول",
   statusColor: "#32c5cb",
 
   // Custom dynamically added fields

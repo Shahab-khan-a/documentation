@@ -557,7 +557,7 @@ export function DocumentDetailsTab({
                 className="text-base sm:text-lg font-black tracking-wide transition-colors"
                 style={{ color: config.statusColor || "#32c5cb" }}
               >
-                {config.requestStatus || "تم قبول الطلب وساري"}
+                {config.requestStatus || "قبول"}
               </span>
             </div>
             <p className="text-[11px] text-slate-500">

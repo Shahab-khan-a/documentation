@@ -505,7 +505,7 @@ export default function AdminDashboard() {
       requestType: "طلب مفتوح ملف",
       applicantName: "",
       commercialRegNo: "",
-      requestStatus: "تم قبول الطلب وساري",
+      requestStatus: "قبول",
       statusColor: "#32c5cb",
       isSample: true,
       // Automatically inherit organization & footer settings from currently active config

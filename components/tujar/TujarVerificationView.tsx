@@ -309,9 +309,10 @@ export function TujarVerificationView() {
       ? `${config.creationDate}${config.creationTime ? ` - ${config.creationTime}` : ""}`
       : "2026/10/04 - 11:35 AM",
     serviceValidUntil: config?.expiryDate || "2027/10/04",
-    documentStatus: config?.requestStatus
-      ? (config.requestStatus.includes("مقبول") ? "مقبول" : config.requestStatus)
-      : "مقبول",
+    documentStatus:
+      config?.requestStatus === "تم قبول الطلب وساري" || !config?.requestStatus
+        ? "قبول"
+        : config.requestStatus,
     isValid: true,
   };
 
