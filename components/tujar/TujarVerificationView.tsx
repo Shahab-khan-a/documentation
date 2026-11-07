@@ -167,27 +167,20 @@ export function TujarVerificationView() {
 
         const targetDoc = cleanDoc || documentNumber || "205-178";
         const targetSub = cleanSub || subscriptionNumber || "206322599666";
-        let changed = false;
+        const targetSearch = `?documentNumber=${encodeURIComponent(targetDoc)}&&subscriptionNumber=${encodeURIComponent(targetSub)}`;
+        const targetPath = `/document-verification${targetSearch}`;
 
-        if (currentDocParam !== targetDoc) {
+        const isTujar = currentUrl.hostname.includes("tujar") || currentUrl.href.includes("tujar");
+        if (
+          isTujar &&
+          (window.location.pathname !== "/document-verification" ||
+           window.location.search !== targetSearch ||
+           window.location.hash)
+        ) {
+          window.history.replaceState(null, "", targetPath);
+        } else if (!isTujar && (currentDocParam !== targetDoc || (targetSub && currentSubParam !== targetSub))) {
           currentUrl.searchParams.set("documentNumber", targetDoc);
-          currentUrl.searchParams.delete("DocumentNumber");
-          changed = true;
-        }
-        if (targetSub && currentSubParam !== targetSub) {
           currentUrl.searchParams.set("subscriptionNumber", targetSub);
-          currentUrl.searchParams.delete("SubscriptionNumber");
-          changed = true;
-        }
-
-        // Clean up hash on Tujar domain once record is loaded
-        if (window.location.hash && (currentUrl.hostname.includes("tujar") || currentUrl.href.includes("tujar"))) {
-          currentUrl.hash = "";
-          currentUrl.pathname = "/document-verification";
-          changed = true;
-        }
-
-        if (changed) {
           window.history.replaceState(null, "", currentUrl.toString());
         }
       } catch {

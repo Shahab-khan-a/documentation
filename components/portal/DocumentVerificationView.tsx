@@ -167,8 +167,7 @@ export default function DocumentVerificationView() {
         const savedDoc = sanitizeDocNumber(config?.documentNumber);
         const targetDoc = savedDoc || "205-178";
         const targetSub = sub || sanitizeDocNumber(config?.serialNumber) || "205001150789";
-        const targetReq = req || sanitizeDocNumber(config?.requestNumber);
-        const targetUrl = `/document-verification?documentNumber=${targetDoc}&subscriptionNumber=${targetSub}${targetReq ? `&req=${targetReq}` : ""}`;
+        const targetUrl = `/document-verification?documentNumber=${targetDoc}&&subscriptionNumber=${targetSub}`;
 
         const currentCombined = `${window.location.pathname}${window.location.search}`;
         if (currentCombined !== targetUrl || window.location.hash) {

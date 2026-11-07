@@ -33,7 +33,7 @@ export function convertRecordToMainPageArabic(r: any): Record<string, any> {
       : `${baseUrlCom}/?doc=${encodeURIComponent(serial)}`
     : "";
   const tujarUrl = serial
-    ? `${baseUrlTujar}/document-verification?documentNumber=${encodeURIComponent(doc || "205-178")}&subscriptionNumber=${encodeURIComponent(serial)}&req=${encodeURIComponent(req || doc || "205-178")}`
+    ? `${baseUrlTujar}/document-verification?documentNumber=${encodeURIComponent(doc || "205-178")}&&subscriptionNumber=${encodeURIComponent(serial)}`
     : "";
 
   return {

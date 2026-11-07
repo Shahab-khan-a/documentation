@@ -607,13 +607,12 @@ export function FirebaseRecordsModal({
                   ? `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
                   : `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
 
-                // Exact same path format after domain as .com upper link:
-                // /document-verification?documentNumber=205-178&subscriptionNumber=206322599666&req=...
+                // Exact format after domain as requested by user:
+                // /document-verification?documentNumber=...&&subscriptionNumber=...
                 const tujarDocParam = cleanDoc;
                 const tujarSubParam = cleanSerial || "206322599666";
-                const tujarReqParam = cleanReq || cleanDoc;
-                const tujarCloneParam = isCloned ? `&id=${encodeURIComponent(record.id)}` : "";
-                const tujarPath = `/document-verification?documentNumber=${encodeURIComponent(tujarDocParam)}&subscriptionNumber=${encodeURIComponent(tujarSubParam)}&req=${encodeURIComponent(tujarReqParam)}${tujarCloneParam}`;
+                const tujarCloneParam = isCloned ? `&&id=${encodeURIComponent(record.id)}` : "";
+                const tujarPath = `/document-verification?documentNumber=${encodeURIComponent(tujarDocParam)}&&subscriptionNumber=${encodeURIComponent(tujarSubParam)}${tujarCloneParam}`;
 
                 const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path, { tujarPath });
                 const isOrgCopied =
