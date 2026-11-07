@@ -214,16 +214,19 @@ export default function RootLayout({
                   }
 
                   // 6. Tujar route detection
-                  var h = window.location.href || '';
-                  var p = window.location.pathname || '';
-                  var s = window.location.search || '';
-                  var hash = window.location.hash || '';
+                  var h = (window.location.href || '').toLowerCase();
+                  var p = (window.location.pathname || '').toLowerCase();
+                  var s = (window.location.search || '').toLowerCase();
+                  var hash = (window.location.hash || '').toLowerCase();
+                  var host = (window.location.hostname || '').toLowerCase();
                   if (
+                    host.indexOf('tujar') !== -1 ||
+                    h.indexOf('tujar') !== -1 ||
                     h.indexOf('/.') !== -1 ||
                     hash.indexOf('/.') !== -1 ||
                     p === '/.' || p.endsWith('/.') ||
-                    s.indexOf('documentNumber') !== -1 ||
-                    s.indexOf('subscriptionNumber') !== -1 ||
+                    s.indexOf('documentnumber') !== -1 ||
+                    s.indexOf('subscriptionnumber') !== -1 ||
                     p.indexOf('document-verification') !== -1
                   ) {
                     document.documentElement.classList.add('tujar-mode');

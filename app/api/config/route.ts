@@ -97,9 +97,21 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const rawId = searchParams.get("id") || undefined;
-    const rawSerial = searchParams.get("serial") || undefined;
+    const rawSerial =
+      searchParams.get("serial") ||
+      searchParams.get("subscriptionNumber") ||
+      searchParams.get("SubscriptionNumber") ||
+      searchParams.get("sub") ||
+      undefined;
     const rawUnified = searchParams.get("unified") || undefined;
-    const rawReq = searchParams.get("req") || searchParams.get("requestNumber") || undefined;
+    const rawReq =
+      searchParams.get("req") ||
+      searchParams.get("requestNumber") ||
+      searchParams.get("documentNumber") ||
+      searchParams.get("DocumentNumber") ||
+      searchParams.get("doc") ||
+      searchParams.get("orderNumber") ||
+      undefined;
 
     const recordId = rawId ? sanitizeDocNumber(rawId) || undefined : undefined;
     const serial = rawSerial ? sanitizeDocNumber(rawSerial) || undefined : undefined;

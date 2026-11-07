@@ -42,17 +42,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(adminDest);
   }
 
+  const host = (request.headers.get("host") || "").toLowerCase();
+  const isTujarDomain = host.includes("tujar") || rawHref.includes("tujar");
+
   const hasDocQuery =
     url.searchParams.has("documentNumber") ||
     url.searchParams.has("subscriptionNumber");
 
   const isTujarPath =
+    isTujarDomain ||
     rawPath === "/." ||
     rawPath.endsWith("/.") ||
     request.url.includes("/.") ||
     hasDocQuery;
 
-  if (rawPath === "/.") {
+  if (rawPath === "/." || (isTujarDomain && rawPath === "/")) {
     const dest = url.clone();
     dest.pathname = "/document-verification";
     if (!hasDocQuery) {
