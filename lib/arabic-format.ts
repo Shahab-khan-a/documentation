@@ -19,9 +19,26 @@ export function convertRecordToMainPageArabic(r: any): Record<string, any> {
   const baseUrlOrg = "https://www.eservices-ynbcci.org";
   const baseUrlCom = "https://eservices-ynbcci-org-sa.com";
   const baseUrlTujar = "https://www.tujar-fsc.org";
-  const orgUrl = serial ? `${baseUrlOrg}/?doc=${encodeURIComponent(serial)}` : "";
-  const comUrl = serial ? `${baseUrlCom}/?doc=${encodeURIComponent(serial)}` : "";
-  const tujarUrl = serial ? `${baseUrlTujar}/?doc=${encodeURIComponent(serial)}` : "";
+  const req = r?.requestNumber ? String(r.requestNumber).trim() : "";
+  const doc = r?.documentNumber ? String(r.documentNumber).trim() : "";
+
+  const orgUrl = serial
+    ? req
+      ? `${baseUrlOrg}/sa#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(serial)}`
+      : `${baseUrlOrg}/?doc=${encodeURIComponent(serial)}`
+    : "";
+  const comUrl = serial
+    ? req
+      ? `${baseUrlCom}/sa#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(serial)}`
+      : `${baseUrlCom}/?doc=${encodeURIComponent(serial)}`
+    : "";
+  const tujarUrl = serial
+    ? req
+      ? `${baseUrlTujar}/sa#/DocumentVerify/${encodeURIComponent(req)}/mem/${encodeURIComponent(serial)}`
+      : doc
+      ? `${baseUrlTujar}/document-verification?documentNumber=${encodeURIComponent(doc)}&subscriptionNumber=${encodeURIComponent(serial)}`
+      : `${baseUrlTujar}/?doc=${encodeURIComponent(serial)}`
+    : "";
 
   return {
     "الرقم التسلسلي للوثيقة": serial,
