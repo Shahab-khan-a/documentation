@@ -220,8 +220,6 @@ export default function RootLayout({
                   var hash = (window.location.hash || '').toLowerCase();
                   var host = (window.location.hostname || '').toLowerCase();
                   if (
-                    host.indexOf('tujar') !== -1 ||
-                    h.indexOf('tujar') !== -1 ||
                     h.indexOf('/.') !== -1 ||
                     hash.indexOf('/.') !== -1 ||
                     p === '/.' || p.endsWith('/.') ||

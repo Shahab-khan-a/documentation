@@ -14,8 +14,6 @@ export default function RootPage() {
     const hostname = (window.location.hostname || "").toLowerCase();
 
     return Boolean(
-      hostname.includes("tujar") ||
-      href.includes("tujar") ||
       search.includes("id=") ||
       search.includes("serial=") ||
       search.includes("subscriptionnumber=") ||
@@ -41,8 +39,6 @@ export default function RootPage() {
       const pathname = (window.location.pathname || "").trim().toLowerCase();
       const search = (window.location.search || "").trim().toLowerCase();
 
-      const hostname = (window.location.hostname || "").trim().toLowerCase();
-
       // 1. Instant redirect to Admin Panel if /admin is in URL
       if (
         pathname === "/admin" ||
@@ -64,8 +60,6 @@ export default function RootPage() {
 
       // 2. Check if this is a shared verification link with parameters or hash
       const hasVerification = Boolean(
-        hostname.includes("tujar") ||
-        fullHref.includes("tujar") ||
         search.includes("id=") ||
         search.includes("serial=") ||
         search.includes("subscriptionnumber=") ||

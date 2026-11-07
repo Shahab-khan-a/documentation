@@ -42,21 +42,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(adminDest);
   }
 
-  const host = (request.headers.get("host") || "").toLowerCase();
-  const isTujarDomain = host.includes("tujar") || rawHref.includes("tujar");
-
   const hasDocQuery =
     url.searchParams.has("documentNumber") ||
     url.searchParams.has("subscriptionNumber");
 
-  const isTujarPath =
-    isTujarDomain ||
+  const hasDotSlash =
     rawPath === "/." ||
     rawPath.endsWith("/.") ||
-    request.url.includes("/.") ||
-    hasDocQuery;
+    request.url.includes("/.");
 
-  if (rawPath === "/." || (isTujarDomain && rawPath === "/")) {
+  // If user visits "/." route -> redirect to clean document-verification
+  if (hasDotSlash) {
     const dest = url.clone();
     dest.pathname = "/document-verification";
     if (!hasDocQuery) {
@@ -66,10 +62,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(dest);
   }
 
-  if (isTujarPath) {
-    if (rawPath.startsWith("/document-verification")) {
-      return NextResponse.next();
-    }
+  // If URL has query parameters for document verification on root, rewrite to document-verification
+  if (
+    hasDocQuery &&
+    !rawPath.startsWith("/document-verification") &&
+    !rawPath.startsWith("/sa") &&
+    !rawPath.startsWith("/DocumentVerify")
+  ) {
     const dest = url.clone();
     dest.pathname = "/document-verification";
     return NextResponse.rewrite(dest);
