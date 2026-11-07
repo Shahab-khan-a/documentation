@@ -140,7 +140,7 @@ export default function DocumentVerificationView() {
           ? rawPath
           : rawHash || rawPath;
 
-        let doc = "";
+        let req = "";
         let sub = "";
 
         if (source) {
@@ -154,7 +154,7 @@ export default function DocumentVerificationView() {
           if (dvIndex !== -1) {
             const after = parts.slice(dvIndex + 1);
             if (after[0]) {
-              doc = sanitizeDocNumber(after[0]) || "";
+              req = sanitizeDocNumber(after[0]) || "";
             }
             if (after[1]?.toLowerCase() === "mem") {
               sub = sanitizeDocNumber(after[2]) || "";
@@ -165,9 +165,10 @@ export default function DocumentVerificationView() {
         }
 
         const savedDoc = sanitizeDocNumber(config?.documentNumber);
-        const targetDoc = doc || savedDoc || "205-178";
+        const targetDoc = savedDoc || "205-178";
         const targetSub = sub || sanitizeDocNumber(config?.serialNumber) || "205001150789";
-        const targetUrl = `/document-verification?documentNumber=${targetDoc}&subscriptionNumber=${targetSub}`;
+        const targetReq = req || sanitizeDocNumber(config?.requestNumber);
+        const targetUrl = `/document-verification?documentNumber=${targetDoc}&subscriptionNumber=${targetSub}${targetReq ? `&req=${targetReq}` : ""}`;
 
         const currentCombined = `${window.location.pathname}${window.location.search}`;
         if (currentCombined !== targetUrl || window.location.hash) {
@@ -183,7 +184,7 @@ export default function DocumentVerificationView() {
       window.removeEventListener("hashchange", handleTujarRedirect);
       window.removeEventListener("popstate", handleTujarRedirect);
     };
-  }, [config?.documentNumber, config?.serialNumber]);
+  }, [config?.documentNumber, config?.serialNumber, config?.requestNumber]);
 
   // Detect Tujar platform mode: if url ends with "/." or query params or hash includes tujar or hosted on tujar domain
   const isTujarRequested = () => {

@@ -32,15 +32,21 @@ export function TujarVerificationView() {
     searchParams?.get("sub") ||
     searchParams?.get("serial") ||
     "";
+  const rawQueryReq =
+    searchParams?.get("req") ||
+    searchParams?.get("orderNumber") ||
+    searchParams?.get("requestNumber") ||
+    "";
   const queryDoc = sanitizeDocNumber(rawQueryDoc);
   const querySub = sanitizeDocNumber(rawQuerySub);
+  const queryReq = sanitizeDocNumber(rawQueryReq);
   const { config } = usePortalConfig();
   const { isDownloading, downloadLoaderActive, downloadFileWithAnimation } = useFileDownload();
 
   // Extract initial parameters from query params or DocumentVerify URL hash/path
   const parseUrlParams = useCallback(() => {
     if (typeof window === "undefined") {
-      return { doc: queryDoc || "", sub: querySub || "", req: "" };
+      return { doc: queryDoc || "", sub: querySub || "", req: queryReq || "" };
     }
     const fullHref = (window.location.href || "").trim().toLowerCase();
     const hash = (window.location.hash || "").trim().toLowerCase();
@@ -101,18 +107,22 @@ export function TujarVerificationView() {
     }
 
     return {
-      doc: sanitizeDocNumber(queryDoc || req || ""),
+      doc: sanitizeDocNumber(queryDoc || ""),
       sub: sanitizeDocNumber(querySub || s || ""),
-      req: sanitizeDocNumber(req || queryDoc || ""),
+      req: sanitizeDocNumber(queryReq || req || ""),
     };
-  }, [queryDoc, querySub]);
+  }, [queryDoc, querySub, queryReq]);
 
   const initialParams = parseUrlParams();
   const [documentNumber, setDocumentNumber] = useState(
-    sanitizeDocNumber(config?.documentNumber) || initialParams.doc || initialParams.req || "205-178"
+    sanitizeDocNumber(config?.documentNumber) || initialParams.doc || "205-178"
   );
-  const [subscriptionNumber, setSubscriptionNumber] = useState(initialParams.sub || "205001150789");
-  const [orderNumber, setOrderNumber] = useState(initialParams.req || initialParams.doc || "205-154");
+  const [subscriptionNumber, setSubscriptionNumber] = useState(
+    sanitizeDocNumber(config?.serialNumber) || initialParams.sub || "206322599666"
+  );
+  const [orderNumber, setOrderNumber] = useState(
+    sanitizeDocNumber(config?.requestNumber) || initialParams.req || "13753812"
+  );
   const [searchedDoc, setSearchedDoc] = useState<string | null>(null);
 
   // Step state: 1: Search Form, 2: Verification Result Card
@@ -127,15 +137,22 @@ export function TujarVerificationView() {
     if (p.sub) setSubscriptionNumber(p.sub);
     if (p.req) setOrderNumber(p.req);
     if (p.doc || p.sub || p.req) setStep(2);
-  }, [queryDoc, querySub, parseUrlParams]);
+  }, [queryDoc, querySub, queryReq, parseUrlParams]);
 
-  // Sync documentNumber state and update browser URL when config.documentNumber loads from Firebase / Drive
+  // Sync state and clean URL when config loads from Firebase / Drive
   useEffect(() => {
     const cleanDoc = sanitizeDocNumber(config?.documentNumber);
-    if (!cleanDoc) return;
+    const cleanSub = sanitizeDocNumber(config?.serialNumber);
+    const cleanReq = sanitizeDocNumber(config?.requestNumber);
 
-    if (!searchedDoc) {
+    if (cleanDoc && !searchedDoc) {
       setDocumentNumber(cleanDoc);
+    }
+    if (cleanSub) {
+      setSubscriptionNumber(cleanSub);
+    }
+    if (cleanReq) {
+      setOrderNumber(cleanReq);
     }
 
     if (typeof window !== "undefined") {
@@ -144,16 +161,40 @@ export function TujarVerificationView() {
         const currentDocParam =
           currentUrl.searchParams.get("documentNumber") ||
           currentUrl.searchParams.get("DocumentNumber");
-        if (currentDocParam !== cleanDoc) {
-          currentUrl.searchParams.set("documentNumber", cleanDoc);
+        const currentSubParam =
+          currentUrl.searchParams.get("subscriptionNumber") ||
+          currentUrl.searchParams.get("SubscriptionNumber");
+
+        const targetDoc = cleanDoc || documentNumber || "205-178";
+        const targetSub = cleanSub || subscriptionNumber || "206322599666";
+        let changed = false;
+
+        if (currentDocParam !== targetDoc) {
+          currentUrl.searchParams.set("documentNumber", targetDoc);
           currentUrl.searchParams.delete("DocumentNumber");
+          changed = true;
+        }
+        if (targetSub && currentSubParam !== targetSub) {
+          currentUrl.searchParams.set("subscriptionNumber", targetSub);
+          currentUrl.searchParams.delete("SubscriptionNumber");
+          changed = true;
+        }
+
+        // Clean up hash on Tujar domain once record is loaded
+        if (window.location.hash && (currentUrl.hostname.includes("tujar") || currentUrl.href.includes("tujar"))) {
+          currentUrl.hash = "";
+          currentUrl.pathname = "/document-verification";
+          changed = true;
+        }
+
+        if (changed) {
           window.history.replaceState(null, "", currentUrl.toString());
         }
       } catch {
         // ignore
       }
     }
-  }, [config?.documentNumber, searchedDoc]);
+  }, [config?.documentNumber, config?.serialNumber, config?.requestNumber, searchedDoc]);
 
   // Instant redirect to Admin Panel if /admin or #admin is typed in URL bar, query, or hash
   useEffect(() => {
@@ -242,19 +283,17 @@ export function TujarVerificationView() {
   const docNo =
     searchedDoc ||
     cleanDoc ||
-    cleanReq ||
     initialParams.doc ||
-    initialParams.req ||
-    (queryDoc && queryDoc !== "13255887" && queryDoc !== "205-178" ? queryDoc : undefined) ||
+    (queryDoc && queryDoc !== cleanReq ? queryDoc : undefined) ||
     documentNumber ||
     "205-178";
 
   const orderNo =
     cleanReq ||
+    queryReq ||
     initialParams.req ||
     orderNumber ||
-    docNo ||
-    "205-154";
+    "13753812";
 
   const subNo =
     cleanSerial ||
@@ -263,7 +302,7 @@ export function TujarVerificationView() {
     cleanComm ||
     cleanUnified ||
     subscriptionNumber ||
-    "205001150789";
+    "206322599666";
 
   const is205Sample =
     (docNo === "205-178" && (subNo === "205001150709" || subNo === "205001150789")) &&
