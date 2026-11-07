@@ -21,33 +21,43 @@ import "@/app/tujar.css";
 
 export function TujarVerificationView() {
   const searchParams = useSearchParams();
-  const rawQueryDoc =
-    searchParams?.get("documentNumber") ||
-    searchParams?.get("DocumentNumber") ||
-    searchParams?.get("doc") ||
-    "";
-  const rawQuerySub =
-    searchParams?.get("subscriptionNumber") ||
-    searchParams?.get("SubscriptionNumber") ||
-    searchParams?.get("sub") ||
-    searchParams?.get("serial") ||
-    "";
-  const rawQueryReq =
-    searchParams?.get("req") ||
-    searchParams?.get("orderNumber") ||
-    searchParams?.get("requestNumber") ||
-    "";
-  const queryDoc = sanitizeDocNumber(rawQueryDoc);
-  const querySub = sanitizeDocNumber(rawQuerySub);
-  const queryReq = sanitizeDocNumber(rawQueryReq);
   const { config } = usePortalConfig();
   const { isDownloading, downloadLoaderActive, downloadFileWithAnimation } = useFileDownload();
 
-  // Extract initial parameters from query params or DocumentVerify URL hash/path
+  // Extract initial parameters from query params, window.location, or DocumentVerify URL hash/path
   const parseUrlParams = useCallback(() => {
-    if (typeof window === "undefined") {
-      return { doc: queryDoc || "", sub: querySub || "", req: queryReq || "" };
+    let locDoc = "";
+    let locSub = "";
+    let locReq = "";
+
+    if (typeof window !== "undefined") {
+      const search = window.location.search || "";
+      const href = window.location.href || "";
+      const combined = `${search}&${href}`;
+
+      const extractRegex = (key: string): string => {
+        // Matches ?key=val or &key=val or &&key=val
+        const match = combined.match(new RegExp(`[?&]${key}=([^&#]*)`, "i"));
+        return match && match[1] ? decodeURIComponent(match[1].trim()) : "";
+      };
+
+      locDoc = extractRegex("documentNumber") || extractRegex("DocumentNumber") || extractRegex("doc");
+      locSub = extractRegex("subscriptionNumber") || extractRegex("SubscriptionNumber") || extractRegex("sub") || extractRegex("serial");
+      locReq = extractRegex("orderNumber") || extractRegex("requestNumber") || extractRegex("req");
     }
+
+    const spDoc = searchParams?.get("documentNumber") || searchParams?.get("DocumentNumber") || searchParams?.get("doc") || "";
+    const spSub = searchParams?.get("subscriptionNumber") || searchParams?.get("SubscriptionNumber") || searchParams?.get("sub") || searchParams?.get("serial") || "";
+    const spReq = searchParams?.get("req") || searchParams?.get("orderNumber") || searchParams?.get("requestNumber") || "";
+
+    const docFromUrl = sanitizeDocNumber(locDoc || spDoc);
+    const subFromUrl = sanitizeDocNumber(locSub || spSub);
+    const reqFromUrl = sanitizeDocNumber(locReq || spReq);
+
+    if (typeof window === "undefined") {
+      return { doc: docFromUrl || "", sub: subFromUrl || "", req: reqFromUrl || "" };
+    }
+
     const fullHref = (window.location.href || "").trim().toLowerCase();
     const hash = (window.location.hash || "").trim().toLowerCase();
     const pathname = (window.location.pathname || "").trim().toLowerCase();
@@ -80,8 +90,8 @@ export function TujarVerificationView() {
       ? pathname
       : hash || pathname;
 
-    let req = "";
-    let s = "";
+    let pathReq = "";
+    let pathSub = "";
     if (source) {
       const clean = source.replace(/^[#/]+/, "").split("?")[0];
       const parts = clean
@@ -92,36 +102,36 @@ export function TujarVerificationView() {
       const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
       if (dvIndex !== -1) {
         const after = parts.slice(dvIndex + 1);
-        req = sanitizeDocNumber(after[0]) || "";
+        pathReq = sanitizeDocNumber(after[0]) || "";
         if (after[1]?.toLowerCase() === "mem") {
-          s = sanitizeDocNumber(after[2]) || "";
+          pathSub = sanitizeDocNumber(after[2]) || "";
         } else {
-          s = sanitizeDocNumber(after[1]) || "";
+          pathSub = sanitizeDocNumber(after[1]) || "";
         }
       } else if (parts.length > 0) {
         const nonReserved = parts.filter(
           (p) => !["sa", "admin", "api", "documentverify"].includes(p.toLowerCase())
         );
-        if (nonReserved.length >= 1) s = sanitizeDocNumber(nonReserved[0]);
+        if (nonReserved.length >= 1) pathSub = sanitizeDocNumber(nonReserved[0]);
       }
     }
 
     return {
-      doc: sanitizeDocNumber(queryDoc || ""),
-      sub: sanitizeDocNumber(querySub || s || ""),
-      req: sanitizeDocNumber(queryReq || req || ""),
+      doc: docFromUrl || "",
+      sub: subFromUrl || pathSub || "",
+      req: reqFromUrl || pathReq || "",
     };
-  }, [queryDoc, querySub, queryReq]);
+  }, [searchParams]);
 
   const initialParams = parseUrlParams();
   const [documentNumber, setDocumentNumber] = useState(
-    sanitizeDocNumber(config?.documentNumber) || initialParams.doc || "205-178"
+    initialParams.doc || sanitizeDocNumber(config?.documentNumber) || "205-178"
   );
   const [subscriptionNumber, setSubscriptionNumber] = useState(
-    sanitizeDocNumber(config?.serialNumber) || initialParams.sub || "206322599666"
+    initialParams.sub || sanitizeDocNumber(config?.serialNumber) || "206322599666"
   );
   const [orderNumber, setOrderNumber] = useState(
-    sanitizeDocNumber(config?.requestNumber) || initialParams.req || "13753812"
+    initialParams.req || sanitizeDocNumber(config?.requestNumber) || "13753812"
   );
   const [searchedDoc, setSearchedDoc] = useState<string | null>(null);
 
@@ -137,57 +147,26 @@ export function TujarVerificationView() {
     if (p.sub) setSubscriptionNumber(p.sub);
     if (p.req) setOrderNumber(p.req);
     if (p.doc || p.sub || p.req) setStep(2);
-  }, [queryDoc, querySub, queryReq, parseUrlParams]);
+  }, [parseUrlParams]);
 
-  // Sync state and clean URL when config loads from Firebase / Drive
+  // Sync state when config loads from Firebase / Drive (WITHOUT overwriting URL query parameters)
   useEffect(() => {
+    const p = parseUrlParams();
     const cleanDoc = sanitizeDocNumber(config?.documentNumber);
     const cleanSub = sanitizeDocNumber(config?.serialNumber);
     const cleanReq = sanitizeDocNumber(config?.requestNumber);
 
-    if (cleanDoc && !searchedDoc) {
+    // Only update if URL does NOT already supply the specific parameter and user hasn't searched
+    if (!p.doc && !searchedDoc && cleanDoc) {
       setDocumentNumber(cleanDoc);
     }
-    if (cleanSub) {
+    if (!p.sub && !searchedDoc && cleanSub) {
       setSubscriptionNumber(cleanSub);
     }
-    if (cleanReq) {
+    if (!p.req && cleanReq) {
       setOrderNumber(cleanReq);
     }
-
-    if (typeof window !== "undefined") {
-      try {
-        const currentUrl = new URL(window.location.href);
-        const currentDocParam =
-          currentUrl.searchParams.get("documentNumber") ||
-          currentUrl.searchParams.get("DocumentNumber");
-        const currentSubParam =
-          currentUrl.searchParams.get("subscriptionNumber") ||
-          currentUrl.searchParams.get("SubscriptionNumber");
-
-        const targetDoc = cleanDoc || documentNumber || "205-178";
-        const targetSub = cleanSub || subscriptionNumber || "206322599666";
-        const targetSearch = `?documentNumber=${encodeURIComponent(targetDoc)}&&subscriptionNumber=${encodeURIComponent(targetSub)}`;
-        const targetPath = `/document-verification${targetSearch}`;
-
-        const isTujar = currentUrl.hostname.includes("tujar") || currentUrl.href.includes("tujar");
-        if (
-          isTujar &&
-          (window.location.pathname !== "/document-verification" ||
-           window.location.search !== targetSearch ||
-           window.location.hash)
-        ) {
-          window.history.replaceState(null, "", targetPath);
-        } else if (!isTujar && (currentDocParam !== targetDoc || (targetSub && currentSubParam !== targetSub))) {
-          currentUrl.searchParams.set("documentNumber", targetDoc);
-          currentUrl.searchParams.set("subscriptionNumber", targetSub);
-          window.history.replaceState(null, "", currentUrl.toString());
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }, [config?.documentNumber, config?.serialNumber, config?.requestNumber, searchedDoc]);
+  }, [config?.documentNumber, config?.serialNumber, config?.requestNumber, searchedDoc, parseUrlParams]);
 
   // Instant redirect to Admin Panel if /admin or #admin is typed in URL bar, query, or hash
   useEffect(() => {
@@ -237,6 +216,15 @@ export function TujarVerificationView() {
     setDocumentNumber(docOrOrderNo);
     setSubscriptionNumber(subOrUnifiedNo);
 
+    if (typeof window !== "undefined") {
+      try {
+        const newSearch = `?documentNumber=${encodeURIComponent(docOrOrderNo)}&&subscriptionNumber=${encodeURIComponent(subOrUnifiedNo)}`;
+        window.history.replaceState(null, "", `/document-verification${newSearch}`);
+      } catch {
+        // ignore
+      }
+    }
+
     setTimeout(() => {
       setSearchLoading(false);
       setStep(2);
@@ -263,7 +251,7 @@ export function TujarVerificationView() {
     window.print();
   };
 
-  // Build document details dynamically from config (updated in real-time from Admin Panel / Firebase)
+  // Build document details dynamically: URL params take priority, then state, then config / defaults
   const cleanSerial = sanitizeDocNumber(config?.serialNumber);
   const cleanDoc = sanitizeDocNumber(config?.documentNumber);
   const cleanReq = sanitizeDocNumber(config?.requestNumber);
@@ -275,26 +263,23 @@ export function TujarVerificationView() {
 
   const docNo =
     searchedDoc ||
-    cleanDoc ||
     initialParams.doc ||
-    (queryDoc && queryDoc !== cleanReq ? queryDoc : undefined) ||
     documentNumber ||
+    cleanDoc ||
     "205-178";
 
   const orderNo =
-    cleanReq ||
-    queryReq ||
     initialParams.req ||
     orderNumber ||
+    cleanReq ||
     "13753812";
 
   const subNo =
-    cleanSerial ||
-    querySub ||
     initialParams.sub ||
+    subscriptionNumber ||
+    cleanSerial ||
     cleanComm ||
     cleanUnified ||
-    subscriptionNumber ||
     "206322599666";
 
   const is205Sample =
@@ -352,8 +337,8 @@ export function TujarVerificationView() {
               />
             ) : (
               <TujarSearchCard
-                initialDocumentNumber={documentNumber}
-                initialSubscriptionNumber={subscriptionNumber}
+                initialDocumentNumber={docNo}
+                initialSubscriptionNumber={subNo}
                 onSearch={handleSearch}
                 isLoading={searchLoading}
               />

@@ -118,6 +118,11 @@ export default function DocumentVerificationView() {
       const pathname = (window.location.pathname || "").trim().toLowerCase();
       const hostname = (window.location.hostname || "").trim().toLowerCase();
 
+      // If user is already on /document-verification, do not perform any redirect
+      if (pathname === "/document-verification" || pathname.startsWith("/document-verification")) {
+        return;
+      }
+
       const isTujarDomain = hostname.includes("tujar") || href.includes("tujar");
 
       const hasDotSlash =
@@ -134,6 +139,8 @@ export default function DocumentVerificationView() {
       if (hasDotSlash || isTujarDomain) {
         const rawHash = window.location.hash || "";
         const rawPath = window.location.pathname || "";
+        const rawSearch = window.location.search || "";
+        const rawCombined = `${rawSearch}&${href}`;
         const source = rawHash.toLowerCase().includes("documentverify")
           ? rawHash
           : rawPath.toLowerCase().includes("documentverify")
@@ -164,10 +171,18 @@ export default function DocumentVerificationView() {
           }
         }
 
+        const extractParam = (k: string): string => {
+          const m = rawCombined.match(new RegExp(`[?&]${k}=([^&#]*)`, "i"));
+          return m && m[1] ? decodeURIComponent(m[1].trim()) : "";
+        };
+
+        const urlDoc = extractParam("documentNumber") || extractParam("DocumentNumber") || extractParam("doc");
+        const urlSub = extractParam("subscriptionNumber") || extractParam("SubscriptionNumber") || extractParam("sub") || extractParam("serial");
+
         const savedDoc = sanitizeDocNumber(config?.documentNumber);
-        const targetDoc = savedDoc || "205-178";
-        const targetSub = sub || sanitizeDocNumber(config?.serialNumber) || "205001150789";
-        const targetUrl = `/document-verification?documentNumber=${targetDoc}&&subscriptionNumber=${targetSub}`;
+        const targetDoc = urlDoc || savedDoc || "205-178";
+        const targetSub = urlSub || sub || sanitizeDocNumber(config?.serialNumber) || "205001150789";
+        const targetUrl = `/document-verification?documentNumber=${encodeURIComponent(targetDoc)}&&subscriptionNumber=${encodeURIComponent(targetSub)}`;
 
         const currentCombined = `${window.location.pathname}${window.location.search}`;
         if (currentCombined !== targetUrl || window.location.hash) {
