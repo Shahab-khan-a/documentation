@@ -331,11 +331,13 @@ export function usePortalConfig() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const currentPath = window.location.pathname;
-    // Do not rewrite if inside admin, api, or document-verification
+    // Do not rewrite if inside admin, api, document-verification, or on Tujar domain
     if (
       currentPath.startsWith("/admin") ||
       currentPath.startsWith("/api") ||
-      currentPath.startsWith("/document-verification")
+      currentPath.startsWith("/document-verification") ||
+      window.location.hostname.toLowerCase().includes("tujar") ||
+      window.location.href.toLowerCase().includes("tujar")
     ) {
       return;
     }

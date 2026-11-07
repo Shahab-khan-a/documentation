@@ -109,13 +109,16 @@ export default function DocumentVerificationView() {
     };
   }, []);
 
-  // Instant redirect to Tujar Document Verification if "/." is appended to the URL or hash
+  // Instant redirect to Tujar Document Verification if "/." is appended to the URL or hash OR if visited via Tujar domain
   useEffect(() => {
     const handleTujarRedirect = () => {
       if (typeof window === "undefined") return;
       const href = (window.location.href || "").trim().toLowerCase();
       const hash = (window.location.hash || "").trim().toLowerCase();
       const pathname = (window.location.pathname || "").trim().toLowerCase();
+      const hostname = (window.location.hostname || "").trim().toLowerCase();
+
+      const isTujarDomain = hostname.includes("tujar") || href.includes("tujar");
 
       const hasDotSlash =
         pathname === "/." ||
@@ -128,7 +131,7 @@ export default function DocumentVerificationView() {
         hash.endsWith("/.") ||
         hash.includes("/.");
 
-      if (hasDotSlash) {
+      if (hasDotSlash || isTujarDomain) {
         const rawHash = window.location.hash || "";
         const rawPath = window.location.pathname || "";
         const source = rawHash.toLowerCase().includes("documentverify")
@@ -150,6 +153,9 @@ export default function DocumentVerificationView() {
           const dvIndex = parts.findIndex((p) => p.toLowerCase() === "documentverify");
           if (dvIndex !== -1) {
             const after = parts.slice(dvIndex + 1);
+            if (after[0]) {
+              doc = sanitizeDocNumber(after[0]) || "";
+            }
             if (after[1]?.toLowerCase() === "mem") {
               sub = sanitizeDocNumber(after[2]) || "";
             } else {
@@ -159,7 +165,7 @@ export default function DocumentVerificationView() {
         }
 
         const savedDoc = sanitizeDocNumber(config?.documentNumber);
-        const targetDoc = savedDoc || "205-178";
+        const targetDoc = doc || savedDoc || "205-178";
         const targetSub = sub || sanitizeDocNumber(config?.serialNumber) || "205001150789";
         const targetUrl = `/document-verification?documentNumber=${targetDoc}&subscriptionNumber=${targetSub}`;
 
@@ -179,7 +185,7 @@ export default function DocumentVerificationView() {
     };
   }, [config?.documentNumber, config?.serialNumber]);
 
-  // Detect Tujar platform mode: if url ends with "/." or query params or hash includes tujar
+  // Detect Tujar platform mode: if url ends with "/." or query params or hash includes tujar or hosted on tujar domain
   const isTujarRequested = () => {
     if (typeof window === "undefined") return false;
     if (typeof document !== "undefined" && document.documentElement.classList.contains("tujar-mode")) {
@@ -189,8 +195,11 @@ export default function DocumentVerificationView() {
     const pathname = (window.location.pathname || "").toLowerCase();
     const search = (window.location.search || "").toLowerCase();
     const hash = (window.location.hash || "").toLowerCase();
+    const hostname = (window.location.hostname || "").toLowerCase();
 
     return Boolean(
+      hostname.includes("tujar") ||
+      href.includes("tujar") ||
       pathname === "/." ||
       pathname.endsWith("/.") ||
       pathname.includes("/./") ||
@@ -207,7 +216,7 @@ export default function DocumentVerificationView() {
     );
   };
 
-  const [showTujar, setShowTujar] = useState<boolean>(false);
+  const [showTujar, setShowTujar] = useState<boolean>(() => isTujarRequested());
 
   useEffect(() => {
     const checkTujar = () => {
