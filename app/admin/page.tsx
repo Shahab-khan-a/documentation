@@ -376,17 +376,30 @@ export default function AdminDashboard() {
 
   const handleCopyRecordLink = (
     record: PortalRecord,
-    domainType: "org" | "com" | "dot" = "org",
+    domainType: "org" | "com" | "dot" | "tujar" = "org",
     customUrl?: string
   ) => {
     if (typeof window === "undefined") return;
     const path = getPublicLink(record);
-    const { orgUrl, comUrl, dotUrl } = getDualDomainUrls(path);
-    const fullUrl = customUrl || (domainType === "dot" ? dotUrl : domainType === "com" ? comUrl : orgUrl);
+    const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path);
+    const fullUrl =
+      customUrl ||
+      (domainType === "tujar"
+        ? tujarUrl
+        : domainType === "dot"
+        ? dotUrl
+        : domainType === "com"
+        ? comUrl
+        : orgUrl);
     navigator.clipboard.writeText(fullUrl);
     setCopiedRecordId(record.id);
     setTimeout(() => setCopiedRecordId(null), 2500);
-    const label = domainType === "dot" ? "/." : domainType.toUpperCase();
+    const label =
+      domainType === "tujar"
+        ? "TUJAR-FSC"
+        : domainType === "dot"
+        ? "/."
+        : domainType.toUpperCase();
     showToast(
       lang === "en"
         ? `${label} Link copied!`

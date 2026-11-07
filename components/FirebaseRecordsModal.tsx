@@ -104,7 +104,7 @@ export interface FirebaseRecordsModalProps {
   loadingRecords: boolean;
   onRefresh: () => void;
   onDeleteRecord: (record: PortalRecord) => Promise<void> | void;
-  onCopyRecordLink: (record: PortalRecord, domainType?: "org" | "com" | "dot", url?: string) => void;
+  onCopyRecordLink: (record: PortalRecord, domainType?: "org" | "com" | "dot" | "tujar", url?: string) => void;
   onLoadRecordIntoEditor: (record: PortalRecord) => void;
   onCreateSampleRecord?: () => Promise<void> | void;
   deletingRecordId?: string | null;
@@ -304,7 +304,12 @@ export function FirebaseRecordsModal({
     }
   };
 
-  const handleCopyUrl = (url: string, key: string, record: PortalRecord, domainType: "org" | "com" | "dot") => {
+  const handleCopyUrl = (
+    url: string,
+    key: string,
+    record: PortalRecord,
+    domainType: "org" | "com" | "dot" | "tujar"
+  ) => {
     if (typeof window !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(url);
     }
@@ -600,12 +605,13 @@ export function FirebaseRecordsModal({
                 const path = cleanSerial
                   ? `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
                   : `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
-                const { orgUrl, comUrl, dotUrl } = getDualDomainUrls(path);
+                const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path);
                 const isOrgCopied =
                   internalCopiedKey === `${record.id}_org` ||
                   (copiedRecordId === record.id && !internalCopiedKey);
                 const isComCopied = internalCopiedKey === `${record.id}_com`;
                 const isDotCopied = internalCopiedKey === `${record.id}_dot`;
+                const isTujarCopied = internalCopiedKey === `${record.id}_tujar`;
                 const isDeleting = deletingRecordId === record.id;
 
                 return (
@@ -881,6 +887,64 @@ export function FirebaseRecordsModal({
                             </span>
                           </div>
                         </div>
+
+                        {/* 4. TUJAR-FSC.ORG URL Strip (Highlighted in Violet/Purple) */}
+                        <div
+                          onClick={() => handleCopyUrl(tujarUrl, `${record.id}_tujar`, record, "tujar")}
+                          className={`p-2 rounded-xl border font-mono text-[11px] flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                            isTujarCopied
+                              ? "bg-violet-100/90 border-violet-400 text-violet-900 shadow-xs ring-2 ring-violet-300"
+                              : "bg-violet-50/70 hover:bg-violet-100/80 border-violet-200/90 hover:border-violet-400 text-violet-950 shadow-2xs"
+                          }`}
+                          title={
+                            lang === "en"
+                              ? "Click to copy tujar-fsc.org link"
+                              : lang === "ur"
+                              ? "tujar-fsc.org لنک کاپی کرنے کیلئے کلک کریں"
+                              : "انقر لنسخ رابط tujar-fsc.org"
+                          }
+                        >
+                          <div className="flex items-center gap-2 truncate min-w-0">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-violet-700 text-white shadow-2xs shrink-0 flex items-center gap-1">
+                              <span>🌐</span>
+                              <span>TUJAR-FSC.ORG</span>
+                            </span>
+                            <span className="truncate text-violet-950 font-bold" dir="ltr">
+                              {tujarUrl}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <a
+                              href={tujarUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 rounded-lg hover:bg-violet-200/70 text-violet-700 hover:text-violet-900 transition-colors"
+                              title={t.open_link_btn || "Open link"}
+                            >
+                              <IconExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                                isTujarCopied
+                                  ? "bg-violet-700 text-white"
+                                  : "bg-white text-violet-800 border border-violet-300 group-hover:text-violet-950"
+                              }`}
+                            >
+                              {isTujarCopied ? (
+                                <>
+                                  <IconCheck className="w-3 h-3" />
+                                  <span>{lang === "en" ? "Copied! ✓" : lang === "ur" ? "کاپی ہو گیا! ✓" : "تم النسخ! ✓"}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <IconCopy className="w-3 h-3" />
+                                  <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -953,6 +1017,29 @@ export function FirebaseRecordsModal({
                             {isDotCopied
                               ? (lang === "en" ? "Copied /." : lang === "ur" ? "/. کاپی ہو گیا" : "تم نسخ /.")
                               : (lang === "en" ? "Copy /." : lang === "ur" ? "کاپی /." : "نسخ /.")}
+                          </span>
+                        </button>
+
+                        {/* 4. Copy TUJAR-FSC.ORG Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyUrl(tujarUrl, `${record.id}_tujar`, record, "tujar")}
+                          className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs text-xs ${
+                            isTujarCopied
+                              ? "bg-emerald-600 text-white shadow-emerald-500/20"
+                              : "bg-violet-50 text-violet-800 hover:bg-violet-100 border border-violet-200/80"
+                          }`}
+                          title="Copy TUJAR-FSC.ORG Link"
+                        >
+                          {isTujarCopied ? (
+                            <IconCheck className="w-3.5 h-3.5 text-white" />
+                          ) : (
+                            <IconCopy className="w-3.5 h-3.5 text-violet-700" />
+                          )}
+                          <span>
+                            {isTujarCopied
+                              ? (lang === "en" ? "Copied TUJAR-FSC" : lang === "ur" ? "TUJAR-FSC کاپی ہو گیا" : "تم نسخ TUJAR-FSC")
+                              : (lang === "en" ? "Copy TUJAR-FSC" : lang === "ur" ? "کاپی TUJAR-FSC" : "نسخ TUJAR-FSC")}
                           </span>
                         </button>
 

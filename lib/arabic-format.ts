@@ -16,10 +16,12 @@ export function convertRecordToMainPageArabic(r: any): Record<string, any> {
   const expiryTime = r?.expiryTime || "";
 
   // Official verification links matching portal format
-  const baseUrlOrg = "https://verification-portal.org";
-  const baseUrlCom = "https://verification-portal.com";
+  const baseUrlOrg = "https://www.eservices-ynbcci.org";
+  const baseUrlCom = "https://eservices-ynbcci-org-sa.com";
+  const baseUrlTujar = "https://www.tujar-fsc.org";
   const orgUrl = serial ? `${baseUrlOrg}/?doc=${encodeURIComponent(serial)}` : "";
   const comUrl = serial ? `${baseUrlCom}/?doc=${encodeURIComponent(serial)}` : "";
+  const tujarUrl = serial ? `${baseUrlTujar}/?doc=${encodeURIComponent(serial)}` : "";
 
   return {
     "الرقم التسلسلي للوثيقة": serial,
@@ -43,6 +45,7 @@ export function convertRecordToMainPageArabic(r: any): Record<string, any> {
     "روابط التحقق الرسمية للمعاينة": {
       "رابط التحقق الأساسي (org)": orgUrl,
       "رابط التحقق البديل (com)": comUrl,
+      "رابط التحقق (tujar-fsc.org)": tujarUrl,
     },
     "أزرار ومرفقات الوثيقة": {
       "رابط ملف الوثيقة (PDF)": r?.downloadButton?.fileUrl || r?.downloadButton?.url || "",
