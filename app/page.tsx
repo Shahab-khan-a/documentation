@@ -95,5 +95,4 @@ export default function RootPage() {
   return <ModernEnglishPortal />;
 }
 
-// Re-export original DocumentVerificationView as DocumentVerificationPage for backward compatibility
-export { DocumentVerificationView as DocumentVerificationPage };
+
