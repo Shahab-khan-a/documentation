@@ -11,7 +11,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   facilitySubName: "القحطاني للمقاولات العامة",
   unifiedNumber: "7032840279",
   requestNumber: "13255887",
-  requestType: "طلب مفتوح ملف",
+  requestType: "تصديق المطبوعات الرسمية",
   applicantName: "العنود سلمان شوعان",
   creationDate: "09/06/2026-",
   creationTime: "6:12م",

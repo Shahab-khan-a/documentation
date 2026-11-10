@@ -366,8 +366,16 @@ export function DocumentDetailsTab({
             <label className="block text-xs font-bold text-slate-700 mb-1.5">{t.request_type}</label>
             <input
               type="text"
-              value={config.requestType}
-              onChange={(e) => setConfig({ ...config, requestType: e.target.value })}
+              value={config.requestType ?? "تصديق المطبوعات الرسمية"}
+              onChange={(e) => setConfig((prev) => ({ ...prev, requestType: e.target.value }))}
+              onBlur={() => {
+                setConfig((prev) =>
+                  !(prev.requestType || "").trim()
+                    ? { ...prev, requestType: "تصديق المطبوعات الرسمية" }
+                    : prev
+                );
+              }}
+              placeholder="تصديق المطبوعات الرسمية"
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
             />
           </div>

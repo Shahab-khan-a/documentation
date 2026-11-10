@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
 import { PortalConfig, PortalRecord } from "@/lib/portal-types";
 import {
   getAllPortalRecordsFromFirebase,
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
       id: recordId,
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
+      requestType: (body.requestType || "").trim() || DEFAULT_PORTAL_CONFIG.requestType,
       createdAt: (body as any).createdAt || now,
       updatedAt: now,
     };

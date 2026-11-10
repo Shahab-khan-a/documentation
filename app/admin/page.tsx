@@ -431,6 +431,10 @@ export default function AdminDashboard() {
 
     const mergedRecord: PortalRecord = {
       ...record,
+      requestType:
+        isSample && (!record.requestType || record.requestType === "طلب مفتوح ملف")
+          ? "تصديق المطبوعات الرسمية"
+          : (record.requestType && record.requestType.trim()) || "تصديق المطبوعات الرسمية",
       backButton: hasCustomBack
         ? record.backButton
         : config.backButton
@@ -502,7 +506,7 @@ export default function AdminDashboard() {
       serialNumber: randomSerial,
       unifiedNumber: randomUnified,
       requestNumber: "",
-      requestType: "طلب مفتوح ملف",
+      requestType: "تصديق المطبوعات الرسمية",
       applicantName: "",
       commercialRegNo: "",
       requestStatus: "قبول",
@@ -1008,6 +1012,7 @@ export default function AdminDashboard() {
       }
 
       const cleanDoc = sanitizeDocNumber(config.documentNumber) || (config.documentNumber || "").trim() || "205-178";
+      const cleanReqType = (config.requestType || "").trim() || "تصديق المطبوعات الرسمية";
 
       const payload: PortalRecord = {
         ...config,
@@ -1016,6 +1021,7 @@ export default function AdminDashboard() {
         documentNumber: cleanDoc,
         unifiedNumber: cleanUnified,
         requestNumber: cleanReq,
+        requestType: cleanReqType,
         currentRecordId: effectiveRecordId,
         updatedAt: new Date().toISOString(),
         createdAt: (config as any).createdAt || (initialConfig as any).createdAt || new Date().toISOString(),

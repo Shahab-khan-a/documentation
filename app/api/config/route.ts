@@ -59,6 +59,10 @@ function mergeWithDefaults(parsed: Partial<PortalConfig>): PortalConfig {
     documentNumber: cleanDoc || parsed.documentNumber || DEFAULT_PORTAL_CONFIG.documentNumber || "205-178",
     unifiedNumber: cleanUnified || DEFAULT_PORTAL_CONFIG.unifiedNumber,
     requestNumber: cleanReq || DEFAULT_PORTAL_CONFIG.requestNumber,
+    requestType:
+      !(parsed.requestType || "").trim() || (parsed.requestType || "").trim() === "طلب مفتوح ملف"
+        ? DEFAULT_PORTAL_CONFIG.requestType
+        : parsed.requestType!.trim(),
     portalTitle: cleanPortalTitle(parsed.portalTitle),
     customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
     backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(parsed.backButton || {}) },
@@ -92,6 +96,7 @@ function mergeWithGlobal(parsed: Partial<PortalConfig>, globalConfig: PortalConf
     documentNumber: sanitizeDocNumber(parsed.documentNumber) || sanitizeDocNumber(globalConfig.documentNumber) || DEFAULT_PORTAL_CONFIG.documentNumber || "205-178",
     unifiedNumber: sanitizeDocNumber(parsed.unifiedNumber) || sanitizeDocNumber(globalConfig.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
     requestNumber: sanitizeDocNumber(parsed.requestNumber) || sanitizeDocNumber(globalConfig.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
+    requestType: (parsed.requestType || "").trim() || (globalConfig.requestType || "").trim() || DEFAULT_PORTAL_CONFIG.requestType,
     portalTitle: cleanPortalTitle(parsed.portalTitle || globalConfig.portalTitle),
     customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
     backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(globalConfig.backButton || {}), ...(parsed.backButton || {}) },
@@ -232,6 +237,7 @@ export async function POST(req: Request) {
     updated.serialNumber = cleanSerial;
     updated.unifiedNumber = cleanUnified;
     updated.requestNumber = cleanReq;
+    updated.requestType = (updated.requestType || "").trim() || DEFAULT_PORTAL_CONFIG.requestType;
     updated.documentNumber = cleanDoc || updated.documentNumber || "205-178";
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
     const isRecCard = Boolean(body.id && typeof body.id === "string" && body.id.startsWith("rec_"));
