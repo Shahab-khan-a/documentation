@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
+import { DEFAULT_PORTAL_CONFIG, getCurrentPortalDate } from "@/lib/default-config";
 import { PortalConfig } from "@/lib/portal-types";
 import { sanitizeDocNumber } from "@/constants/defaults";
 import {
@@ -33,6 +33,25 @@ function setCachedRecord(key: string, data: PortalConfig) {
   globalThis.__portal_records_cache__?.set(key, { data, time: Date.now() });
 }
 
+function resolveDailyCreationDate(rawDate?: string, updatedAt?: string): string {
+  const clean = (rawDate || "").trim();
+  const today = getCurrentPortalDate();
+  if (!clean || clean === "09/06/2026-") return today;
+  if (updatedAt) {
+    const parsedDate = new Date(updatedAt);
+    if (!isNaN(parsedDate.getTime()) && getCurrentPortalDate(parsedDate) === today) {
+      return clean;
+    }
+  }
+  return today;
+}
+
+function resolveDefaultCreationTime(rawTime?: string): string {
+  const clean = (rawTime || "").trim();
+  if (!clean || clean === "6:12م") return "8:12م";
+  return clean;
+}
+
 function cleanPortalTitle(title?: string): string {
   if (!title) return DEFAULT_PORTAL_CONFIG.portalTitle;
   const trimmed = title.trim();
@@ -63,6 +82,8 @@ function mergeWithDefaults(parsed: Partial<PortalConfig>): PortalConfig {
       !(parsed.requestType || "").trim() || (parsed.requestType || "").trim() === "طلب مفتوح ملف"
         ? DEFAULT_PORTAL_CONFIG.requestType
         : parsed.requestType!.trim(),
+    creationDate: resolveDailyCreationDate(parsed.creationDate, (parsed as { updatedAt?: string }).updatedAt),
+    creationTime: resolveDefaultCreationTime(parsed.creationTime),
     portalTitle: cleanPortalTitle(parsed.portalTitle),
     customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
     backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(parsed.backButton || {}) },
@@ -97,6 +118,8 @@ function mergeWithGlobal(parsed: Partial<PortalConfig>, globalConfig: PortalConf
     unifiedNumber: sanitizeDocNumber(parsed.unifiedNumber) || sanitizeDocNumber(globalConfig.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
     requestNumber: sanitizeDocNumber(parsed.requestNumber) || sanitizeDocNumber(globalConfig.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
     requestType: (parsed.requestType || "").trim() || (globalConfig.requestType || "").trim() || DEFAULT_PORTAL_CONFIG.requestType,
+    creationDate: (parsed.creationDate || "").trim() || (globalConfig.creationDate || "").trim() || getCurrentPortalDate(),
+    creationTime: (parsed.creationTime || "").trim() || (globalConfig.creationTime || "").trim() || "8:12م",
     portalTitle: cleanPortalTitle(parsed.portalTitle || globalConfig.portalTitle),
     customFields: Array.isArray(parsed.customFields) ? parsed.customFields : [],
     backButton: { ...DEFAULT_PORTAL_CONFIG.backButton, ...(globalConfig.backButton || {}), ...(parsed.backButton || {}) },
@@ -166,13 +189,19 @@ export async function GET(req: Request) {
       }
     }
     if (!globalConfig) {
-      globalConfig = DEFAULT_PORTAL_CONFIG;
+      globalConfig = {
+        ...DEFAULT_PORTAL_CONFIG,
+        creationDate: getCurrentPortalDate(),
+        creationTime: "8:12م",
+      };
     } else {
       globalConfig = {
         ...globalConfig,
         serialNumber: sanitizeDocNumber(globalConfig.serialNumber) || DEFAULT_PORTAL_CONFIG.serialNumber,
         unifiedNumber: sanitizeDocNumber(globalConfig.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
         requestNumber: sanitizeDocNumber(globalConfig.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
+        creationDate: resolveDailyCreationDate(globalConfig.creationDate, (globalConfig as { updatedAt?: string }).updatedAt),
+        creationTime: resolveDefaultCreationTime(globalConfig.creationTime),
       };
       globalThis.__portal_config_memory__ = globalConfig;
     }
@@ -238,6 +267,10 @@ export async function POST(req: Request) {
     updated.unifiedNumber = cleanUnified;
     updated.requestNumber = cleanReq;
     updated.requestType = (updated.requestType || "").trim() || DEFAULT_PORTAL_CONFIG.requestType;
+    updated.creationDate = (updated.creationDate || "").trim() || getCurrentPortalDate();
+    updated.creationTime = (updated.creationTime || "").trim() || "8:12م";
+    (updated as PortalConfig & { updatedAt?: string }).updatedAt =
+      (body as { updatedAt?: string }).updatedAt || new Date().toISOString();
     updated.documentNumber = cleanDoc || updated.documentNumber || "205-178";
     const currentRecordId = (body as { currentRecordId?: string }).currentRecordId;
     const isRecCard = Boolean(body.id && typeof body.id === "string" && body.id.startsWith("rec_"));

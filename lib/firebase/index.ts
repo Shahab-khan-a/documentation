@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { firebaseConfig } from "./config";
 import { PortalConfig, PortalRecord } from "../portal-types";
-import { DEFAULT_PORTAL_CONFIG } from "../default-config";
+import { DEFAULT_PORTAL_CONFIG, getCurrentPortalDate } from "../default-config";
 import { sanitizeDocNumber } from "@/constants/defaults";
 
 // Singleton initialization: prevents "Firebase App already exists" error during Next.js hot-reload
@@ -542,7 +542,11 @@ export async function deletePortalRecordFromFirebase(
             const nextActive = sanitizeFirestoreData(remaining[0]);
             await setDoc(currentDocRef, nextActive, { merge: false });
           } else {
-            const fallback = sanitizeFirestoreData({ ...DEFAULT_PORTAL_CONFIG });
+            const fallback = sanitizeFirestoreData({
+              ...DEFAULT_PORTAL_CONFIG,
+              creationDate: getCurrentPortalDate(),
+              creationTime: "8:12م",
+            });
             await setDoc(currentDocRef, fallback, { merge: false });
           }
         }

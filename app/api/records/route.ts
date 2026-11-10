@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
+import { DEFAULT_PORTAL_CONFIG, getCurrentPortalDate } from "@/lib/default-config";
 import { PortalConfig, PortalRecord } from "@/lib/portal-types";
 import {
   getAllPortalRecordsFromFirebase,
@@ -94,6 +94,8 @@ export async function POST(req: Request) {
       serialNumber: cleanSerial,
       unifiedNumber: cleanUnified,
       requestType: (body.requestType || "").trim() || DEFAULT_PORTAL_CONFIG.requestType,
+      creationDate: (body.creationDate || "").trim() || getCurrentPortalDate(),
+      creationTime: (body.creationTime || "").trim() || "8:12م",
       createdAt: (body as any).createdAt || now,
       updatedAt: now,
     };

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { PortalConfig } from "@/types/portal";
 import { AdminLanguage, TranslationStrings } from "@/constants/translations";
 import { IconDocument, IconCheck, IconTrash } from "@/components/icons/AdminIcons";
-import { sanitizeDocNumber } from "@/constants/defaults";
+import { getCurrentPortalDate, sanitizeDocNumber } from "@/constants/defaults";
 
 export interface DocumentDetailsTabProps {
   config: PortalConfig;
@@ -428,8 +428,16 @@ export function DocumentDetailsTab({
                 <input
                   type="text"
                   dir="ltr"
-                  value={config.creationDate}
-                  onChange={(e) => setConfig({ ...config, creationDate: e.target.value })}
+                  value={config.creationDate ?? getCurrentPortalDate()}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, creationDate: e.target.value }))}
+                  onBlur={() => {
+                    setConfig((prev) =>
+                      !(prev.creationDate || "").trim()
+                        ? { ...prev, creationDate: getCurrentPortalDate() }
+                        : prev
+                    );
+                  }}
+                  placeholder={getCurrentPortalDate()}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
@@ -439,8 +447,16 @@ export function DocumentDetailsTab({
                 </label>
                 <input
                   type="text"
-                  value={config.creationTime}
-                  onChange={(e) => setConfig({ ...config, creationTime: e.target.value })}
+                  value={config.creationTime ?? "8:12م"}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, creationTime: e.target.value }))}
+                  onBlur={() => {
+                    setConfig((prev) =>
+                      !(prev.creationTime || "").trim()
+                        ? { ...prev, creationTime: "8:12م" }
+                        : prev
+                    );
+                  }}
+                  placeholder="8:12م"
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>

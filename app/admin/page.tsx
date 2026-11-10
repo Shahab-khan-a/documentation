@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { DEFAULT_PORTAL_CONFIG } from "@/constants/defaults";
+import { DEFAULT_PORTAL_CONFIG, getCurrentPortalDate, sanitizeDocNumber } from "@/constants/defaults";
 import { PortalConfig, PortalRecord } from "@/types/portal";
 import { ADMIN_TRANSLATIONS, AdminLanguage } from "@/constants/translations";
 import {
@@ -19,7 +19,6 @@ import { UploadSuccessModal } from "@/components/UploadSuccessModal";
 import { GoogleDriveManagerModal } from "@/components/admin/GoogleDriveManagerModal";
 import { QuickPreviewModal } from "@/components/admin/QuickPreviewModal";
 import { getDualDomainUrls } from "@/lib/record-urls";
-import { sanitizeDocNumber } from "@/constants/defaults";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebarDrawer } from "@/components/admin/AdminSidebarDrawer";
 import { ButtonsAndFilesTab } from "@/components/admin/ButtonsAndFilesTab";
@@ -243,10 +242,38 @@ export default function AdminDashboard() {
           fetch("/api/config", { cache: "no-store" }),
           fetch("/api/records", { cache: "no-store" }),
         ]);
+        const todayStr = getCurrentPortalDate();
+        const isSameDay = (isoStr?: string) => {
+          if (!isoStr) return false;
+          const d = new Date(isoStr);
+          if (isNaN(d.getTime())) return false;
+          return getCurrentPortalDate(d) === todayStr;
+        };
+
         if (active && configRes.ok) {
           const cfg = await configRes.json();
-          setConfig(cfg);
-          setInitialConfig(cfg);
+          const rawDate = (cfg.creationDate || "").trim();
+          const rawTime = (cfg.creationTime || "").trim();
+          const needsDailyDate =
+            !rawDate ||
+            rawDate === "09/06/2026-" ||
+            !isSameDay((cfg as { updatedAt?: string }).updatedAt);
+          const normalizedCfg: PortalConfig = {
+            ...cfg,
+            creationDate: needsDailyDate ? todayStr : cfg.creationDate,
+            creationTime:
+              !rawTime || rawTime === "6:12م" ? "8:12م" : cfg.creationTime,
+          };
+          setConfig(normalizedCfg);
+          setInitialConfig(normalizedCfg);
+        } else if (active) {
+          const fallbackCfg: PortalConfig = {
+            ...DEFAULT_PORTAL_CONFIG,
+            creationDate: todayStr,
+            creationTime: "8:12م",
+          };
+          setConfig(fallbackCfg);
+          setInitialConfig(fallbackCfg);
         }
         if (active && recordsRes.ok) {
           const recData = await recordsRes.json();
@@ -435,6 +462,14 @@ export default function AdminDashboard() {
         isSample && (!record.requestType || record.requestType === "طلب مفتوح ملف")
           ? "تصديق المطبوعات الرسمية"
           : (record.requestType && record.requestType.trim()) || "تصديق المطبوعات الرسمية",
+      creationDate:
+        isSample && (!record.creationDate || !record.creationDate.trim() || record.creationDate.trim() === "09/06/2026-" || record.creationDate.trim() !== getCurrentPortalDate())
+          ? getCurrentPortalDate()
+          : (record.creationDate && record.creationDate.trim()) || getCurrentPortalDate(),
+      creationTime:
+        isSample && (!record.creationTime || !record.creationTime.trim() || record.creationTime.trim() === "6:12م")
+          ? "8:12م"
+          : (record.creationTime && record.creationTime.trim()) || "8:12م",
       backButton: hasCustomBack
         ? record.backButton
         : config.backButton
@@ -509,6 +544,8 @@ export default function AdminDashboard() {
       requestType: "تصديق المطبوعات الرسمية",
       applicantName: "",
       commercialRegNo: "",
+      creationDate: getCurrentPortalDate(),
+      creationTime: "8:12م",
       requestStatus: "قبول",
       statusColor: "#32c5cb",
       isSample: true,
@@ -1013,6 +1050,8 @@ export default function AdminDashboard() {
 
       const cleanDoc = sanitizeDocNumber(config.documentNumber) || (config.documentNumber || "").trim() || "205-178";
       const cleanReqType = (config.requestType || "").trim() || "تصديق المطبوعات الرسمية";
+      const cleanCreationDate = (config.creationDate || "").trim() || getCurrentPortalDate();
+      const cleanCreationTime = (config.creationTime || "").trim() || "8:12م";
 
       const payload: PortalRecord = {
         ...config,
@@ -1022,6 +1061,8 @@ export default function AdminDashboard() {
         unifiedNumber: cleanUnified,
         requestNumber: cleanReq,
         requestType: cleanReqType,
+        creationDate: cleanCreationDate,
+        creationTime: cleanCreationTime,
         currentRecordId: effectiveRecordId,
         updatedAt: new Date().toISOString(),
         createdAt: (config as any).createdAt || (initialConfig as any).createdAt || new Date().toISOString(),
@@ -1227,7 +1268,11 @@ export default function AdminDashboard() {
 
   const handleReset = () => {
     if (confirm(t.reset_confirm)) {
-      setConfig(DEFAULT_PORTAL_CONFIG);
+      setConfig({
+        ...DEFAULT_PORTAL_CONFIG,
+        creationDate: getCurrentPortalDate(),
+        creationTime: "8:12م",
+      });
       showToast(t.reset_success, "info");
     }
   };

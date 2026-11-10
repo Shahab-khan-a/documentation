@@ -1,7 +1,7 @@
-import { DEFAULT_PORTAL_CONFIG } from "@/lib/default-config";
+import { DEFAULT_PORTAL_CONFIG, getCurrentPortalDate } from "@/lib/default-config";
 import { PortalConfig } from "@/types/portal";
 
-export { DEFAULT_PORTAL_CONFIG };
+export { DEFAULT_PORTAL_CONFIG, getCurrentPortalDate };
 export const DEFAULT_FALLBACK_GIF = "/loader.gif";
 export const DEFAULT_BUTTON_LOADER_GIF = "/button-loader.gif";
 export const DEFAULT_ONLINE_FALLBACK_GIF =
@@ -67,8 +67,8 @@ export function normalizePortalConfig(raw?: Partial<PortalConfig> | null): Porta
     requestNumber: cleanReq || DEFAULT_PORTAL_CONFIG.requestNumber,
     requestType: raw.requestType || DEFAULT_PORTAL_CONFIG.requestType,
     applicantName: raw.applicantName || DEFAULT_PORTAL_CONFIG.applicantName,
-    creationDate: raw.creationDate || DEFAULT_PORTAL_CONFIG.creationDate,
-    creationTime: raw.creationTime || DEFAULT_PORTAL_CONFIG.creationTime,
+    creationDate: (raw.creationDate && raw.creationDate.trim()) || getCurrentPortalDate(),
+    creationTime: (raw.creationTime && raw.creationTime.trim()) || "8:12م",
     amount: raw.amount || DEFAULT_PORTAL_CONFIG.amount,
     expiryDate: raw.expiryDate || DEFAULT_PORTAL_CONFIG.expiryDate,
     expiryTime: raw.expiryTime || DEFAULT_PORTAL_CONFIG.expiryTime,
