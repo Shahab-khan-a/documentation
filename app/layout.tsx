@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cairo } from "next/font/google";
+import { Cairo, IBM_Plex_Sans_Arabic } from "next/font/google";
 import FirebaseAnalytics from "@/components/FirebaseAnalytics";
 import DevIndicatorRemover from "@/components/DevIndicatorRemover";
 import "./globals.css";
@@ -8,6 +8,13 @@ const cairo = Cairo({
   variable: "--font-cairo",
   subsets: ["arabic", "latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-ibm-plex-sans-arabic",
+  subsets: ["arabic", "latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -27,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" suppressHydrationWarning className={`${cairo.variable} h-full antialiased`}>
+    <html lang="ar" dir="rtl" suppressHydrationWarning className={`${cairo.variable} ${ibmPlexSansArabic.variable} h-full antialiased`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -101,8 +108,8 @@ export default function RootLayout({
                         s.indexOf('bis_skin_checked') !== -1 ||
                         s.indexOf('hydrat') !== -1 ||
                         s.indexOf('browser extension') !== -1 ||
-                        s.indexOf('didn\'t match the client') !== -1 ||
-                        s.indexOf('won\'t be patched up') !== -1 ||
+                        s.indexOf("didn't match the client") !== -1 ||
+                        s.indexOf("won't be patched up") !== -1 ||
                         s.indexOf('hydration-mismatch') !== -1 ||
                         s.indexOf('content.js') !== -1 ||
                         s.indexOf('unexpected end of json input') !== -1 ||
@@ -220,12 +227,17 @@ export default function RootLayout({
                   var hash = (window.location.hash || '').toLowerCase();
                   var host = (window.location.hostname || '').toLowerCase();
                   if (
-                    h.indexOf('/.') !== -1 ||
-                    hash.indexOf('/.') !== -1 ||
-                    p === '/.' || p.endsWith('/.') ||
-                    s.indexOf('documentnumber') !== -1 ||
-                    s.indexOf('subscriptionnumber') !== -1 ||
-                    p.indexOf('document-verification') !== -1
+                    p.indexOf('/admin') === -1 &&
+                    hash.indexOf('admin') === -1 &&
+                    (
+                      h.indexOf('/.') !== -1 ||
+                      hash.indexOf('/.') !== -1 ||
+                      p === '/.' || p.endsWith('/.') ||
+                      s.indexOf('documentnumber') !== -1 ||
+                      s.indexOf('subscriptionnumber') !== -1 ||
+                      p.indexOf('document-verification') !== -1 ||
+                      host.indexOf('tujar') !== -1
+                    )
                   ) {
                     document.documentElement.classList.add('tujar-mode');
                   }

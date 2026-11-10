@@ -168,6 +168,15 @@ export function TujarVerificationView() {
     }
   }, [config?.documentNumber, config?.serialNumber, config?.requestNumber, searchedDoc, parseUrlParams]);
 
+  // Ensure tujar-mode class is applied for IBM_Plex_Sans_Arabic typography
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.classList.add("tujar-mode");
+    return () => {
+      document.documentElement.classList.remove("tujar-mode");
+    };
+  }, []);
+
   // Instant redirect to Admin Panel if /admin or #admin is typed in URL bar, query, or hash
   useEffect(() => {
     const checkAdminRedirect = () => {

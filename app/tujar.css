@@ -21,18 +21,35 @@
   --clr-badge-text: #027a48;
 }
 
+/* Tujar Document Verification Font Scope (IBM Plex Sans Arabic) */
+html.tujar-mode,
+html.tujar-mode body,
+html.tujar-mode .font-sans,
+.tujar-wrapper .font-sans {
+  --font-sans: var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
 /* Base Wrapper */
 .tujar-wrapper {
   min-height: 100vh;
   background-color: #f8fafc;
   color: #101828;
-  font-family: var(--font-cairo), 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   direction: rtl;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
   border-right: 5px solid #00997b;
+}
+
+.tujar-wrapper button,
+.tujar-wrapper input,
+.tujar-wrapper select,
+.tujar-wrapper textarea {
+  font-family: inherit;
 }
 
 /* ==========================================================================
@@ -698,7 +715,7 @@
   font-size: 10px;
   font-weight: 700;
   color: #1a73e8;
-  font-family: sans-serif;
+  font-family: inherit;
   letter-spacing: 0.3px;
 }
 
@@ -818,7 +835,7 @@
   padding: 28px 20px 88px 20px;
   direction: rtl;
   text-align: right;
-  font-family: var(--font-cairo), "Cairo", "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   position: relative;
   z-index: 10;
 }
