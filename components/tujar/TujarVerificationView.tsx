@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { TujarHeader } from "./TujarHeader";
 import { TujarBreadcrumb } from "./TujarBreadcrumb";
@@ -13,16 +13,50 @@ import { TujarSearchCard } from "./TujarSearchCard";
 import { TujarFooter } from "./TujarFooter";
 import { TujarLoader } from "./TujarLoader";
 import { usePortalConfig } from "@/hooks/usePortalConfig";
-import { useFileDownload } from "@/hooks/useFileDownload";
-import { DownloadAnimationOverlay } from "@/components/portal/DownloadAnimationOverlay";
 import { sanitizeDocNumber } from "@/constants/defaults";
 import { TujarSupportChatIcon } from "@/lib/tujar-icons";
 import "@/app/tujar.css";
 
+function extractDriveFileId(url: string): string | null {
+  if (!url) return null;
+  const queryMatch = url.match(/[?&]fileId=([a-zA-Z0-9_-]+)/i);
+  if (queryMatch && queryMatch[1]) return queryMatch[1];
+  const pathMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i);
+  if (pathMatch && pathMatch[1]) return pathMatch[1];
+  const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+  if (idMatch && idMatch[1]) return idMatch[1];
+  return null;
+}
+
+function normalizeActionUrl(raw?: string): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "#") return null;
+  if (/^(https?:\/\/|\/|mailto:|tel:)/i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
+type PreparedTujarDownload =
+  | { kind: "blob"; blob: Blob; fileName: string }
+  | { kind: "fallback"; targetUrl: string; fileName: string; openInNewTab?: boolean }
+  | { kind: "print" };
+
 export function TujarVerificationView() {
   const searchParams = useSearchParams();
   const { config, isLoaded } = usePortalConfig();
-  const { isDownloading, downloadLoaderActive, downloadFileWithAnimation } = useFileDownload();
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadLoaderKey, setDownloadLoaderKey] = useState<number | null>(null);
+  const pendingDownloadRef = useRef<Promise<PreparedTujarDownload> | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Extract initial parameters from query params, window.location, or DocumentVerify URL hash/path
   const parseUrlParams = useCallback(() => {
@@ -246,18 +280,126 @@ export function TujarVerificationView() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Download Action
-  const handleDownload = () => {
-    if (isDownloading) return;
-    const btn = config?.downloadButton;
+  const triggerFallbackDownload = useCallback(
+    (targetUrl: string, fileName: string, openInNewTab?: boolean) => {
+      const fileId = extractDriveFileId(targetUrl);
+      const finalUrl = fileId
+        ? `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`
+        : targetUrl;
 
-    if (btn?.fileUrl && btn.fileUrl.trim() !== "") {
-      downloadFileWithAnimation(btn.fileUrl.trim(), btn.fileName || `document-${documentNumber}.pdf`);
+      try {
+        if (!fileId && openInNewTab) {
+          window.open(finalUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+        const a = document.createElement("a");
+        a.href = finalUrl;
+        if (fileId || targetUrl.includes("/api/drive/download")) {
+          a.download = fileName;
+        }
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try {
+            document.body.removeChild(a);
+          } catch {
+            // ignore
+          }
+        }, 1000);
+      } catch {
+        window.open(finalUrl, "_blank", "noopener,noreferrer");
+      }
+    },
+    []
+  );
+
+  const handleDownloadLoaderDone = useCallback(async () => {
+    if (mountedRef.current) {
+      setDownloadLoaderKey(null);
+    }
+
+    const pendingPromise = pendingDownloadRef.current;
+    pendingDownloadRef.current = null;
+
+    try {
+      const prepared = pendingPromise ? await pendingPromise : { kind: "print" as const };
+      if (!mountedRef.current) return;
+
+      if (prepared.kind === "blob") {
+        const blobUrl = window.URL.createObjectURL(prepared.blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = prepared.fileName;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+          } catch {
+            // ignore
+          }
+        }, 2000);
+      } else if (prepared.kind === "fallback") {
+        triggerFallbackDownload(prepared.targetUrl, prepared.fileName, prepared.openInNewTab);
+      } else {
+        window.print();
+      }
+    } catch {
+      // ignore
+    } finally {
+      if (mountedRef.current) {
+        setIsDownloading(false);
+      }
+    }
+  }, [triggerFallbackDownload]);
+
+  // Download Action: play the same TujarLoader animation as opening the link, then download directly
+  const handleDownload = () => {
+    if (isDownloading || downloadLoaderKey !== null) return;
+
+    const btn = config?.downloadButton;
+    const rawFileUrl = btn?.fileUrl?.trim() || "";
+    const normalizedLinkUrl = normalizeActionUrl(btn?.url);
+    const linkDriveId = normalizedLinkUrl ? extractDriveFileId(normalizedLinkUrl) : null;
+    const fallbackFileName = btn?.fileName || `document-${documentNumber || "205-178"}.pdf`;
+
+    const downloadTargetUrl =
+      rawFileUrl ||
+      (linkDriveId
+        ? `/api/drive/download?fileId=${encodeURIComponent(linkDriveId)}&name=${encodeURIComponent(fallbackFileName)}`
+        : normalizedLinkUrl || "");
+
+    setIsDownloading(true);
+    setDownloadLoaderKey(Date.now());
+
+    if (!downloadTargetUrl) {
+      pendingDownloadRef.current = Promise.resolve({ kind: "print" });
       return;
     }
 
-    // Default: print document
-    window.print();
+    pendingDownloadRef.current = (async (): Promise<PreparedTujarDownload> => {
+      try {
+        const response = await fetch(downloadTargetUrl);
+        if (!response.ok) {
+          throw new Error(`Download HTTP error ${response.status}`);
+        }
+        const contentType = (response.headers.get("content-type") || "").toLowerCase();
+        if (contentType.includes("application/json") || contentType.includes("text/html")) {
+          throw new Error("Server returned non-file response instead of downloadable file");
+        }
+        const blob = await response.blob();
+        return { kind: "blob", blob, fileName: fallbackFileName };
+      } catch {
+        return {
+          kind: "fallback",
+          targetUrl: rawFileUrl || normalizedLinkUrl || downloadTargetUrl,
+          fileName: fallbackFileName,
+          openInNewTab: btn?.openInNewTab,
+        };
+      }
+    })();
   };
 
   // Build document details dynamically: URL params take priority, then state, then config / defaults
@@ -415,11 +557,14 @@ export function TujarVerificationView() {
         </div>
       </button>
 
-      {/* Download In-Progress Animation */}
-      <DownloadAnimationOverlay
-        active={downloadLoaderActive}
-        buttonLoaderGifUrl={config?.buttonLoaderGifUrl}
-      />
+      {/* Download Animation: exact same TujarLoader as opening the link */}
+      {downloadLoaderKey !== null && (
+        <TujarLoader
+          key={downloadLoaderKey}
+          onDone={handleDownloadLoaderDone}
+          durationMs={900}
+        />
+      )}
     </div>
   );
 }
