@@ -220,12 +220,15 @@ export function usePortalConfig() {
     async function fetchLiveConfig() {
       // 1. Check client local cache
       try {
-        const cached = localStorage.getItem("portal_config_cache");
+        const docKey = recordIdParam || serialParam || reqParam;
+        const cacheKey = docKey ? `portal_config_rec_${docKey}` : "portal_config_cache";
+        const cached = localStorage.getItem(cacheKey) || (!docKey ? localStorage.getItem("portal_config_cache") : null);
         if (cached) {
           const parsed = JSON.parse(cached);
           const matchRecordId = recordIdParam && parsed.id === recordIdParam;
-          const matchSerial = !recordIdParam && (!serialParam || parsed.serialNumber === serialParam);
-          if (matchRecordId || matchSerial) {
+          const matchSerial = serialParam && (parsed.serialNumber === serialParam || parsed.unifiedNumber === serialParam);
+          const matchReq = reqParam && (parsed.documentNumber === reqParam || parsed.requestNumber === reqParam);
+          if (matchRecordId || matchSerial || matchReq || (!docKey && !recordIdParam && !serialParam)) {
             if (isMounted) {
               setConfig(normalizePortalConfig(parsed));
               setIsLoaded(true);
@@ -278,6 +281,10 @@ export function usePortalConfig() {
         setIsLoaded(true);
         firstLoaded = true;
         try {
+          const docKey = recordIdParam || serialParam || reqParam;
+          if (docKey) {
+            localStorage.setItem(`portal_config_rec_${docKey}`, JSON.stringify(safe));
+          }
           localStorage.setItem("portal_config_cache", JSON.stringify(safe));
         } catch {
           // ignore

@@ -175,20 +175,47 @@ export async function GET(req: Request) {
       return NextResponse.json(cachedRecord, { headers: responseHeaders });
     }
 
-    // Load active global config first to provide up-to-date organization & social media defaults
-    let globalConfig = globalThis.__portal_config_memory__;
-    if (!globalConfig) {
-      try {
-        const fbConfig = await getConfigFromFirebase();
-        if (fbConfig) {
-          globalConfig = mergeWithDefaults(fbConfig);
-          globalThis.__portal_config_memory__ = globalConfig;
+    // Fetch specific record and global config concurrently in parallel for sub-second response
+    const globalConfigPromise = (async () => {
+      let gc = globalThis.__portal_config_memory__;
+      if (!gc) {
+        try {
+          const fbConfig = await getConfigFromFirebase();
+          if (fbConfig) {
+            gc = mergeWithDefaults(fbConfig);
+            globalThis.__portal_config_memory__ = gc;
+          }
+        } catch (err) {
+          console.warn("Could not retrieve current global config from Firebase:", err);
         }
-      } catch (err) {
-        console.warn("Could not retrieve current global config from Firebase:", err);
       }
-    }
-    if (!globalConfig) {
+      return gc;
+    })();
+
+    const specificRecordPromise = (async (): Promise<PortalConfig | null> => {
+      if (recordId) {
+        try {
+          return await getPortalRecordById(recordId);
+        } catch (err) {
+          console.warn("Could not retrieve specific record by id from Firebase:", err);
+          return null;
+        }
+      }
+      if (serial || requestNumber) {
+        try {
+          return await getPortalRecordBySerialUnified(serial, unified, requestNumber, recordId);
+        } catch (err) {
+          console.warn("Could not retrieve specific record from Firebase:", err);
+          return null;
+        }
+      }
+      return null;
+    })();
+
+    const [specific, rawGlobal] = await Promise.all([specificRecordPromise, globalConfigPromise]);
+
+    let globalConfig: PortalConfig;
+    if (!rawGlobal) {
       globalConfig = {
         ...DEFAULT_PORTAL_CONFIG,
         creationDate: getCurrentPortalDate(),
@@ -196,42 +223,20 @@ export async function GET(req: Request) {
       };
     } else {
       globalConfig = {
-        ...globalConfig,
-        serialNumber: sanitizeDocNumber(globalConfig.serialNumber) || DEFAULT_PORTAL_CONFIG.serialNumber,
-        unifiedNumber: sanitizeDocNumber(globalConfig.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
-        requestNumber: sanitizeDocNumber(globalConfig.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
-        creationDate: resolveDailyCreationDate(globalConfig.creationDate, (globalConfig as { updatedAt?: string }).updatedAt),
-        creationTime: resolveDefaultCreationTime(globalConfig.creationTime),
+        ...rawGlobal,
+        serialNumber: sanitizeDocNumber(rawGlobal.serialNumber) || DEFAULT_PORTAL_CONFIG.serialNumber,
+        unifiedNumber: sanitizeDocNumber(rawGlobal.unifiedNumber) || DEFAULT_PORTAL_CONFIG.unifiedNumber,
+        requestNumber: sanitizeDocNumber(rawGlobal.requestNumber) || DEFAULT_PORTAL_CONFIG.requestNumber,
+        creationDate: resolveDailyCreationDate(rawGlobal.creationDate, (rawGlobal as { updatedAt?: string }).updatedAt),
+        creationTime: resolveDefaultCreationTime(rawGlobal.creationTime),
       };
       globalThis.__portal_config_memory__ = globalConfig;
     }
 
-    // 0. If recordId is provided, query specific document directly by ID
-    if (recordId) {
-      try {
-        const specific = await getPortalRecordById(recordId);
-        if (specific) {
-          const mergedSpecific = mergeWithGlobal(specific, globalConfig);
-          setCachedRecord(cacheKey, mergedSpecific);
-          return NextResponse.json(mergedSpecific, { headers: responseHeaders });
-        }
-      } catch (err) {
-        console.warn("Could not retrieve specific record by id from Firebase:", err);
-      }
-    }
-
-    // 1. If serial or requestNumber is requested, query specific record in Firebase Firestore
-    if (serial || requestNumber) {
-      try {
-        const specific = await getPortalRecordBySerialUnified(serial, unified, requestNumber, recordId);
-        if (specific) {
-          const mergedSpecific = mergeWithGlobal(specific, globalConfig);
-          setCachedRecord(cacheKey, mergedSpecific);
-          return NextResponse.json(mergedSpecific, { headers: responseHeaders });
-        }
-      } catch (err) {
-        console.warn("Could not retrieve specific record from Firebase:", err);
-      }
+    if (specific) {
+      const mergedSpecific = mergeWithGlobal(specific, globalConfig);
+      setCachedRecord(cacheKey, mergedSpecific);
+      return NextResponse.json(mergedSpecific, { headers: responseHeaders });
     }
 
     // 2. Fetch active 'current' config directly from Firebase Firestore

@@ -7,7 +7,7 @@ export function TujarLoader({
   durationMs = 1200,
   ready,
   minDurationMs = 650,
-  maxDurationMs = 2500,
+  maxDurationMs = 15000,
 }: {
   onDone?: () => void;
   durationMs?: number;
@@ -17,12 +17,15 @@ export function TujarLoader({
 }) {
   const [fadingOut, setFadingOut] = useState(false);
   const doneRef = useRef(false);
+  const startTimeRef = useRef<number>(0);
+
+  if (startTimeRef.current === 0) {
+    startTimeRef.current = Date.now();
+  }
 
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
     let minTimer: NodeJS.Timeout | null = null;
     let maxTimer: NodeJS.Timeout | null = null;
-    let minTimeElapsed = false;
 
     const triggerDone = () => {
       if (doneRef.current) return;
@@ -34,26 +37,31 @@ export function TujarLoader({
     };
 
     if (ready === undefined) {
-      timer = setTimeout(triggerDone, durationMs);
-    } else {
-      minTimer = setTimeout(() => {
-        minTimeElapsed = true;
-        if (ready) {
-          triggerDone();
-        }
-      }, minDurationMs);
+      // Standalone timer mode
+      const elapsed = Date.now() - startTimeRef.current;
+      const remaining = Math.max(0, durationMs - elapsed);
+      const timer = setTimeout(triggerDone, remaining);
+      return () => clearTimeout(timer);
+    }
 
-      maxTimer = setTimeout(() => {
-        triggerDone();
-      }, maxDurationMs);
+    // Ready-driven mode:
+    const elapsed = Date.now() - startTimeRef.current;
+    const remainingMin = Math.max(0, minDurationMs - elapsed);
 
-      if (ready && minTimeElapsed) {
+    if (ready) {
+      // Data is confirmed ready: wait only for minimum smooth animation time
+      if (remainingMin <= 0) {
         triggerDone();
+      } else {
+        minTimer = setTimeout(triggerDone, remainingMin);
       }
+    } else {
+      // Data is still loading: KEEP LOADER ACTIVE! Only trigger fallback on absolute timeout
+      const remainingMax = Math.max(0, maxDurationMs - elapsed);
+      maxTimer = setTimeout(triggerDone, remainingMax);
     }
 
     return () => {
-      if (timer) clearTimeout(timer);
       if (minTimer) clearTimeout(minTimer);
       if (maxTimer) clearTimeout(maxTimer);
     };

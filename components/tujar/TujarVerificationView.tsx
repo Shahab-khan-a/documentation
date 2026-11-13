@@ -403,12 +403,15 @@ export function TujarVerificationView() {
   };
 
   // Build document details dynamically: URL params take priority, then state, then config / defaults
+  const hasSpecificTarget = Boolean(initialParams.doc || initialParams.sub || initialParams.req);
+  const isDataReady = !hasSpecificTarget || isLoaded;
+
   const cleanSerial = sanitizeDocNumber(config?.serialNumber);
   const cleanDoc = sanitizeDocNumber(config?.documentNumber);
   const cleanReq = sanitizeDocNumber(config?.requestNumber);
   const cleanUnified = sanitizeDocNumber(config?.unifiedNumber);
   const cleanComm = sanitizeDocNumber(config?.commercialRegNo);
-  const cleanFacility = config?.facilityName
+  const cleanFacility = isDataReady && config?.facilityName
     ? (config.facilitySubName ? `${config.facilityName} ${config.facilitySubName}` : config.facilityName)
     : "";
 
@@ -416,21 +419,21 @@ export function TujarVerificationView() {
     searchedDoc ||
     initialParams.doc ||
     documentNumber ||
-    cleanDoc ||
+    (isDataReady ? cleanDoc : "") ||
     "205-178";
 
   const orderNo =
     initialParams.req ||
     orderNumber ||
-    cleanReq ||
-    "13753812";
+    (isDataReady ? cleanReq : "") ||
+    (hasSpecificTarget ? "" : "13753812");
 
   const subNo =
     initialParams.sub ||
     subscriptionNumber ||
-    cleanSerial ||
-    cleanComm ||
-    cleanUnified ||
+    (isDataReady ? cleanSerial : "") ||
+    (isDataReady ? cleanComm : "") ||
+    (isDataReady ? cleanUnified : "") ||
     "206322599666";
 
   const is205Sample =
@@ -444,14 +447,20 @@ export function TujarVerificationView() {
       : (config?.requestType || "تصديق المطبوعات الرسمية"),
     documentNumber: docNo,
     orderNumber: orderNo,
-    requestSubmitter: is205Sample && !config?.applicantName
+    requestSubmitter: !isDataReady
+      ? ""
+      : is205Sample && !config?.applicantName
       ? "محمدايوب"
       : (config?.applicantName || "محمدايوب"),
-    entityName: is205Sample && !cleanFacility
+    entityName: !isDataReady
+      ? ""
+      : is205Sample && !cleanFacility
       ? "شركة سيفيل إليكتريكال آند مينتينانس"
       : (cleanFacility || "شركة سيفيل إليكتريكال آند مينتينانس"),
     subscriptionNumber: subNo,
-    unifiedNumber: is205Sample && !cleanUnified
+    unifiedNumber: !isDataReady
+      ? (initialParams.sub || "")
+      : is205Sample && !cleanUnified
       ? "7053747403"
       : (cleanUnified || subNo || "7053747403"),
     creationDateTime: is205Sample && !config?.creationDate
@@ -475,7 +484,7 @@ export function TujarVerificationView() {
           onDone={handleLoaderDone}
           ready={isLoaded}
           minDurationMs={650}
-          maxDurationMs={2500}
+          maxDurationMs={15000}
         />
       )}
 
