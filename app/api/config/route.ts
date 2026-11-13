@@ -239,7 +239,24 @@ export async function GET(req: Request) {
       return NextResponse.json(mergedSpecific, { headers: responseHeaders });
     }
 
-    // 2. Fetch active 'current' config directly from Firebase Firestore
+    // Option B: If specific document was requested by recordId, serial, or requestNumber,
+    // but was NOT found in Firebase (because it was deleted by admin or does not exist),
+    // strictly return 404 with notFound flag instead of leaking default/fallback company data!
+    if (recordId || serial || requestNumber) {
+      return NextResponse.json(
+        {
+          notFound: true,
+          error: "Record not found or has been deleted",
+          message: "لا توجد وثيقة مطابقة للبيانات المدخلة أو تم إلغاؤها",
+        },
+        {
+          status: 404,
+          headers: responseHeaders,
+        }
+      );
+    }
+
+    // 2. Fetch active 'current' config directly from Firebase Firestore (for root home page)
     setCachedRecord(cacheKey, globalConfig);
     return NextResponse.json(globalConfig, { headers: responseHeaders });
   } catch (error) {

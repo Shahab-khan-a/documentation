@@ -8,6 +8,7 @@ interface TujarSearchCardProps {
   initialSubscriptionNumber?: string;
   onSearch: (docOrOrderNo: string, subOrUnifiedNo: string, searchField: number) => void;
   isLoading?: boolean;
+  errorMessage?: string | null;
 }
 
 export function TujarSearchCard({
@@ -15,6 +16,7 @@ export function TujarSearchCard({
   initialSubscriptionNumber = "205001150789",
   onSearch,
   isLoading = false,
+  errorMessage,
 }: TujarSearchCardProps) {
   const [searchField, setSearchField] = useState<number>(1); // 1: DocumentNumber, 2: OrderNumber
   const [docOrOrderNo, setDocOrOrderNo] = useState(initialDocumentNumber);
@@ -47,6 +49,22 @@ export function TujarSearchCard({
           وللتحقق من شهادة الاشتراك الرجاء ادخال الرقم المرجعي أو رقم الطلب الخاص بالوثيقة.
         </p>
       </div>
+
+      {/* Option B: Warning alert when document is not found or has been deleted */}
+      {errorMessage && (
+        <div
+          dir="rtl"
+          className="mb-5 p-3.5 sm:p-4 rounded-xl bg-amber-50/95 border-2 border-amber-400 text-amber-950 flex items-center gap-3 text-xs sm:text-sm font-bold shadow-xs animate-in fade-in slide-in-from-top-2"
+        >
+          <span className="text-lg sm:text-xl shrink-0">⚠️</span>
+          <div className="space-y-0.5">
+            <span className="block font-black">{errorMessage}</span>
+            <span className="block text-[11px] font-medium text-amber-800">
+              يرجى التأكد من صحة رقم الوثيقة ورقم الاشتراك وإعادة المحاولة.
+            </span>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

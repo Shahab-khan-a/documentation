@@ -175,7 +175,10 @@ export async function getConfigFromFirebase(
     if (cleanSerial && cleanUnified) candidateIds.push(`${cleanSerial}_${cleanUnified}`);
     if (cleanSerial) candidateIds.push(cleanSerial);
     if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) candidateIds.push(`${rawReq}_${rawSerial}`);
-    candidateIds.push("current");
+    // Only fall back to "current" if NO specific document parameters were requested
+    if (!cleanSerial && !cleanReq && !rawSerial && !rawReq) {
+      candidateIds.push("current");
+    }
 
     // Fetch all candidates concurrently in parallel
     const snaps = await Promise.all(
@@ -616,7 +619,10 @@ export async function getPortalRecordBySerialUnified(
     if (cleanSerial && cleanUnified) candidateIds.push(`${cleanSerial}_${cleanUnified}`);
     if (cleanSerial) candidateIds.push(cleanSerial);
     if (rawReq && rawSerial && (rawReq !== cleanReq || rawSerial !== cleanSerial)) candidateIds.push(`${rawReq}_${rawSerial}`);
-    candidateIds.push("current");
+    // Only fall back to "current" if NO specific document parameters were requested
+    if (!cleanSerial && !cleanReq && !rawSerial && !rawReq) {
+      candidateIds.push("current");
+    }
 
     // Fetch all candidates concurrently in parallel
     const snaps = await Promise.all(

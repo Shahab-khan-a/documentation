@@ -65,7 +65,7 @@ function ResultsPage({
 // ─────────────────────────────────────────────────────────
 export default function DocumentVerificationView() {
   const router = useRouter();
-  const { config } = usePortalConfig();
+  const { config, isLoaded, isNotFound } = usePortalConfig();
   const {
     isDownloading,
     downloadLoaderActive,
@@ -246,6 +246,13 @@ export default function DocumentVerificationView() {
       window.removeEventListener("popstate", checkTujar);
     };
   }, []);
+
+  // Option B: If document is deleted or not found, switch to Tujar view showing Step 1 with not-found error
+  useEffect(() => {
+    if (isLoaded && isNotFound) {
+      setShowTujar(true);
+    }
+  }, [isLoaded, isNotFound]);
 
   // FIRST SHOW THE LOADER: initialLoaderDone starts false
   const [initialLoaderDone, setInitialLoaderDone] = useState(false);

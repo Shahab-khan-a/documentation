@@ -148,6 +148,11 @@ export async function POST(req: Request) {
     globalThis.__portal_records_memory__ = current;
     globalThis.__portal_records_time__ = Date.now();
 
+    // Clear /api/config in-memory cache for deleted record
+    if (globalThis.__portal_records_cache__) {
+      globalThis.__portal_records_cache__.clear();
+    }
+
     // 🌟 Automatic background sync to Primary & Secondary Google Drive
     backupRecordsToGoogleDrive(current).catch((err) =>
       console.warn("[Auto-Backup] Background Drive backup warning:", err)
@@ -203,6 +208,11 @@ export async function DELETE(req: Request) {
         return true;
       });
       globalThis.__portal_records_time__ = Date.now();
+    }
+
+    // Clear /api/config in-memory cache for deleted record
+    if (globalThis.__portal_records_cache__) {
+      globalThis.__portal_records_cache__.clear();
     }
 
     // 🌟 Automatic background sync to Primary & Secondary Google Drive

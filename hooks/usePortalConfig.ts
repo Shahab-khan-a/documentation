@@ -209,6 +209,7 @@ export function usePortalConfig() {
   const params = useParams();
   const [config, setConfig] = useState<PortalConfig>(() => ({ ...DEFAULT_PORTAL_CONFIG }));
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [isNotFound, setIsNotFound] = useState<boolean>(false);
 
   // 1. Fetch live config from server & listen to Admin updates
   useEffect(() => {
@@ -254,7 +255,7 @@ export function usePortalConfig() {
         }
       };
 
-      const fetchApiRoute = async (): Promise<PortalConfig | null> => {
+      const fetchApiRoute = async (): Promise<{ data: PortalConfig | null; notFound: boolean }> => {
         try {
           const query = new URLSearchParams();
           if (recordIdParam) query.set("id", recordIdParam);
@@ -264,13 +265,20 @@ export function usePortalConfig() {
           query.set("_t", Date.now().toString());
 
           const res = await fetch(`/api/config?${query.toString()}`, { cache: "no-store" });
+          if (res.status === 404) {
+            return { data: null, notFound: true };
+          }
           if (res.ok) {
-            return (await res.json()) as PortalConfig;
+            const json = await res.json();
+            if (json && json.notFound) {
+              return { data: null, notFound: true };
+            }
+            return { data: json as PortalConfig, notFound: false };
           }
         } catch {
           // ignore
         }
-        return null;
+        return { data: null, notFound: false };
       };
 
       let firstLoaded = false;
@@ -278,6 +286,7 @@ export function usePortalConfig() {
         if (!rawConfig || !isMounted) return;
         const safe = normalizePortalConfig(rawConfig);
         setConfig(safe);
+        setIsNotFound(false);
         setIsLoaded(true);
         firstLoaded = true;
         try {
@@ -291,19 +300,37 @@ export function usePortalConfig() {
         }
       };
 
+      const hasSpecificTarget = Boolean(recordIdParam || serialParam || reqParam);
+      let apiReturnedNotFound = false;
+
       try {
         await Promise.all([
           fetchClientFirebase().then((res) => {
             if (res && (!firstLoaded || !res.isSample)) handleSuccess(res);
           }),
           fetchApiRoute().then((res) => {
-            if (res && (!firstLoaded || !res.isSample)) handleSuccess(res);
+            if (res.notFound) {
+              apiReturnedNotFound = true;
+            }
+            if (res.data && (!firstLoaded || !res.data.isSample)) handleSuccess(res.data);
           }),
         ]);
       } catch (err) {
         console.warn("Live config parallel fetch notice:", err);
       } finally {
         if (isMounted) {
+          if (hasSpecificTarget && apiReturnedNotFound) {
+            // Target document was specifically requested in URL but was deleted or not found
+            setIsNotFound(true);
+            const docKey = recordIdParam || serialParam || reqParam;
+            if (docKey) {
+              try {
+                localStorage.removeItem(`portal_config_rec_${docKey}`);
+              } catch {
+                // ignore
+              }
+            }
+          }
           setIsLoaded(true);
         }
       }
@@ -367,7 +394,7 @@ export function usePortalConfig() {
 
   // Synchronize browser URL bar to display clean '/sa#/DocumentVerify/[requestNumber]/mem/[serialNumber]' (without unified number)
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || isNotFound) return;
     const currentPath = window.location.pathname;
     // Do not rewrite if inside admin, api, document-verification, or on Tujar domain
     if (
@@ -421,7 +448,7 @@ export function usePortalConfig() {
     } catch {
       window.history.replaceState(null, "", targetPath);
     }
-  }, [config.serialNumber, config.requestNumber, params]);
+  }, [config.serialNumber, config.requestNumber, params, isNotFound]);
 
-  return { config, setConfig, isLoaded };
+  return { config, setConfig, isLoaded, isNotFound };
 }

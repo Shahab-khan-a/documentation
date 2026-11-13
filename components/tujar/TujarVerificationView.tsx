@@ -45,7 +45,8 @@ type PreparedTujarDownload =
 
 export function TujarVerificationView() {
   const searchParams = useSearchParams();
-  const { config, isLoaded } = usePortalConfig();
+  const { config, isLoaded, isNotFound } = usePortalConfig();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadLoaderKey, setDownloadLoaderKey] = useState<number | null>(null);
   const pendingDownloadRef = useRef<Promise<PreparedTujarDownload> | null>(null);
@@ -174,14 +175,23 @@ export function TujarVerificationView() {
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
 
+  // Option B: If document is not found or has been deleted by admin, immediately switch to Search Form (Step 1) with official warning
+  useEffect(() => {
+    if (isLoaded && isNotFound) {
+      setStep(1);
+      setErrorMessage("لا توجد وثيقة مطابقة للبيانات المدخلة أو تم إلغاؤها");
+      setInitialLoading(false);
+    }
+  }, [isLoaded, isNotFound]);
+
   // Sync state if query params or URL changes
   useEffect(() => {
     const p = parseUrlParams();
     if (p.doc) setDocumentNumber(p.doc);
     if (p.sub) setSubscriptionNumber(p.sub);
     if (p.req) setOrderNumber(p.req);
-    if (p.doc || p.sub || p.req) setStep(2);
-  }, [parseUrlParams]);
+    if ((p.doc || p.sub || p.req) && !isNotFound) setStep(2);
+  }, [parseUrlParams, isNotFound]);
 
   // Sync state when config loads from Firebase / Drive (WITHOUT overwriting URL query parameters)
   useEffect(() => {
@@ -254,6 +264,7 @@ export function TujarVerificationView() {
   }, []);
 
   const handleSearch = (docOrOrderNo: string, subOrUnifiedNo: string, searchField: number) => {
+    setErrorMessage(null);
     setSearchLoading(true);
     setSearchedDoc(docOrOrderNo);
     setDocumentNumber(docOrOrderNo);
@@ -276,6 +287,7 @@ export function TujarVerificationView() {
   };
 
   const handleRevalidate = () => {
+    setErrorMessage(null);
     setStep(1);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -509,6 +521,7 @@ export function TujarVerificationView() {
                 initialSubscriptionNumber={subNo}
                 onSearch={handleSearch}
                 isLoading={searchLoading}
+                errorMessage={errorMessage}
               />
             )}
           </div>
