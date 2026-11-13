@@ -99,6 +99,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
+    textArea.setSelectionRange(0, 99999);
     const successful = document.execCommand("copy");
     document.body.removeChild(textArea);
     if (successful) return true;

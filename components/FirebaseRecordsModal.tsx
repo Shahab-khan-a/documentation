@@ -607,9 +607,7 @@ export function FirebaseRecordsModal({
 
                 const tujarPath = getRecordTujarPath(record);
                 const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path, { tujarPath });
-                const isOrgCopied =
-                  internalCopiedKey === `${record.id}_org` ||
-                  (copiedRecordId === record.id && !internalCopiedKey);
+                const isOrgCopied = internalCopiedKey === `${record.id}_org`;
                 const isComCopied = internalCopiedKey === `${record.id}_com`;
                 const isDotCopied = internalCopiedKey === `${record.id}_dot`;
                 const isTujarCopied = internalCopiedKey === `${record.id}_tujar`;
