@@ -11,6 +11,7 @@ import { backupRecordsToGoogleDrive } from "@/lib/firebase-drive-backup";
 // Transient in-memory cache
 declare global {
   var __portal_records_memory__: PortalRecord[] | undefined;
+  var __portal_records_time__: number | undefined;
 }
 
 /**
@@ -18,9 +19,33 @@ declare global {
  */
 export async function GET() {
   try {
+    const now = Date.now();
+    // Return cached in-memory records if fresh (within 60 seconds) for sub-10ms response
+    if (
+      globalThis.__portal_records_memory__ &&
+      globalThis.__portal_records_memory__.length > 0 &&
+      globalThis.__portal_records_time__ &&
+      now - globalThis.__portal_records_time__ < 60000
+    ) {
+      return NextResponse.json(
+        {
+          success: true,
+          records: globalThis.__portal_records_memory__,
+          count: globalThis.__portal_records_memory__.length,
+          source: "memory_cache",
+        },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          },
+        }
+      );
+    }
+
     const fbRecords = await getAllPortalRecordsFromFirebase();
     if (fbRecords && fbRecords.length > 0) {
       globalThis.__portal_records_memory__ = fbRecords;
+      globalThis.__portal_records_time__ = now;
       return NextResponse.json(
         {
           success: true,
@@ -31,7 +56,7 @@ export async function GET() {
         {
           headers: {
             "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
-            "Pragma": "no-cache",
+            Pragma: "no-cache",
           },
         }
       );
@@ -49,7 +74,7 @@ export async function GET() {
       {
         headers: {
           "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
-          "Pragma": "no-cache",
+          Pragma: "no-cache",
         },
       }
     );
@@ -121,6 +146,7 @@ export async function POST(req: Request) {
       current.unshift(recordData);
     }
     globalThis.__portal_records_memory__ = current;
+    globalThis.__portal_records_time__ = Date.now();
 
     // 🌟 Automatic background sync to Primary & Secondary Google Drive
     backupRecordsToGoogleDrive(current).catch((err) =>
@@ -176,6 +202,7 @@ export async function DELETE(req: Request) {
         if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
         return true;
       });
+      globalThis.__portal_records_time__ = Date.now();
     }
 
     // 🌟 Automatic background sync to Primary & Secondary Google Drive
