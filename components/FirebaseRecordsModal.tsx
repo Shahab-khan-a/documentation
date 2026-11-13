@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { PortalRecord } from "@/lib/portal-types";
 import { AdminLanguage, TranslationStrings } from "@/lib/admin-translations";
-import { getDualDomainUrls } from "@/lib/record-urls";
+import { getDualDomainUrls, getRecordTujarPath, copyToClipboard } from "@/lib/record-urls";
 import { convertRecordToMainPageArabic } from "@/lib/arabic-format";
 import { sanitizeDocNumber } from "@/constants/defaults";
 
@@ -304,15 +304,13 @@ export function FirebaseRecordsModal({
     }
   };
 
-  const handleCopyUrl = (
+  const handleCopyUrl = async (
     url: string,
     key: string,
     record: PortalRecord,
     domainType: "org" | "com" | "dot" | "tujar"
   ) => {
-    if (typeof window !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-    }
+    await copyToClipboard(url);
     setInternalCopiedKey(key);
     setTimeout(() => {
       setInternalCopiedKey((prev) => (prev === key ? null : prev));
@@ -607,13 +605,7 @@ export function FirebaseRecordsModal({
                   ? `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem/${encodeURIComponent(cleanSerial)}${queryParam}`
                   : `/sa#/DocumentVerify/${encodeURIComponent(cleanReq)}/mem${queryParam}`;
 
-                // Exact format after domain as requested by user:
-                // /document-verification?documentNumber=...&&subscriptionNumber=...
-                const tujarDocParam = cleanDoc;
-                const tujarSubParam = cleanSerial || "206322599666";
-                const tujarCloneParam = isCloned ? `&&id=${encodeURIComponent(record.id)}` : "";
-                const tujarPath = `/document-verification?documentNumber=${encodeURIComponent(tujarDocParam)}&&subscriptionNumber=${encodeURIComponent(tujarSubParam)}${tujarCloneParam}`;
-
+                const tujarPath = getRecordTujarPath(record);
                 const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path, { tujarPath });
                 const isOrgCopied =
                   internalCopiedKey === `${record.id}_org` ||
@@ -761,12 +753,18 @@ export function FirebaseRecordsModal({
                             >
                               <IconExternalLink className="w-3.5 h-3.5" />
                             </a>
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyUrl(orgUrl, `${record.id}_org`, record, "org");
+                              }}
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                                 isOrgCopied
-                                  ? "bg-emerald-600 text-white"
-                                  : "bg-white text-slate-600 border border-slate-200 group-hover:text-indigo-600"
+                                  ? "bg-emerald-600 text-white shadow-xs"
+                                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-300"
                               }`}
+                              title={lang === "en" ? "Copy .ORG link" : lang === "ur" ? ".ORG لنک کاپی کریں" : "نسخ رابط .ORG"}
                             >
                               {isOrgCopied ? (
                                 <>
@@ -779,7 +777,7 @@ export function FirebaseRecordsModal({
                                   <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
                                 </>
                               )}
-                            </span>
+                            </button>
                           </div>
                         </div>
 
@@ -799,11 +797,11 @@ export function FirebaseRecordsModal({
                               : "انقر لنسخ رابط .com"
                           }
                         >
-                          <div className="flex items-center gap-2 truncate min-w-0">
+                          <div className="flex items-center gap-2 truncate min-w-0" title={comUrl}>
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-cyan-100 text-cyan-800 border border-cyan-200/90 shrink-0">
                               .COM
                             </span>
-                            <span className="truncate text-cyan-950 font-bold" dir="ltr">
+                            <span className="truncate text-cyan-950 font-bold" dir="ltr" title={comUrl}>
                               {comUrl}
                             </span>
                           </div>
@@ -818,12 +816,18 @@ export function FirebaseRecordsModal({
                             >
                               <IconExternalLink className="w-3.5 h-3.5" />
                             </a>
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyUrl(comUrl, `${record.id}_com`, record, "com");
+                              }}
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                                 isComCopied
-                                  ? "bg-emerald-600 text-white"
-                                  : "bg-white text-slate-600 border border-slate-200 group-hover:text-cyan-700"
+                                  ? "bg-emerald-600 text-white shadow-xs"
+                                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-300"
                               }`}
+                              title={lang === "en" ? "Copy .COM link" : lang === "ur" ? ".COM لنک کاپی کریں" : "نسخ رابط .COM"}
                             >
                               {isComCopied ? (
                                 <>
@@ -836,7 +840,7 @@ export function FirebaseRecordsModal({
                                   <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
                                 </>
                               )}
-                            </span>
+                            </button>
                           </div>
                         </div>
                         {/* 3. TUJAR NEW PAGE URL Strip (Highlighted in Emerald) */}
@@ -855,12 +859,12 @@ export function FirebaseRecordsModal({
                               : "انقر لنسخ رابط منصة تجار (الصفحة الجديدة)"
                           }
                         >
-                          <div className="flex items-center gap-2 truncate min-w-0">
+                          <div className="flex items-center gap-2 truncate min-w-0" title={dotUrl}>
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-600 text-white shadow-2xs shrink-0 flex items-center gap-1">
                               <span>🟢</span>
                               <span>{lang === "en" ? "TUJAR NEW PAGE" : lang === "ur" ? "منصة تجار (نیا پیج)" : "منصة تجار (الجديدة)"}</span>
                             </span>
-                            <span className="truncate text-emerald-900 font-bold" dir="ltr">
+                            <span className="truncate text-emerald-900 font-bold" dir="ltr" title={dotUrl}>
                               {dotUrl}
                             </span>
                           </div>
@@ -875,12 +879,24 @@ export function FirebaseRecordsModal({
                             >
                               <IconExternalLink className="w-3.5 h-3.5" />
                             </a>
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyUrl(dotUrl, `${record.id}_dot`, record, "dot");
+                              }}
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                                 isDotCopied
-                                  ? "bg-emerald-700 text-white"
-                                  : "bg-white text-emerald-800 border border-emerald-300 group-hover:text-emerald-950"
+                                  ? "bg-emerald-700 text-white shadow-xs"
+                                  : "bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-50"
                               }`}
+                              title={
+                                lang === "en"
+                                  ? "Click to copy New Tujar Verification Page link"
+                                  : lang === "ur"
+                                  ? "منصة تجار (نیا پیج) لنک کاپی کرنے کیلئے کلک کریں"
+                                  : "انقر لنسخ رابط منصة تجار (الصفحة الجديدة)"
+                              }
                             >
                               {isDotCopied ? (
                                 <>
@@ -893,7 +909,7 @@ export function FirebaseRecordsModal({
                                   <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
                                 </>
                               )}
-                            </span>
+                            </button>
                           </div>
                         </div>
 
@@ -905,20 +921,14 @@ export function FirebaseRecordsModal({
                               ? "bg-violet-100/90 border-violet-400 text-violet-900 shadow-xs ring-2 ring-violet-300"
                               : "bg-violet-50/70 hover:bg-violet-100/80 border-violet-200/90 hover:border-violet-400 text-violet-950 shadow-2xs"
                           }`}
-                          title={
-                            lang === "en"
-                              ? "Click to copy tujar-fsc.org link"
-                              : lang === "ur"
-                              ? "tujar-fsc.org لنک کاپی کرنے کیلئے کلک کریں"
-                              : "انقر لنسخ رابط tujar-fsc.org"
-                          }
+                          title={tujarUrl}
                         >
-                          <div className="flex items-center gap-2 truncate min-w-0">
+                          <div className="flex items-center gap-2 truncate min-w-0" title={tujarUrl}>
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-violet-700 text-white shadow-2xs shrink-0 flex items-center gap-1">
                               <span>🌐</span>
                               <span>TUJAR-FSC.ORG</span>
                             </span>
-                            <span className="truncate text-violet-950 font-bold" dir="ltr">
+                            <span className="truncate text-violet-950 font-bold" dir="ltr" title={tujarUrl}>
                               {tujarUrl}
                             </span>
                           </div>
@@ -933,12 +943,24 @@ export function FirebaseRecordsModal({
                             >
                               <IconExternalLink className="w-3.5 h-3.5" />
                             </a>
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyUrl(tujarUrl, `${record.id}_tujar`, record, "tujar");
+                              }}
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                                 isTujarCopied
-                                  ? "bg-violet-700 text-white"
-                                  : "bg-white text-violet-800 border border-violet-300 group-hover:text-violet-950"
+                                  ? "bg-violet-700 text-white shadow-xs"
+                                  : "bg-white text-violet-800 border border-violet-300 hover:bg-violet-50"
                               }`}
+                              title={
+                                lang === "en"
+                                  ? "Click to copy tujar-fsc.org link"
+                                  : lang === "ur"
+                                  ? "tujar-fsc.org لنک کاپی کرنے کیلئے کلک کریں"
+                                  : "انقر لنسخ رابط tujar-fsc.org"
+                              }
                             >
                               {isTujarCopied ? (
                                 <>
@@ -951,7 +973,7 @@ export function FirebaseRecordsModal({
                                   <span>{lang === "en" ? "Copy" : lang === "ur" ? "کاپی" : "نسخ"}</span>
                                 </>
                               )}
-                            </span>
+                            </button>
                           </div>
                         </div>
                       </div>

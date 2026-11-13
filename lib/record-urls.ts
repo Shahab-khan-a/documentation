@@ -7,6 +7,8 @@
  * - .ORG (Tujar FSC) Domain: https://www.tujar-fsc.org
  */
 
+import { sanitizeDocNumber } from "@/constants/defaults";
+
 export const DEFAULT_ORG_DOMAIN = "https://www.eservices-ynbcci.org";
 export const DEFAULT_COM_DOMAIN = "https://eservices-ynbcci-org-sa.com";
 export const DEFAULT_TUJAR_FSC_DOMAIN = "https://www.tujar-fsc.org";
@@ -17,6 +19,22 @@ export interface DualDomainUrls {
   dotUrl: string;
   tujarUrl: string;
   path: string;
+}
+
+/**
+ * Computes the dedicated TUJAR-FSC path for any Portal Record:
+ * /document-verification?documentNumber=...&&subscriptionNumber=...
+ */
+export function getRecordTujarPath(record: {
+  documentNumber?: string | null;
+  serialNumber?: string | null;
+  id?: string | null;
+}): string {
+  const cleanDoc = sanitizeDocNumber(record.documentNumber) || "205-178";
+  const cleanSerial = sanitizeDocNumber(record.serialNumber) || "206322599666";
+  const isCloned = Boolean(record.id && record.id.startsWith("rec_"));
+  const cloneParam = isCloned ? `&&id=${encodeURIComponent(record.id!)}` : "";
+  return `/document-verification?documentNumber=${encodeURIComponent(cleanDoc)}&&subscriptionNumber=${encodeURIComponent(cleanSerial)}${cloneParam}`;
 }
 
 /**
@@ -49,4 +67,44 @@ export function getDualDomainUrls(
     tujarUrl: `${tujarBase}${tujarFinalPath}`,
     path,
   };
+}
+
+/**
+ * Rock-solid clipboard copy function with fallback support for all browsers and devices.
+ * 1. Tries modern navigator.clipboard.writeText.
+ * 2. If blocked or unavailable, falls back to temporary textarea with document.execCommand('copy').
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  if (!text || typeof window === "undefined") return false;
+
+  // 1. Try modern navigator.clipboard
+  if (navigator?.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand fallback
+    }
+  }
+
+  // 2. Reliable textarea fallback for older browsers, iframes, or non-HTTPS contexts
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    textArea.style.opacity = "0";
+    textArea.setAttribute("readonly", "");
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    if (successful) return true;
+  } catch {
+    // ignore
+  }
+
+  return false;
 }

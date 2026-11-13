@@ -18,7 +18,7 @@ import { UploadProgressModal } from "@/components/UploadProgressModal";
 import { UploadSuccessModal } from "@/components/UploadSuccessModal";
 import { GoogleDriveManagerModal } from "@/components/admin/GoogleDriveManagerModal";
 import { QuickPreviewModal } from "@/components/admin/QuickPreviewModal";
-import { getDualDomainUrls } from "@/lib/record-urls";
+import { getDualDomainUrls, getRecordTujarPath, copyToClipboard } from "@/lib/record-urls";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebarDrawer } from "@/components/admin/AdminSidebarDrawer";
 import { ButtonsAndFilesTab } from "@/components/admin/ButtonsAndFilesTab";
@@ -401,14 +401,15 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCopyRecordLink = (
+  const handleCopyRecordLink = async (
     record: PortalRecord,
     domainType: "org" | "com" | "dot" | "tujar" = "org",
     customUrl?: string
   ) => {
     if (typeof window === "undefined") return;
     const path = getPublicLink(record);
-    const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path);
+    const tujarPath = getRecordTujarPath(record);
+    const { orgUrl, comUrl, dotUrl, tujarUrl } = getDualDomainUrls(path, { tujarPath });
     const fullUrl =
       customUrl ||
       (domainType === "tujar"
@@ -418,7 +419,7 @@ export default function AdminDashboard() {
         : domainType === "com"
         ? comUrl
         : orgUrl);
-    navigator.clipboard.writeText(fullUrl);
+    await copyToClipboard(fullUrl);
     setCopiedRecordId(record.id);
     setTimeout(() => setCopiedRecordId(null), 2500);
     const label =

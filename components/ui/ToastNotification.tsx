@@ -2,6 +2,7 @@
 
 import React from "react";
 import { AdminLanguage } from "@/constants/translations";
+import { copyToClipboard } from "@/lib/record-urls";
 
 export interface ToastData {
   message: string;
@@ -27,17 +28,13 @@ export function ToastNotification({ toast, onClose, lang = "ar" }: ToastNotifica
 
   const isDriveLink = Boolean(toast.link && toast.link.includes("drive.google.com"));
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!toast.link) return;
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        navigator.clipboard.writeText(toast.link);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
-      }
-    } catch {
-      // ignore
+    const ok = await copyToClipboard(toast.link);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
     }
   };
 
