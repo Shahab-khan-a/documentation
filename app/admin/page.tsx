@@ -340,13 +340,17 @@ export default function AdminDashboard() {
 
     setDeletingRecordId(cleanId);
 
-    // Instant Optimistic UI Update: Remove ONLY this exact card from UI immediately!
-    setSavedRecords((prev) =>
-      prev.filter((r) => {
+    // Instant Optimistic UI Update: Remove ONLY this exact card from UI & LocalStorage immediately!
+    setSavedRecords((prev) => {
+      const updated = prev.filter((r) => {
         if (cleanId && (r.id === cleanId || r.currentRecordId === cleanId)) return false;
         return true;
-      })
-    );
+      });
+      try {
+        localStorage.setItem("admin_cached_records", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     // If currently loaded in editor, clear editingRecordId
     if (editingRecordId && (editingRecordId === cleanId || editingRecordId === cleanSerial)) {
@@ -355,6 +359,14 @@ export default function AdminDashboard() {
         localStorage.removeItem("admin_editing_record_id");
       } catch {}
     }
+
+    // Clean up local record portal cache if exists
+    try {
+      const keys = [cleanId, cleanSerial, cleanReq, cleanUnified].filter(Boolean);
+      for (const k of keys) {
+        localStorage.removeItem(`portal_config_rec_${k}`);
+      }
+    } catch {}
 
     try {
       // 1. Delete all Firestore document variations (id, serial, composite) directly on client
